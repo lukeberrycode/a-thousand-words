@@ -4,7 +4,7 @@
 
 Genius.com for images: upload an image, draw a region on it, and attach an annotation that explains what's there.
 
-**Status:** scaffolded; working on milestone 1 (region alignment spike). See [the one-pager](docs/one-pager.md) for scope and milestones.
+**Status:** milestone 1 (region alignment spike) done: run the dev server and open `/spike`. See [the one-pager](docs/one-pager.md) for scope and milestones.
 
 ## Stack
 

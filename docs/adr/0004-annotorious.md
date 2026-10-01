@@ -16,3 +16,4 @@ Use **Annotorious** (`@annotorious/react`) for drawing and rendering regions, wi
 - Polygon regions (post-MVP) become a small change rather than a rewrite.
 - Annotorious uses the W3C Web Annotation model in natural-image pixels; we map it to our fractional storage format ([ADR 0005](0005-fractional-region-coordinates.md)).
 - If the library limits the UX, we can swap in a custom overlay later, since storage is independent of the library.
+- `ImageAnnotator` attaches in its `<img>`'s `onLoad` handler. With server rendering, the image can finish loading before hydration, so the handler never fires and no overlay appears. Mount the annotator client-only (see `src/app/spike/annotated-image.tsx`).
