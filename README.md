@@ -4,7 +4,7 @@
 
 Genius.com for images: upload an image, draw a region on it, and attach an annotation that explains what's there.
 
-**Status:** milestone 1 (region alignment spike) done: run the dev server and open `/spike`. See [the one-pager](docs/one-pager.md) for scope and milestones.
+**Status:** milestone 2 (upload and view) done. Uploads go to Cloudflare R2; until milestone 3 they all belong to a demo user. See [the one-pager](docs/one-pager.md) for scope and milestones.
 
 ## Stack
 
@@ -18,7 +18,7 @@ Requires Node 20+ and a Postgres database.
 
 ```bash
 npm install                # also generates the Prisma client
-cp .env.example .env       # then set DATABASE_URL
+cp .env.example .env       # then set DATABASE_URL and the R2_* values
 npx prisma dev             # optional: starts a local Postgres and prints its URL
 npm run db:migrate         # apply the schema
 npm run dev                # http://localhost:3000

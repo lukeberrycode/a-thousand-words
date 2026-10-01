@@ -40,3 +40,16 @@ src/app/              Routes (App Router)
 src/lib/              Server utilities (db client, storage)
 src/generated/prisma  Generated Prisma Client (gitignored)
 ```
+
+## Upload flow
+
+1. The browser checks type (JPEG, PNG, WebP) and size (10 MB) and calls the `requestUpload` server action.
+2. The server validates again and returns a 5-minute signed `PUT` URL for a random key under `images/`. Content type and length are part of the signature.
+3. The browser uploads the file straight to R2.
+4. `createImage` checks the object exists and is valid, reads the pixel size from the file's header (correcting for EXIF rotation), and creates the `Image` row.
+
+## Known gaps
+
+- Until Auth.js lands (milestone 3), every upload belongs to one demo user (`src/lib/current-user.ts`).
+- An upload abandoned between steps 3 and 4 leaves an orphaned object in R2. A periodic cleanup of keys with no `Image` row would fix this.
+- The home grid loads full-size images as thumbnails; resized variants would cut bandwidth.
