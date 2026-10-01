@@ -1,0 +1,58 @@
+// Prisma schema for A Thousand Words.
+// See docs/architecture.md for the data model rationale.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Auth.js account/session tables are added in milestone 3 (accounts).
+model User {
+  id          String       @id @default(cuid())
+  name        String?
+  email       String?      @unique
+  avatarUrl   String?
+  createdAt   DateTime     @default(now())
+  images      Image[]
+  annotations Annotation[]
+}
+
+model Image {
+  id          String       @id @default(cuid())
+  ownerId     String
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  // Object key in R2; the public URL is derived from it.
+  storageKey  String       @unique
+  // Intrinsic pixel size, recorded at upload.
+  width       Int
+  height      Int
+  createdAt   DateTime     @default(now())
+  annotations Annotation[]
+
+  @@index([createdAt])
+}
+
+// Regions are stored as fractions (0–1) of the image's width and height,
+// so they stay aligned at any display size. See docs/adr/0005.
+model Annotation {
+  id           String   @id @default(cuid())
+  imageId      String
+  image        Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  x            Float
+  y            Float
+  w            Float
+  h            Float
+  bodyMarkdown String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([imageId])
+}
