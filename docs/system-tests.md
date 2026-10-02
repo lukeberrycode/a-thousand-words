@@ -162,6 +162,41 @@ Unless a test says otherwise:
 - **Automation:** Manual
 
 
+### UPL-03: Duplicate warning
+
+- **Needs:** signed in; a copy of an image already on the site, at a different size or format (e.g. a seed painting downloaded from Wikimedia at another width, or the same file re-saved as WebP)
+- **Steps:**
+  1. Upload it.
+  2. Click **Cancel**.
+  3. Upload it again, and click **Go to it**.
+- **Expected:**
+  - Step 1 shows "This looks like an image that's already here." (or "This exact image is already here." for the identical file), with the existing image's thumbnail, title and annotation count. Nothing new appears on the home page.
+  - Step 2 clears the warning, and the form can be used again.
+  - Step 3 opens the existing image's page.
+  - After steps 2 and 3, the uploaded file is gone from the R2 bucket, and no new `Image` row exists.
+- **Proves:** look-alike uploads are caught before they're saved, and backing out leaves nothing behind (ADR 0010).
+- **Automation:** Manual
+
+### UPL-04: Upload anyway
+
+- **Needs:** as UPL-03
+- **Steps:**
+  1. Upload the look-alike, and click **Upload anyway** on the warning.
+  2. Delete the new image afterwards (MAN-05).
+- **Expected:** step 1 opens the new image's page. In Studio, its row has `sha256` and `phash` filled in.
+- **Proves:** the warning never blocks a deliberate upload.
+- **Automation:** Manual
+
+### UPL-05: Different images aren't flagged
+
+- **Needs:** signed in; an image not on the site
+- **Steps:**
+  1. Upload it.
+- **Expected:** no warning. It saves and opens its page as in UPL-01.
+- **Proves:** the duplicate check doesn't get in the way of ordinary uploads.
+- **Automation:** Manual
+
+
 ## Access control
 
 ### SEC-01: Upload page asks signed-out visitors to sign in
