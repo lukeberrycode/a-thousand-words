@@ -24,3 +24,14 @@ export function checkFile(type: string, size: number): string | null {
   if (size > MAX_UPLOAD_BYTES) return "Images must be 10 MB or smaller.";
   return null;
 }
+
+/** Trims an image's title and description, and returns an error message if either is unacceptable. */
+export function checkDetails(input: { title: string; description: string }) {
+  const title = String(input.title ?? "").trim();
+  const description = String(input.description ?? "").trim();
+  let error: string | null = null;
+  if (!title) error = "Give the image a title.";
+  else if (title.length > TITLE_MAX) error = `Titles can be up to ${TITLE_MAX} characters.`;
+  else if (description.length > DESCRIPTION_MAX) error = `Descriptions can be up to ${DESCRIPTION_MAX} characters.`;
+  return { title, description, error };
+}

@@ -7,14 +7,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/current-user";
 import { headObject, readObjectStart, signedUploadUrl } from "@/lib/storage";
-import {
-  ALLOWED_TYPES,
-  DESCRIPTION_MAX,
-  MAX_UPLOAD_BYTES,
-  TITLE_MAX,
-  checkFile,
-  isAllowedType,
-} from "@/lib/uploads";
+import { ALLOWED_TYPES, MAX_UPLOAD_BYTES, checkDetails, checkFile, isAllowedType } from "@/lib/uploads";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -45,12 +38,8 @@ export async function createImage(input: {
   const owner = await getCurrentUser();
   if (!owner) return { ok: false, error: SIGNED_OUT };
 
-  const title = input.title.trim();
-  const description = input.description.trim();
-  if (!title) return { ok: false, error: "Give the image a title." };
-  if (title.length > TITLE_MAX) return { ok: false, error: `Titles can be up to ${TITLE_MAX} characters.` };
-  if (description.length > DESCRIPTION_MAX)
-    return { ok: false, error: `Descriptions can be up to ${DESCRIPTION_MAX} characters.` };
+  const { title, description, error } = checkDetails(input);
+  if (error) return { ok: false, error };
   if (!KEY_PATTERN.test(input.key)) return { ok: false, error: "Invalid upload." };
 
   const object = await headObject(input.key);

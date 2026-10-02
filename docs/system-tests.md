@@ -278,6 +278,101 @@ Unless a test says otherwise:
 - **Automation:** Manual
 
 
+## Reading and managing
+
+### MAN-01: Hover previews, click pins
+
+- **Needs:** an image with at least one annotation; a mouse
+- **Steps:**
+  1. Hover over a region.
+  2. Move the pointer off it.
+  3. Click a region, then hover over a different one, then move off.
+- **Expected:**
+  - Step 1 shows that annotation in the panel.
+  - Step 2 brings back the hint, "Hover over or tap a highlighted region…".
+  - In step 3, the hovered annotation shows while hovering, and the clicked one returns afterwards.
+- **Proves:** reading needs no clicks on desktop, and a pinned annotation stays pinned.
+- **Automation:** Manual
+
+### MAN-02: Only your own content shows Edit and Delete
+
+- **Needs:** signed in; an image you uploaded, with an annotation by you and one by someone else; an image someone else uploaded
+- **Steps:**
+  1. Select your annotation, then the other person's.
+  2. Open your image, then the other person's.
+- **Expected:**
+  - Step 1: your annotation has **Edit** and **Delete**, and the other person's has neither.
+  - Step 2: your image has **Edit details** and **Delete image**, and the other person's has neither.
+- **Proves:** the page only offers changes the user is allowed to make.
+- **Automation:** Manual
+
+### MAN-03: Edit an annotation's box and text
+
+- **Needs:** signed in; an annotation of yours
+- **Steps:**
+  1. Select it and click **Edit**.
+  2. Drag the box somewhere else, change the text and click **Save**.
+  3. Click **Edit** again, drag the box, then click **Cancel**.
+- **Expected:**
+  - Step 1: the box gets handles, and the editor opens with the current text.
+  - Step 2: the editor shows **Saving…**, then the card shows the new text and "· edited". The box stays where you left it, and old text never reappears.
+  - Step 3: the box jumps back to its saved position.
+- **Proves:** region and text edits save together, and unsaved moves can be undone.
+- **Automation:** Manual
+
+### MAN-04: Delete an annotation
+
+- **Needs:** signed in; an annotation of yours
+- **Steps:**
+  1. Select it, click **Delete**, then **Keep**.
+  2. Click **Delete**, then the red **Delete**.
+- **Expected:**
+  - Step 1 changes nothing.
+  - Step 2 removes the region and its list entry. In Studio, the row is gone.
+- **Proves:** deletion asks first and then removes the annotation everywhere.
+- **Automation:** Manual
+
+### MAN-05: Edit and delete your own image
+
+- **Needs:** signed in; an image of yours that you don't mind losing, ideally with an annotation by someone else
+- **Steps:**
+  1. Click **Edit details**, change the title and description and click **Save**.
+  2. Click **Delete image**, read the message, then confirm.
+  3. Check Studio and the R2 bucket.
+- **Expected:**
+  - Step 1 updates the heading, the description and the browser tab title.
+  - Step 2's message counts the annotations and warns that other people's go too. Confirming takes you to the home page, where the image is no longer listed.
+  - Step 3: the `Image` row and its `Annotation` rows are gone, and so is the file in R2.
+- **Proves:** owners control their images, and deleting one cleans up the database and storage.
+- **Automation:** Manual
+
+### MAN-06: The server refuses changes to other people's content
+
+- **Needs:** signed in; an annotation of yours; Studio
+- **Steps:**
+  1. Select your annotation and click **Edit**.
+  2. In Studio, change that annotation's `authorId` to another user's.
+  3. Click **Save**.
+  4. Change `authorId` back.
+- **Expected:** step 3 shows "That annotation doesn't exist, or isn't yours." and nothing changes.
+- **Proves:** the server actions check ownership themselves rather than trusting the page.
+- **Automation:** Manual
+
+### MAN-07: Mobile annotate mode
+
+- **Needs:** signed in; a phone, or a narrow window (below 1024 px)
+- **Steps:**
+  1. Outside annotate mode, swipe on the image.
+  2. Tap **Annotate** and drag on the image.
+  3. Edit an existing annotation of yours.
+- **Expected:**
+  - Step 1 scrolls the page.
+  - In step 2, dragging draws a box instead of scrolling, and the editor opens as a sheet at the bottom of the screen with the box still visible above it.
+  - In step 3, the editor also opens as a bottom sheet, and dragging moves the box.
+- **Proves:** touch drawing doesn't fight with scrolling, and the editor doesn't hide the box.
+- **Automation:** Manual. A real touch screen is still needed for steps 1 and 2: it was checked at narrow width with a mouse, not on a phone.
+
+
 ## Sources
 
 These tests were collected on 2026-10-02 from the setup guides kept outside this repo (`lukeberrycode-help/a-thousand-words-help`):
@@ -290,3 +385,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | 04 Milestone 3 explained, section 12 | AUTH-01 to AUTH-05, UPL-01, UPL-02, SEC-01, SEC-02, ENV-05 |
 | 05 Trying out sign-in, Steps 4 to 10 | ENV-01, ENV-02, AUTH-01 to AUTH-04, UPL-01, UPL-02, SEC-01, SEC-02 |
 | Milestone 4 (written with the code) | ANN-01 to ANN-06 |
+| Milestone 5 (written with the code) | MAN-01 to MAN-07 |
