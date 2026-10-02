@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/lib/db";
@@ -71,6 +72,35 @@ export default async function ImagePage({ params }: PageProps<"/images/[id]">) {
           }
         />
       </div>
+      <ReportLink imageId={image.id} title={image.title} />
     </main>
+  );
+}
+
+/**
+ * Report/takedown link (ADR 0006): an email to REPORT_EMAIL with the page address filled in.
+ * Hidden if REPORT_EMAIL isn't set, which production must not allow (see .env.example).
+ */
+async function ReportLink({ imageId, title }: { imageId: string; title: string }) {
+  const to = process.env.REPORT_EMAIL;
+  if (!to) return null;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const page = `${proto}://${host}/images/${imageId}`;
+  const href = `mailto:${to}?${new URLSearchParams({
+    subject: `Report: ${title}`,
+    body: `Image: ${page}\n\nWhat's wrong with this image or its annotations?\n`,
+  })
+    .toString()
+    .replace(/\+/g, "%20")}`;
+  return (
+    <p className="mt-8 text-xs text-zinc-500">
+      Something wrong with this image or an annotation?{" "}
+      <a href={href} className="underline">
+        Report it
+      </a>
+      .
+    </p>
   );
 }

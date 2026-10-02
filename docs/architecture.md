@@ -80,6 +80,10 @@ Authors can edit or delete their own annotations, and owners their own images ([
 - **Deleting an image** deletes the row, and with it every annotation on the image, including other people's, through `onDelete: Cascade`. Then it deletes the file from R2. If that fails, the error is logged and the file is left behind; see Known gaps.
 - **Mobile annotate mode:** while a box can be drawn or moved, the image has `touch-action: none`, so dragging edits the box instead of scrolling the page. Below the `lg` breakpoint, the editor is a sheet fixed to the bottom of the screen, so the box stays visible above it.
 
+## Deployment
+
+Vercel hosts the app, with Neon Postgres and a production R2 bucket ([ADR 0009](adr/0009-deploy-vercel-neon.md)). Migrations are applied by hand with `npm run prod:migrate`, not during the build. Seed content (`prisma/seed-data.ts`, loaded by `prisma/seed.ts`) is 12 public-domain paintings from Wikimedia Commons. They're stored under `images/seed/<slug>.jpg` and owned by an "A Thousand Words" user. Every image page has a "Report it" link that emails `REPORT_EMAIL`.
+
 ## Known gaps
 
 - An upload abandoned between steps 3 and 4, or an R2 delete that fails after an image is deleted, leaves an orphaned object in R2. A periodic cleanup of keys with no `Image` row would fix both.

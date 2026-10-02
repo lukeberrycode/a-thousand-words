@@ -373,6 +373,62 @@ Unless a test says otherwise:
 - **Automation:** Manual. A real touch screen is still needed for steps 1 and 2: it was checked at narrow width with a mouse, not on a phone. Scheduled for milestone 6, on the deployed site, before the URL is shared publicly.
 
 
+## Production
+
+Run these on the deployed site before sharing its URL. "Production" means the Vercel URL, signed in with the production GitHub OAuth app.
+
+### PROD-01: Seed content is live
+
+- **Needs:** the production seed has run
+- **Steps:**
+  1. Open the home page.
+  2. Open three seeded paintings, and click several regions on each.
+- **Expected:**
+  - Step 1 shows the 12 paintings with thumbnails.
+  - In step 2, each region sits over what its annotation describes, and the text renders formatted, with "By A Thousand Words".
+- **Proves:** production has the database, the R2 bucket and its public URL wired up, and the seed placed regions correctly.
+- **Automation:** Manual
+
+### PROD-02: Sign in on production
+
+- **Needs:** a GitHub account
+- **Steps:**
+  1. Click **Sign in with GitHub** on the production site.
+- **Expected:** GitHub asks you to authorise the **production** OAuth app (not "(dev)"), then returns you to the site signed in.
+- **Proves:** the production OAuth app, its redirect URI, `AUTH_SECRET` and the database sessions work on the real domain.
+- **Automation:** Manual
+
+### PROD-03: Upload and annotate on production
+
+- **Needs:** signed in on production; a small image of your own
+- **Steps:**
+  1. Upload the image (UPL-01).
+  2. Add an annotation (ANN-01).
+  3. Delete the image (MAN-05).
+- **Expected:** all three work as in development. In step 3, the file is removed from the production bucket.
+- **Proves:** the production bucket's CORS rule allows the site's origin, and the API token can write and delete.
+- **Automation:** Manual
+
+### PROD-04: The report link
+
+- **Needs:** `REPORT_EMAIL` set in Vercel
+- **Steps:**
+  1. On any image page, click **Report it**.
+- **Expected:** your email app opens a message to `REPORT_EMAIL`, with the image title in the subject and the production page URL in the body.
+- **Proves:** every image has a working report/takedown path (ADR 0006).
+- **Automation:** Manual
+
+### PROD-05: Real phones
+
+- **Needs:** an iPhone and an Android phone, if available
+- **Steps:**
+  1. Run MAN-07 (mobile annotate mode) on each phone.
+  2. Read annotations by tapping regions (ANN-02).
+- **Expected:** as described in those tests. Drawing doesn't fight with scrolling, and the editor's bottom sheet keeps the box visible.
+- **Proves:** the site works on the touch screens most visitors will use.
+- **Automation:** Manual
+
+
 ## Sources
 
 These tests were collected on 2026-10-02 from the setup guides kept outside this repo (`lukeberrycode-help/a-thousand-words-help`):
@@ -386,3 +442,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | 05 Trying out sign-in, Steps 4 to 10 | ENV-01, ENV-02, AUTH-01 to AUTH-04, UPL-01, UPL-02, SEC-01, SEC-02 |
 | Milestone 4 (written with the code) | ANN-01 to ANN-06 |
 | Milestone 5 (written with the code) | MAN-01 to MAN-07 |
+| Milestone 6 (written with the code) | PROD-01 to PROD-05 |
