@@ -37,6 +37,7 @@ npm run dev                # http://localhost:3000
 ## Project docs
 
 - [One-pager & MVP scope](docs/one-pager.md)
+- [Product background](docs/product-background.md): audience, prior art and the name
 - [Architecture](docs/architecture.md)
 - [Architecture Decision Records](docs/adr/README.md)
 - [System tests](docs/system-tests.md): checks of the running app, with how each is run (manual or automated)
