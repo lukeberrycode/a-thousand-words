@@ -370,7 +370,7 @@ Unless a test says otherwise:
   - In step 2, dragging draws a box instead of scrolling, and the editor opens as a sheet at the bottom of the screen with the box still visible above it.
   - In step 3, the editor also opens as a bottom sheet, and dragging moves the box.
 - **Proves:** touch drawing doesn't fight with scrolling, and the editor doesn't hide the box.
-- **Automation:** Manual. A real touch screen is still needed for steps 1 and 2: it was checked at narrow width with a mouse, not on a phone.
+- **Automation:** Manual. A real touch screen is still needed for steps 1 and 2: it was checked at narrow width with a mouse, not on a phone. Scheduled for milestone 6, on the deployed site, before the URL is shared publicly.
 
 
 ## Sources
