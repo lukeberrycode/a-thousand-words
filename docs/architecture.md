@@ -60,6 +60,16 @@ Uploading requires sign-in; both server actions reject anonymous calls.
 3. The browser uploads the file straight to R2.
 4. `createImage` checks the object exists and is valid, reads the pixel size from the file's header (correcting for EXIF rotation), and creates the `Image` row.
 
+## Annotation flow
+
+1. The image page (`src/app/images/[id]/page.tsx`) loads the image with its annotations and each author's name, and passes them to a client component, `annotated-image.tsx`. It sends only the fields the browser needs.
+2. Annotorious draws each saved region, converting fractions to pixels with the image's stored size. Larger regions are added first, so smaller ones sit on top and stay clickable. Clicking a region, or its entry in the list beside the image, shows its Markdown.
+3. Signed-in users click **Annotate** to turn on drawing, then drag a box. That box is a draft: it isn't saved yet, and it can be moved or resized. Only one draft exists at a time.
+4. **Save** reads the box as it is now, converts it to fractions, and calls the `createAnnotation` server action with the text.
+5. The action checks the session, the region (inside the image and not tiny) and the text (not empty, at most 5,000 characters), then creates the `Annotation` row. It calls `refresh()`, so the page re-renders with the new region, which is then selected.
+
+Annotation text is untrusted, so it's rendered without HTML or images ([ADR 0008](adr/0008-markdown-rendering.md)).
+
 ## Known gaps
 
 - An upload abandoned between steps 3 and 4 leaves an orphaned object in R2. A periodic cleanup of keys with no `Image` row would fix this.

@@ -11,3 +11,4 @@ One short file per decision: the context, what was decided, and the consequences
 | [0005](0005-fractional-region-coordinates.md) | Fractional, rectangle-only region coordinates | Accepted |
 | [0006](0006-open-annotation-and-public-domain-seed.md) | Any signed-in user can annotate; seed with public-domain art | Accepted |
 | [0007](0007-authjs-v5-beta.md) | Auth.js v5 (beta) for sign-in | Accepted |
+| [0008](0008-markdown-rendering.md) | Render annotation Markdown with react-markdown, without HTML or images | Accepted |
