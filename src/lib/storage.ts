@@ -1,5 +1,5 @@
 import "server-only";
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // Cloudflare R2 via its S3-compatible API. See docs/adr/0002.
@@ -63,4 +63,9 @@ export async function readObjectStart(key: string, bytes: number) {
     new GetObjectCommand({ Bucket: env("R2_BUCKET"), Key: key, Range: `bytes=0-${bytes - 1}` }),
   );
   return res.Body!.transformToByteArray();
+}
+
+/** Delete a stored object. Succeeds if it's already gone. */
+export async function deleteObject(key: string) {
+  await r2().send(new DeleteObjectCommand({ Bucket: env("R2_BUCKET"), Key: key }));
 }

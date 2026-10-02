@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { publicUrl } from "@/lib/storage";
 import { SignInButton } from "../../user-menu";
 import { AnnotatedImage } from "./annotated-image";
+import { ImageHeader } from "./image-header";
 
 const getImage = cache((id: string) =>
   db.image.findUnique({
@@ -32,14 +33,18 @@ export default async function ImagePage({ params }: PageProps<"/images/[id]">) {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8">
-      <h1 className="text-2xl font-semibold tracking-tight">{image.title}</h1>
-      <p className="mt-1 text-sm text-zinc-500">
-        Uploaded by {image.owner.name ?? "someone"} on{" "}
-        {image.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
-      </p>
-      {image.description && (
-        <p className="mt-4 max-w-2xl leading-7 text-zinc-700 dark:text-zinc-300">{image.description}</p>
-      )}
+      <ImageHeader
+        id={image.id}
+        title={image.title}
+        description={image.description}
+        byline={`Uploaded by ${image.owner.name ?? "someone"} on ${image.createdAt.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}`}
+        mine={user?.id === image.ownerId}
+        annotationCount={image.annotations.length}
+      />
       <div className="mt-6">
         <AnnotatedImage
           image={{
@@ -54,6 +59,9 @@ export default async function ImagePage({ params }: PageProps<"/images/[id]">) {
             region: { x: a.x, y: a.y, w: a.w, h: a.h },
             body: a.bodyMarkdown,
             authorName: a.author.name,
+            mine: user?.id === a.authorId,
+            createdAt: a.createdAt.toISOString(),
+            updatedAt: a.updatedAt.toISOString(),
           }))}
           canAnnotate={!!user}
           signInPrompt={

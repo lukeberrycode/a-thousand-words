@@ -63,14 +63,24 @@ Uploading requires sign-in; both server actions reject anonymous calls.
 ## Annotation flow
 
 1. The image page (`src/app/images/[id]/page.tsx`) loads the image with its annotations and each author's name, and passes them to a client component, `annotated-image.tsx`. It sends only the fields the browser needs.
-2. Annotorious draws each saved region, converting fractions to pixels with the image's stored size. Larger regions are added first, so smaller ones sit on top and stay clickable. Clicking a region, or its entry in the list beside the image, shows its Markdown.
+2. Annotorious draws each saved region, converting fractions to pixels with the image's stored size. Larger regions are added first, so smaller ones sit on top and stay clickable. Hovering a region previews its Markdown in the panel; clicking it, or its entry in the list, pins it there.
 3. Signed-in users click **Annotate** to turn on drawing, then drag a box. That box is a draft: it isn't saved yet, and it can be moved or resized. Only one draft exists at a time.
 4. **Save** reads the box as it is now, converts it to fractions, and calls the `createAnnotation` server action with the text.
 5. The action checks the session, the region (inside the image and not tiny) and the text (not empty, at most 5,000 characters), then creates the `Annotation` row. It calls `refresh()`, so the page re-renders with the new region, which is then selected.
 
 Annotation text is untrusted, so it's rendered without HTML or images ([ADR 0008](adr/0008-markdown-rendering.md)).
 
+## Editing and deleting
+
+Authors can edit or delete their own annotations, and owners their own images ([ADR 0006](adr/0006-open-annotation-and-public-domain-seed.md)).
+
+- The page tells the browser which annotations and which image are the signed-in user's (a `mine` flag), so it can show Edit and Delete. That's only for display. Each server action checks again, with ownership in the write's `where` (for example `{ id, authorId }`), so checking and writing happen in one query.
+- **Edit annotation** makes its box movable and resizable and opens the editor with the text. Save sends the new region and text to `updateAnnotation`, and Cancel puts the box back.
+- **Delete annotation** and **Delete image** ask for confirmation inside the page, not with a browser dialog.
+- **Deleting an image** deletes the row, and with it every annotation on the image, including other people's, through `onDelete: Cascade`. Then it deletes the file from R2. If that fails, the error is logged and the file is left behind; see Known gaps.
+- **Mobile annotate mode:** while a box can be drawn or moved, the image has `touch-action: none`, so dragging edits the box instead of scrolling the page. Below the `lg` breakpoint, the editor is a sheet fixed to the bottom of the screen, so the box stays visible above it.
+
 ## Known gaps
 
-- An upload abandoned between steps 3 and 4 leaves an orphaned object in R2. A periodic cleanup of keys with no `Image` row would fix this.
+- An upload abandoned between steps 3 and 4, or an R2 delete that fails after an image is deleted, leaves an orphaned object in R2. A periodic cleanup of keys with no `Image` row would fix both.
 - The home grid loads full-size images as thumbnails; resized variants would cut bandwidth.
