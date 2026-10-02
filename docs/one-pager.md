@@ -1,14 +1,16 @@
 # A Thousand Words: One-Pager & MVP Scope
 
-Living version: https://claude.ai/code/artifact/44265a49-0b8f-4615-a100-eefea41f698f
+Audience, prior art and the project name: [product background](product-background.md).
 
 ## Overview
 
 **A Thousand Words is Genius.com for images:** anyone can upload an image, draw a region on it, and attach an annotation that explains what's there.
 
-Images are packed with meaning that viewers miss: references hidden in a painting, the joke behind a meme, the people in a historical photo, the design choices in a UI. A Thousand Words pins explanations directly to the part of the image they're about.
+Images are packed with meaning that viewers miss: references hidden in a painting, the joke behind a meme, the people in a historical photo, the design choices in a UI. Today that context is scattered across comment threads and blog posts, disconnected from the pixels it describes. A Thousand Words pins explanations directly to the part of the image they're about.
 
 ## Goals and success criteria
+
+This is a demo and portfolio project, so success means a working, deployed app that shows real technical depth.
 
 - [ ] A visitor can open a public URL, view an image, and read its annotations without an account
 - [ ] A signed-in user can upload an image and add an annotation in under a minute
@@ -17,6 +19,8 @@ Images are packed with meaning that viewers miss: references hidden in a paintin
 - [ ] At least 10 seeded images with real annotations, so the demo feels alive
 
 ## MVP scope
+
+The MVP proves the core loop: upload an image, mark a region, explain it, and let others read it.
 
 | Feature | Detail |
 | --- | --- |
@@ -36,6 +40,8 @@ Images are packed with meaning that viewers miss: references hidden in a paintin
 
 ## Non-goals for v1
 
+These are deliberately deferred to keep the MVP shippable:
+
 - Voting, reputation points ("IQ"), or ranking of annotations
 - Comment threads or replies on annotations
 - Non-rectangular regions (polygons, freehand)
@@ -47,7 +53,9 @@ Images are packed with meaning that viewers miss: references hidden in a paintin
 
 ## Milestones
 
-1. **Spike:** a static image with hard-coded fractional regions that stay aligned on resize.
+Each milestone is either a vertical slice that works end to end and could be demoed on its own, or a new layer of quality assurance.
+
+1. **Spike:** a static image with hard-coded fractional regions that stay aligned on resize. Proves the riskiest part first.
 2. **Upload and view:** upload an image to storage; public image page; home page of recent images.
 3. **Accounts:** OAuth sign-in; uploads tied to a user.
 4. **Create annotations:** draw a box, write Markdown, save; regions render for all visitors.
@@ -57,4 +65,4 @@ Images are packed with meaning that viewers miss: references hidden in a paintin
 8. **User experience documentation:** describe every expected user experience and journey from the user's point of view: what they see, do and get back in the browser, including steps that depend on the full stack (sign-in, uploads, saving). Unlike the system tests, these docs are independent of the implementation and assume no access to the database, storage or dev tools. Testers use them to check what they actually see, and future agents use them to validate a refactor or full rebuild. Written after the demo ships, to avoid churn while features are still changing.
 9. **Human code review:** before the project moves beyond the demo phase, a human reviews all of the code. This is the final safeguard: no code is used in anger without human review, while the prototype can still be built quickly with reasonable safeguards at every stage. Only a human can mark this milestone done.
 
-**After the MVP:** voting → reputation points → replies and threads → polygon regions → search and tags → verified creator annotations.
+**After the MVP**, in rough priority order: voting → reputation points → replies and threads → polygon regions → search and tags → verified creator annotations.
