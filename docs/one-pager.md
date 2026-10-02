@@ -53,5 +53,7 @@ Images are packed with meaning that viewers miss: references hidden in a paintin
 4. **Create annotations:** draw a box, write Markdown, save; regions render for all visitors.
 5. **Read and manage:** hover/tap side panel; edit and delete own content; mobile annotate mode.
 6. **Ship:** deploy, seed 10+ annotated images, write README and ADRs.
+7. **Automate system tests:** add a way to run the checks in [`docs/system-tests.md`](system-tests.md) automatically (tool choice recorded in an ADR). Each automated test refers to its test ID, and the list stays as the permanent reference. Tests that need a real third party, such as GitHub sign-in, may stay manual or use a test double.
+8. **Human code review:** before the project moves beyond the demo phase, a human reviews all of the code. This is the final safeguard: no code is used in anger without human review, while the prototype can still be built quickly with reasonable safeguards at every stage. Only a human can mark this milestone done.
 
 **After the MVP:** voting → reputation points → replies and threads → polygon regions → search and tags → verified creator annotations.

@@ -39,4 +39,4 @@ npm run dev                # http://localhost:3000
 - [One-pager & MVP scope](docs/one-pager.md)
 - [Architecture](docs/architecture.md)
 - [Architecture Decision Records](docs/adr/README.md)
-
+- [System tests](docs/system-tests.md): checks of the running app, with how each is run (manual or automated)
