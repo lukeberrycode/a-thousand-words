@@ -10,8 +10,8 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { imageSize } from "image-size";
 import { PrismaClient } from "@/generated/prisma/client";
+import { fingerprint } from "@/lib/image-hash";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
 import { artworks } from "./seed-data";
 
@@ -57,10 +57,8 @@ async function main() {
 
       const bytes = await download(art.source);
       if (bytes.length > MAX_UPLOAD_BYTES) throw new Error(`${art.title} is over the upload size limit.`);
-      const { width, height, orientation } = imageSize(bytes);
-      if (!width || !height) throw new Error(`Couldn't read the size of ${art.title}.`);
-      // EXIF orientations 5–8 display rotated 90°, as in createImage.
-      const size = orientation && orientation >= 5 ? { width: height, height: width } : { width, height };
+      // Size and duplicate-detection hashes, exactly as createImage computes them.
+      const { width, height, sha256, phash } = await fingerprint(bytes);
 
       await r2.send(
         new PutObjectCommand({ Bucket: bucket, Key: storageKey, Body: bytes, ContentType: "image/jpeg" }),
@@ -71,7 +69,10 @@ async function main() {
           title: art.title,
           description: art.description,
           storageKey,
-          ...size,
+          width,
+          height,
+          sha256,
+          phash,
           annotations: {
             // Pages list annotations oldest first; space the timestamps so they keep this order.
             create: art.annotations.map((a, i) => ({
@@ -83,7 +84,7 @@ async function main() {
           },
         },
       });
-      console.log(`added ${art.title} (${size.width}×${size.height}, ${art.annotations.length} annotations)`);
+      console.log(`added ${art.title} (${width}×${height}, ${art.annotations.length} annotations)`);
       // Be gentle with Wikimedia.
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }

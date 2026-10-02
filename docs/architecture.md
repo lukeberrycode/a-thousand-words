@@ -19,7 +19,7 @@ See `prisma/schema.prisma`.
 | Entity | Key fields |
 | --- | --- |
 | User | id, name, email, image, createdAt |
-| Image | id, ownerId, title, description, storageKey, width, height, createdAt |
+| Image | id, ownerId, title, description, storageKey, width, height, sha256, phash, createdAt |
 | Annotation | id, imageId, authorId, x, y, w, h (all 0–1), bodyMarkdown, createdAt, updatedAt |
 
 Regions are stored as **fractions of the image's width and height**, not pixels, so they stay aligned at any display size ([ADR 0005](adr/0005-fractional-region-coordinates.md)). Annotorious works in pixel coordinates of the natural image, so the client converts using the stored `width` and `height`.
@@ -58,7 +58,9 @@ Uploading requires sign-in; both server actions reject anonymous calls.
 1. The browser checks type (JPEG, PNG, WebP) and size (10 MB) and calls the `requestUpload` server action.
 2. The server validates again and returns a 5-minute signed `PUT` URL for a random key under `images/`. Content type and length are part of the signature.
 3. The browser uploads the file straight to R2.
-4. `createImage` checks the object exists and is valid, reads the pixel size from the file's header (correcting for EXIF rotation), and creates the `Image` row.
+4. `createImage` checks the object exists and is valid. It reads the whole file with `sharp` to get its pixel size (correcting for EXIF rotation) and its fingerprints: a SHA-256 and a perceptual hash ([ADR 0010](adr/0010-duplicate-detection.md)).
+5. If an existing image is the same file, or looks the same (perceptual hashes within 12 bits), nothing is saved yet. The form shows the matches with **Go to it**, **Cancel** (both delete the uploaded file through `discardUpload`) or **Upload anyway**.
+6. Otherwise, or after **Upload anyway**, it creates the `Image` row with its fingerprints.
 
 ## Annotation flow
 

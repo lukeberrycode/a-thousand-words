@@ -1,15 +1,19 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { imageSize } from "image-size";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/current-user";
-import { headObject, readObjectStart, signedUploadUrl } from "@/lib/storage";
+import { findSimilarImages, type SimilarImage } from "@/lib/duplicates";
+import { fingerprint } from "@/lib/image-hash";
+import { deleteObject, headObject, readObject, signedUploadUrl } from "@/lib/storage";
 import { ALLOWED_TYPES, MAX_UPLOAD_BYTES, checkDetails, checkFile, isAllowedType } from "@/lib/uploads";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
+
+/** createImage's result when the upload matches an image already on the site (ADR 0010). */
+export type CreateImageResult = Result<object> | { ok: false; error: "duplicate"; duplicates: SimilarImage[] };
 
 const SIGNED_OUT = "Sign in to upload images.";
 
@@ -34,7 +38,9 @@ export async function createImage(input: {
   key: string;
   title: string;
   description: string;
-}): Promise<Result<object>> {
+  /** Set after the user has seen the duplicate warning and chosen to upload anyway. */
+  allowDuplicate?: boolean;
+}): Promise<CreateImageResult> {
   const owner = await getCurrentUser();
   if (!owner) return { ok: false, error: SIGNED_OUT };
 
@@ -47,10 +53,21 @@ export async function createImage(input: {
   if (object.contentLength > MAX_UPLOAD_BYTES || !isAllowedType(object.contentType))
     return { ok: false, error: "Invalid upload." };
 
-  // Read the real pixel size from the file rather than trusting the browser:
-  // annotation regions are fractions of it (ADR 0005).
-  const size = await readImageSize(input.key, object.contentLength);
-  if (!size) return { ok: false, error: "That file doesn't look like a valid image." };
+  // Read the real pixel size from the file rather than trusting the browser (annotation regions
+  // are fractions of it, ADR 0005), and fingerprint it to spot duplicates (ADR 0010).
+  let fp;
+  try {
+    fp = await fingerprint(await readObject(input.key));
+  } catch {
+    return { ok: false, error: "That file doesn't look like a valid image." };
+  }
+
+  // A double submit finds its own row by key; only warn about other images.
+  const existing = await db.image.findUnique({ where: { storageKey: input.key }, select: { id: true } });
+  if (!existing && !input.allowDuplicate) {
+    const duplicates = await findSimilarImages(fp);
+    if (duplicates.length > 0) return { ok: false, error: "duplicate", duplicates };
+  }
 
   const image = await db.image.upsert({
     // Upsert keeps a double submit from creating a second row for the same file.
@@ -61,8 +78,10 @@ export async function createImage(input: {
       title,
       description: description || null,
       storageKey: input.key,
-      width: size.width,
-      height: size.height,
+      width: fp.width,
+      height: fp.height,
+      sha256: fp.sha256,
+      phash: fp.phash,
     },
   });
 
@@ -70,18 +89,16 @@ export async function createImage(input: {
   redirect(`/images/${image.id}`);
 }
 
-async function readImageSize(key: string, contentLength: number) {
-  // Dimensions live in the header, so the first 256 KB is almost always enough.
-  // Fall back to the whole file (at most 10 MB) if it isn't.
-  for (const bytes of [256 * 1024, contentLength]) {
-    try {
-      const { width, height, orientation } = imageSize(await readObjectStart(key, bytes));
-      if (!width || !height) return null;
-      // EXIF orientations 5–8 are rotated 90°; browsers display them with width and height swapped.
-      return orientation && orientation >= 5 ? { width: height, height: width } : { width, height };
-    } catch {
-      if (bytes >= contentLength) return null;
-    }
-  }
-  return null;
+/**
+ * Throw away an upload the user decided not to keep after the duplicate warning. Only removes
+ * a file under the upload key pattern that no image uses. Upload keys are random UUIDs known
+ * only to the browser that requested them.
+ */
+export async function discardUpload(key: string): Promise<Result<object>> {
+  if (!(await getCurrentUser())) return { ok: false, error: SIGNED_OUT };
+  if (!KEY_PATTERN.test(key)) return { ok: false, error: "Invalid upload." };
+  if (await db.image.findUnique({ where: { storageKey: key }, select: { id: true } }))
+    return { ok: false, error: "That upload is in use." };
+  await deleteObject(key);
+  return { ok: true };
 }
