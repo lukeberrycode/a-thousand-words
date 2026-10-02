@@ -2,7 +2,7 @@
 
 ## Overview
 
-A single Next.js (App Router, TypeScript) app serves pages and handles writes through server actions and route handlers. Postgres stores users, images and annotations via Prisma. Image files live in Cloudflare R2 and are served from its public URL. Annotorious draws and renders regions in the browser.
+A single Next.js (App Router, TypeScript) app serves pages and handles writes through server actions and route handlers. Postgres stores users, images and annotations via Prisma. Auth.js handles GitHub sign-in, with sessions stored in Postgres ([ADR 0007](adr/0007-authjs-v5-beta.md)). Image files live in Cloudflare R2 and are served from its public URL. Annotorious draws and renders regions in the browser.
 
 ```
 Browser ── Next.js app ──┬── Postgres (Prisma)
@@ -18,11 +18,20 @@ See `prisma/schema.prisma`.
 
 | Entity | Key fields |
 | --- | --- |
-| User | id, name, email, avatarUrl, createdAt |
+| User | id, name, email, image, createdAt |
 | Image | id, ownerId, title, description, storageKey, width, height, createdAt |
 | Annotation | id, imageId, authorId, x, y, w, h (all 0–1), bodyMarkdown, createdAt, updatedAt |
 
 Regions are stored as **fractions of the image's width and height**, not pixels, so they stay aligned at any display size ([ADR 0005](adr/0005-fractional-region-coordinates.md)). Annotorious works in pixel coordinates of the natural image, so the client converts using the stored `width` and `height`.
+
+`Account`, `Session` and `VerificationToken` are Auth.js's tables, in the shape its Prisma adapter expects.
+
+## Sign-in
+
+- GitHub OAuth via Auth.js v5 (`src/auth.ts`), routes under `/api/auth/*`.
+- Database sessions: the cookie holds a random token, and `auth()` looks it up in the `Session` table. Signing out deletes the row.
+- `getCurrentUser()` (`src/lib/current-user.ts`) returns the signed-in user or null. Pages use it to decide what to show; every server action checks it too, because server actions can be called by direct POST.
+- No proxy (middleware) check: database sessions can't be verified there without a database call, and only `/upload` is restricted.
 
 ## Key risks
 
@@ -37,11 +46,14 @@ Regions are stored as **fractions of the image's width and height**, not pixels,
 docs/                 One-pager, architecture, ADRs, wireframes
 prisma/               Schema and migrations
 src/app/              Routes (App Router)
-src/lib/              Server utilities (db client, storage)
+src/auth.ts           Auth.js config (GitHub provider, Prisma adapter)
+src/lib/              Server utilities (db client, storage, current user)
 src/generated/prisma  Generated Prisma Client (gitignored)
 ```
 
 ## Upload flow
+
+Uploading requires sign-in; both server actions reject anonymous calls.
 
 1. The browser checks type (JPEG, PNG, WebP) and size (10 MB) and calls the `requestUpload` server action.
 2. The server validates again and returns a 5-minute signed `PUT` URL for a random key under `images/`. Content type and length are part of the signature.
@@ -50,6 +62,5 @@ src/generated/prisma  Generated Prisma Client (gitignored)
 
 ## Known gaps
 
-- Until Auth.js lands (milestone 3), every upload belongs to one demo user (`src/lib/current-user.ts`).
 - An upload abandoned between steps 3 and 4 leaves an orphaned object in R2. A periodic cleanup of keys with no `Image` row would fix this.
 - The home grid loads full-size images as thumbnails; resized variants would cut bandwidth.

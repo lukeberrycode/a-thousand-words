@@ -4,7 +4,7 @@
 
 Genius.com for images: upload an image, draw a region on it, and attach an annotation that explains what's there.
 
-**Status:** milestone 2 (upload and view) done. Uploads go to Cloudflare R2; until milestone 3 they all belong to a demo user. See [the one-pager](docs/one-pager.md) for scope and milestones.
+**Status:** milestone 3 (accounts) done. Sign in with GitHub to upload; images go to Cloudflare R2 and belong to the uploader. See [the one-pager](docs/one-pager.md) for scope and milestones.
 
 ## Stack
 
@@ -18,7 +18,7 @@ Requires Node 20+ and a Postgres database.
 
 ```bash
 npm install                # also generates the Prisma client
-cp .env.example .env       # then set DATABASE_URL and the R2_* values
+cp .env.example .env       # then set DATABASE_URL, the R2_* values and the AUTH_* values
 npx prisma dev             # optional: starts a local Postgres and prints its URL
 npm run db:migrate         # apply the schema
 npm run dev                # http://localhost:3000
@@ -39,3 +39,4 @@ npm run dev                # http://localhost:3000
 - [One-pager & MVP scope](docs/one-pager.md)
 - [Architecture](docs/architecture.md)
 - [Architecture Decision Records](docs/adr/README.md)
+

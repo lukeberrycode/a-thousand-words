@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { UserMenu } from "./user-menu";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,9 +32,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="font-semibold">
               A Thousand Words
             </Link>
-            <Link href="/upload" className="text-sm hover:underline">
-              Upload
-            </Link>
+            {/* The session lookup hits the database; don't hold the rest of the page for it. */}
+            <Suspense fallback={<div aria-hidden className="h-6 w-24" />}>
+              <UserMenu />
+            </Suspense>
           </nav>
         </header>
         {children}

@@ -1,14 +1,11 @@
 import "server-only";
-import { db } from "@/lib/db";
+import { cache } from "react";
+import { auth } from "@/auth";
 
-// Placeholder until Auth.js lands in milestone 3: every upload belongs to one demo user.
-// Replace with the signed-in user (and reject anonymous requests) then.
-const DEMO_EMAIL = "demo@a-thousand-words.local";
-
-export async function getCurrentUser() {
-  return db.user.upsert({
-    where: { email: DEMO_EMAIL },
-    update: {},
-    create: { email: DEMO_EMAIL, name: "Demo user" },
-  });
-}
+/** The signed-in user, or null. Server actions must check this: they're reachable by direct POST. */
+export const getCurrentUser = cache(async () => {
+  const session = await auth();
+  const user = session?.user;
+  if (!user?.id) return null;
+  return { id: user.id, name: user.name ?? null, image: user.image ?? null };
+});
