@@ -4,6 +4,8 @@ Checks that exercise the whole running app (browser, Next.js server, Postgres, R
 
 **This list is permanent.** A test stays here after it's automated. Its **Automation** line then points to the automated test instead of saying "Manual". That way the list remains the reference for what the app must do, however each check is run. A later milestone adds the automation.
 
+**System tests aren't user experience docs.** These tests assume an operator with access to both the development environment (terminal, Prisma Studio, the Cloudflare dashboard) and the browser, and they're tied to the current implementation: table names, commands, error messages. Milestone 8 adds separate user experience documentation. It describes what a user sees and does, independent of how the app is built, so it stays valid through a refactor or full rebuild.
+
 Each test has a stable ID (e.g. `AUTH-03`). Use it when referring to the test from code, commits or an automated suite. Don't renumber: add new tests at the end of their section, and mark retired ones **Retired** with the reason, rather than deleting them.
 
 
