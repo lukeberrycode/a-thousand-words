@@ -10,15 +10,56 @@ datasource db {
   provider = "postgresql"
 }
 
-// Auth.js account/session tables are added in milestone 3 (accounts).
+// User, Account, Session and VerificationToken follow the shape the Auth.js
+// Prisma adapter expects. See docs/adr/0007.
 model User {
-  id          String       @id @default(cuid())
-  name        String?
-  email       String?      @unique
-  avatarUrl   String?
-  createdAt   DateTime     @default(now())
-  images      Image[]
-  annotations Annotation[]
+  id            String       @id @default(cuid())
+  name          String?
+  email         String?      @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  images        Image[]
+  annotations   Annotation[]
+}
+
+model Account {
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
 }
 
 model Image {
