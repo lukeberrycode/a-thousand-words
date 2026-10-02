@@ -4,7 +4,7 @@
 
 Genius.com for images: upload an image, draw a region on it, and attach an annotation that explains what's there.
 
-**Status:** milestone 3 (accounts) done. Sign in with GitHub to upload; images go to Cloudflare R2 and belong to the uploader. See [the one-pager](docs/one-pager.md) for scope and milestones.
+**Status:** milestone 4 (create annotations) done. Signed-in users draw a box on any image and write a Markdown annotation; everyone can read it. Sign in with GitHub to upload and annotate. See [the one-pager](docs/one-pager.md) for scope and milestones.
 
 ## Stack
 

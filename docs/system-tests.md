@@ -191,6 +191,93 @@ Unless a test says otherwise:
 - **Automation:** Manual
 
 
+## Annotations
+
+### ANN-01: Create an annotation
+
+- **Needs:** signed in; an image page
+- **Steps:**
+  1. Click **Annotate**.
+  2. Drag a box over part of the image.
+  3. Optionally move or resize the box.
+  4. Type some Markdown, e.g. `**Bold** and a [link](https://example.com)`, and click **Save**.
+- **Expected:**
+  - After step 1, the button reads **Done annotating**, with a hint to drag a box.
+  - After step 2, an editor appears beside the image.
+  - After step 4, the editor closes and annotate mode ends. The new region is highlighted and selected, and the panel shows the formatted text and your name. The region sits where the box was when you clicked Save.
+- **Proves:** drawing, the pixels-to-fractions conversion, the server action and the page refresh work together.
+- **Automation:** Manual
+
+### ANN-02: Annotations are visible to everyone and stay aligned
+
+- **Needs:** just completed ANN-01; a second browser or a private window, signed out
+- **Steps:**
+  1. Open the same image page signed out.
+  2. Click the region, or its entry in the list.
+  3. Resize the window, or use a phone-sized view.
+- **Expected:**
+  - Step 1 shows the region. There's no **Annotate** button, but there is a **Sign in with GitHub to annotate** button.
+  - Step 2 shows the annotation's text and author.
+  - In step 3, the region stays over the same part of the image at every size.
+- **Proves:** annotations are public, and fractional coordinates keep them aligned (ADR 0005).
+- **Automation:** Manual
+
+### ANN-03: Cancelling and leaving annotate mode discard the draft
+
+- **Needs:** signed in; an image page
+- **Steps:**
+  1. Click **Annotate**, draw a box, then click **Cancel**.
+  2. Draw another box, then click **Done annotating**.
+  3. Check Studio.
+- **Expected:** after each of steps 1 and 2, the box disappears. In step 3, no new `Annotation` row exists.
+- **Proves:** drafts only exist in the browser until saved.
+- **Automation:** Manual
+
+### ANN-04: Annotation text is rendered safely
+
+- **Needs:** signed in; an image page
+- **Steps:**
+  1. Save an annotation whose text is:
+
+     ```
+     <b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com)
+     ```
+
+  2. Select it, and inspect the panel with the browser's dev tools.
+- **Expected:**
+  - The HTML shows as plain text.
+  - The `bad` link has an empty `href`, and no image loads.
+  - The `good` link opens in a new tab and has `rel="nofollow ugc noopener noreferrer"`.
+- **Proves:** untrusted annotation text can't run scripts, use unsafe links or load images (ADR 0008).
+- **Automation:** Manual
+
+### ANN-05: The annotation action rejects requests that aren't signed in
+
+- **Needs:** signed in; a second tab
+- **Steps:**
+  1. On an image page, click **Annotate**, draw a box and type some text.
+  2. In a second tab, sign out.
+  3. Back in the first tab, click **Save**.
+  4. Check Studio.
+- **Expected:** step 3 shows "Sign in to annotate." In step 4, there's no new `Annotation` row.
+- **Proves:** the server action checks the session itself.
+- **Automation:** Manual
+
+### ANN-06: Annotate again straight after saving
+
+- **Needs:** signed in; an image page
+- **Steps:**
+  1. Create an annotation (ANN-01), without reloading the page afterwards.
+  2. Click **Annotate** again and drag a new box.
+  3. On a narrow window (where the editor sits below the image), draw another box.
+- **Expected:**
+  - After step 1, while saving, the box stays in place and the editor shows **Saving…** until the new region appears. There's no moment where the page says "No annotations yet", and no empty editor afterwards.
+  - Step 2 draws a new box and opens the editor.
+  - In step 3, the page doesn't scroll away from the box when the editor opens.
+- **Proves:** draft state is cleared after a save, the save hands over smoothly to the refreshed data, and focusing the editor doesn't move the page. Each was a bug found while testing milestone 4.
+- **Automation:** Manual
+
+
 ## Sources
 
 These tests were collected on 2026-10-02 from the setup guides kept outside this repo (`lukeberrycode-help/a-thousand-words-help`):
@@ -202,3 +289,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | 03 GitHub sign-in setup, Step 4 | AUTH-02, AUTH-05 |
 | 04 Milestone 3 explained, section 12 | AUTH-01 to AUTH-05, UPL-01, UPL-02, SEC-01, SEC-02, ENV-05 |
 | 05 Trying out sign-in, Steps 4 to 10 | ENV-01, ENV-02, AUTH-01 to AUTH-04, UPL-01, UPL-02, SEC-01, SEC-02 |
+| Milestone 4 (written with the code) | ANN-01 to ANN-06 |

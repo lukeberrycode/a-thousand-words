@@ -2,10 +2,22 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/current-user";
 import { publicUrl } from "@/lib/storage";
+import { SignInButton } from "../../user-menu";
+import { AnnotatedImage } from "./annotated-image";
 
 const getImage = cache((id: string) =>
-  db.image.findUnique({ where: { id }, include: { owner: { select: { name: true } } } }),
+  db.image.findUnique({
+    where: { id },
+    include: {
+      owner: { select: { name: true } },
+      annotations: {
+        orderBy: { createdAt: "asc" },
+        include: { author: { select: { name: true } } },
+      },
+    },
+  }),
 );
 
 export async function generateMetadata({ params }: PageProps<"/images/[id]">): Promise<Metadata> {
@@ -14,7 +26,8 @@ export async function generateMetadata({ params }: PageProps<"/images/[id]">): P
 }
 
 export default async function ImagePage({ params }: PageProps<"/images/[id]">) {
-  const image = await getImage((await params).id);
+  const { id } = await params;
+  const [image, user] = await Promise.all([getImage(id), getCurrentUser()]);
   if (!image) notFound();
 
   return (
@@ -27,15 +40,29 @@ export default async function ImagePage({ params }: PageProps<"/images/[id]">) {
       {image.description && (
         <p className="mt-4 max-w-2xl leading-7 text-zinc-700 dark:text-zinc-300">{image.description}</p>
       )}
-      {/* Plain <img>: Annotorious attaches to it in milestone 4. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={publicUrl(image.storageKey)}
-        alt={image.title}
-        width={image.width}
-        height={image.height}
-        className="mt-6 h-auto max-w-full"
-      />
+      <div className="mt-6">
+        <AnnotatedImage
+          image={{
+            id: image.id,
+            src: publicUrl(image.storageKey),
+            title: image.title,
+            size: { width: image.width, height: image.height },
+          }}
+          // Only what the browser needs: no emails or other user fields.
+          annotations={image.annotations.map((a) => ({
+            id: a.id,
+            region: { x: a.x, y: a.y, w: a.w, h: a.h },
+            body: a.bodyMarkdown,
+            authorName: a.author.name,
+          }))}
+          canAnnotate={!!user}
+          signInPrompt={
+            user ? null : (
+              <SignInButton redirectTo={`/images/${image.id}`} label="Sign in with GitHub to annotate" />
+            )
+          }
+        />
+      </div>
     </main>
   );
 }
