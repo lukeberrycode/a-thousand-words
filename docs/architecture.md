@@ -45,11 +45,51 @@ Regions are stored as **fractions of the image's width and height**, not pixels,
 ```
 docs/                 One-pager, architecture, ADRs, wireframes
 prisma/               Schema and migrations
-src/app/              Routes (App Router)
+src/app/              Routes (App Router); see "Routes and views" below
 src/auth.ts           Auth.js config (GitHub provider, Prisma adapter)
-src/lib/              Server utilities (db client, storage, current user)
+src/lib/              Shared code: db client, storage, current user, validation, regions, duplicate check
 src/generated/prisma  Generated Prisma Client (gitignored)
 ```
+
+## Routes and views
+
+Each URL is a separate page rendered on the server. Next.js then navigates between pages in the browser without full reloads, so the site behaves like a single-page app. Folders under `src/app` are URL paths, and `[id]` is a dynamic segment (any image ID). Only `page.tsx`, `layout.tsx` and `route.ts` create routes; other files in a folder belong to that page. Paths below are relative to `src/app/`.
+
+```
+layout.tsx  root: <html>, header, fonts, globals.css                server
+├─ user-menu.tsx  UserMenu / SignInButton (header, in <Suspense>)    server
+│
+├─ /                 page.tsx                                        server
+│     home: grid of recent images, linking to /images/[id]
+│
+├─ /upload           upload/page.tsx                                 server
+│  │  signed out → SignInButton (user-menu.tsx)
+│  └─ UploadForm     upload/upload-form.tsx                          client
+│       └─ DuplicateWarning (same file)
+│       actions: upload/actions.ts
+│                requestUpload, createImage, discardUpload
+│
+├─ /images/[id]      images/[id]/page.tsx                            server
+│  │  loads the image and its annotations; 404 if the ID is unknown
+│  ├─ ImageHeader    images/[id]/image-header.tsx                    client
+│  │    title, description, Edit details, Delete image
+│  ├─ AnnotatedImage images/[id]/annotated-image.tsx                 client
+│  │    ├─ Annotorious ImageAnnotator: the image and its regions
+│  │    ├─ AnnotationCard, AnnotationEditor, EditorSheet (same file)
+│  │    └─ Markdown  images/[id]/markdown.tsx
+│  ├─ ReportLink     (in page.tsx)                                   server
+│  └─ actions: images/[id]/actions.ts
+│              createAnnotation, updateAnnotation, deleteAnnotation,
+│              updateImage, deleteImage
+│
+├─ /spike            spike/page.tsx, annotated-image.tsx, data.ts
+│     milestone 1 prototype; not linked from the site
+│
+└─ /api/auth/*       api/auth/[...nextauth]/route.ts → src/auth.ts
+      GitHub sign-in and sign-out; no view of its own
+```
+
+**Server** components run only on the server: they query the database and send rendered output, not code. **Client** components (files starting with `"use client"`) are also sent to the browser as JavaScript, which makes them interactive. Server actions are called from client components but run on the server.
 
 ## Upload flow
 
