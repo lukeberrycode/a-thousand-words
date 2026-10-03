@@ -13,6 +13,7 @@ The aim is immersion: the experience should feel like looking closely at a paint
 | Term | Meaning |
 | --- | --- |
 | **Viewport** | The browser window's visible area. It's **portrait** if taller than wide, otherwise **landscape**. |
+| **Safe area** | The part of the viewport not covered by a phone's notch, camera cut-out, rounded corners or home indicator. On screens without these, it's the whole viewport. See Rule 7. |
 | **Short edges** | The two edges along the viewport's shorter dimension: top and bottom in portrait, left and right in landscape. |
 | **Fit size** | The zoom at which the whole image is visible (see Rule 1). |
 | **UI panel** | Everything that isn't the artwork or an annotation: site name, title, description, the Annotate button, sign-in, Upload, Edit details, Delete image, the annotation list, the hide-boxes toggle, the UI flip button and the Report link. |
@@ -126,6 +127,22 @@ This covers the image page (`/images/[id]`). The home page and upload page are u
 
 6.6. The user **stays in annotate mode** after saving, so they can draw another box nearby. Drawing a new box closes the previous card.
 
+### 7. Safe areas
+
+Phones with notches, camera cut-outs, rounded corners or a home indicator have a **safe area**: the part of the screen where content is never obscured. The image page uses the whole screen, but treats the safe area as the space that matters.
+
+7.1. **The UI panel and cards always stay inside the safe area**, so no control or text is ever cut off or hidden behind a notch.
+
+7.2. **Fitting and limits are measured against the safe area, not the full screen.** Wherever Rules 1–5 say "viewport" for fitting the image, zoom limits, pan limits, the short edges, or the space the auto-zoom fills, read "safe area":
+
+- At the fit size (Rule 1.1), the whole image is inside the safe area.
+- The pan limits (Rule 2.4) stop the image's edge at the edge of the safe area, not the screen. The user can always bring any part of the image into the safe area.
+- The auto-zoom (Rule 5.6) fits the box and its card inside the safe area.
+
+7.3. **Zoomed in, the image can extend beyond the safe area**, under the notch and into the rounded corners, to the very edge of the screen. This serves the immersion goal: the artwork fills the device, not just a rectangle inside it. Only the image does this: the UI panel and cards never do (Rule 7.1).
+
+> **Example:** a phone in landscape with a camera cut-out on the left. At the fit size, the image sits inside the safe area, clear of the cut-out. The user zooms in, and the painting now runs all the way to the left edge of the screen, around the cut-out. When they pan to the painting's left edge, it stops at the safe area's edge, so its last strip is fully visible, not hidden under the cut-out.
+
 ## Worked examples
 
 **Drag on a phone.** Portrait viewport, image zoomed in, panel at the bottom (default). The user drags up and slightly left, so the image moves up and they see more of its lower part. Only the vertical part counts (Rule 3.4), so the panel moves to the top, away from where they're heading.
@@ -141,6 +158,7 @@ These aren't decisions. They're things the implementation will need to settle, s
 - **Taking over zoom:** browsers zoom pages natively on pinch and Ctrl+scroll. The image page will need `touch-action: none` on the viewer, `preventDefault` on wheel events with `ctrlKey` (registered as non-passive), handling for Ctrl + `+` / `-` key presses, and on iOS Safari, the `gesturestart` events. iOS ignores `user-scalable=no`, so the CSS and event handling must do the work.
 - **A zoom library:** OpenSeadragon is a mature zoom-and-pan viewer for large images. It handles pinch, wheel, inertia and zoom limits, and Annotorious has an official OpenSeadragon plugin (`@annotorious/openseadragon`). Adopting it would replace the current `ImageAnnotator` setup ([ADR 0004](adr/0004-annotorious.md)) and should get its own ADR. The alternative is a lighter custom transform around the current `ImageAnnotator`.
 - **Deep zoom:** zooming to 4× native pixels on large paintings means downloading full-size originals. Tiled images (generated at upload and stored in R2) would cut bandwidth, but can come later.
+- **Safe areas:** by default, mobile browsers keep the page inside the safe area, so the image could never reach the screen's edge. Setting `viewportFit: "cover"` in the root layout's `viewport` export lets the page draw edge to edge. The CSS values `env(safe-area-inset-top)`, `-right`, `-bottom` and `-left` then give the insets, for positioning the UI panel and cards and for the fit and pan calculations. They're 0 on screens without cut-outs.
 - **Stored regions are unaffected:** regions are fractions of the image ([ADR 0005](adr/0005-fractional-region-coordinates.md)), so they don't depend on zoom.
 - **System tests:** MAN-07, ANN-02 and other image page tests in [system-tests.md](system-tests.md) would need rewriting, and real-phone testing (as in PROD-05) matters even more for gestures.
 
