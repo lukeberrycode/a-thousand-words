@@ -50,7 +50,7 @@ The site runs on Vercel with Neon Postgres and a production R2 bucket ([ADR 0009
   - `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`: the production OAuth app
   - `REPORT_EMAIL`: where "Report it" links send email
 - **New accounts:** a first GitHub sign-in creates a pending account that can browse but not upload or annotate. Approve it with `npm run prod:users -- approve <github-login>` (run `npm run prod:users` to see who's waiting).
-- **Schema changes:** migrations don't run during the build. After merging a new migration, run `npm run prod:migrate`. It reads `.env.prod`, which is git-ignored and holds Neon's direct connection string plus the production R2 values.
+- **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` reads `.env.prod`, which is git-ignored and holds Neon's direct connection string plus the production R2 values.
 - **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
 
 ## Project docs
