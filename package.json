@@ -11,8 +11,10 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:users": "tsx scripts/users.ts",
     "prod:migrate": "sh -c 'set -a && . ./.env.prod && set +a && prisma migrate deploy'",
-    "prod:seed": "sh -c 'set -a && . ./.env.prod && set +a && tsx prisma/seed.ts \"$@\"' --"
+    "prod:seed": "sh -c 'set -a && . ./.env.prod && set +a && tsx prisma/seed.ts \"$@\"' --",
+    "prod:users": "sh -c 'set -a && . ./.env.prod && set +a && tsx scripts/users.ts \"$@\"' --"
   },
   "dependencies": {
     "@annotorious/react": "^3.9.3",

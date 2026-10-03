@@ -35,8 +35,10 @@ npm run dev                # http://localhost:3000
 | `npm run db:migrate` | Create and apply migrations (`prisma migrate dev`). Restart `npm run dev` afterwards: it keeps one Prisma client across hot reloads, so it won't know about new columns until restarted. |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run db:seed` | Load the seed paintings into the database and R2 from `.env` (dry run unless `-- --yes`) |
+| `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
 | `npm run prod:migrate` | Apply migrations to production, using `.env.prod` |
 | `npm run prod:seed` | Seed production, using `.env.prod` (dry run unless `-- --yes`) |
+| `npm run prod:users` | List or approve accounts on production, using `.env.prod` |
 
 ## Deploying
 
@@ -47,6 +49,7 @@ The site runs on Vercel with Neon Postgres and a production R2 bucket ([ADR 0009
   - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL`: the production bucket and its token
   - `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`: the production OAuth app
   - `REPORT_EMAIL`: where "Report it" links send email
+- **New accounts:** a first GitHub sign-in creates a pending account that can browse but not upload or annotate. Approve it with `npm run prod:users -- approve <github-login>` (run `npm run prod:users` to see who's waiting).
 - **Schema changes:** migrations don't run during the build. After merging a new migration, run `npm run prod:migrate`. It reads `.env.prod`, which is git-ignored and holds Neon's direct connection string plus the production R2 values.
 - **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
 

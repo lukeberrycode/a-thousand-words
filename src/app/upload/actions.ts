@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/current-user";
+import { PENDING_APPROVAL, getCurrentUser } from "@/lib/current-user";
 import { findSimilarImages, type SimilarImage } from "@/lib/duplicates";
 import { fingerprint } from "@/lib/image-hash";
 import { deleteObject, headObject, readObject, signedUploadUrl } from "@/lib/storage";
@@ -24,7 +24,9 @@ export async function requestUpload(
   contentType: string,
   size: number,
 ): Promise<Result<{ key: string; url: string }>> {
-  if (!(await getCurrentUser())) return { ok: false, error: SIGNED_OUT };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: SIGNED_OUT };
+  if (!user.approved) return { ok: false, error: PENDING_APPROVAL };
   const error = checkFile(contentType, size);
   if (error || !isAllowedType(contentType)) return { ok: false, error: error ?? "Unsupported file." };
 
@@ -43,6 +45,7 @@ export async function createImage(input: {
 }): Promise<CreateImageResult> {
   const owner = await getCurrentUser();
   if (!owner) return { ok: false, error: SIGNED_OUT };
+  if (!owner.approved) return { ok: false, error: PENDING_APPROVAL };
 
   const { title, description, error } = checkDetails(input);
   if (error) return { ok: false, error };
@@ -95,7 +98,9 @@ export async function createImage(input: {
  * only to the browser that requested them.
  */
 export async function discardUpload(key: string): Promise<Result<object>> {
-  if (!(await getCurrentUser())) return { ok: false, error: SIGNED_OUT };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: SIGNED_OUT };
+  if (!user.approved) return { ok: false, error: PENDING_APPROVAL };
   if (!KEY_PATTERN.test(key)) return { ok: false, error: "Invalid upload." };
   if (await db.image.findUnique({ where: { storageKey: key }, select: { id: true } }))
     return { ok: false, error: "That upload is in use." };

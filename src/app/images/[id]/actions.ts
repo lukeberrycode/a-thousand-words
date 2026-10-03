@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/current-user";
+import { PENDING_APPROVAL, getCurrentUser } from "@/lib/current-user";
 import { checkBody, checkRegion } from "@/lib/annotations";
 import { deleteObject } from "@/lib/storage";
 import { checkDetails } from "@/lib/uploads";
@@ -30,6 +30,7 @@ export async function createAnnotation(input: {
 }): Promise<Result<{ id: string }>> {
   const author = await getCurrentUser();
   if (!author) return { ok: false, error: SIGNED_OUT };
+  if (!author.approved) return { ok: false, error: PENDING_APPROVAL };
 
   const region = parseRegion(input.region);
   const body = String(input.body ?? "").trim();
@@ -53,6 +54,7 @@ export async function createAnnotation(input: {
 export async function updateAnnotation(input: { id: string; region: Region; body: string }): Promise<Result> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: SIGNED_OUT };
+  if (!user.approved) return { ok: false, error: PENDING_APPROVAL };
 
   const region = parseRegion(input.region);
   const body = String(input.body ?? "").trim();
@@ -73,6 +75,7 @@ export async function updateAnnotation(input: { id: string; region: Region; body
 export async function deleteAnnotation(id: string): Promise<Result> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: SIGNED_OUT };
+  if (!user.approved) return { ok: false, error: PENDING_APPROVAL };
 
   const { count } = await db.annotation.deleteMany({ where: { id: String(id), authorId: user.id } });
   if (count === 0) return { ok: false, error: NOT_YOURS };
@@ -85,6 +88,7 @@ export async function deleteAnnotation(id: string): Promise<Result> {
 export async function updateImage(input: { id: string; title: string; description: string }): Promise<Result> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sign in to edit images." };
+  if (!user.approved) return { ok: false, error: PENDING_APPROVAL };
 
   const { title, description, error } = checkDetails(input);
   if (error) return { ok: false, error };
@@ -106,6 +110,7 @@ export async function updateImage(input: { id: string; title: string; descriptio
 export async function deleteImage(id: string): Promise<Result> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sign in to delete images." };
+  if (!user.approved) return { ok: false, error: PENDING_APPROVAL };
 
   const image = await db.image.findFirst({
     where: { id: String(id), ownerId: user.id },

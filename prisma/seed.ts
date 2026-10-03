@@ -19,7 +19,7 @@ import { artworks } from "./seed-data";
 const USER_AGENT = "a-thousand-words-seed/1.0 (https://github.com/lukeberrycode/a-thousand-words)";
 // A standard Commons thumbnail width: other widths are rounded up to the next step (3840).
 const WIDTH = 1920;
-const SEED_USER = { id: "seed-user", name: "A Thousand Words" };
+const SEED_USER = { id: "seed-user", name: "A Thousand Words", approvedAt: new Date() };
 
 function env(name: string) {
   const value = process.env[name];

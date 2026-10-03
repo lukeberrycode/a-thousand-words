@@ -94,7 +94,7 @@ Unless a test says otherwise:
   2. On GitHub, check the consent page, then click **Authorize**.
 - **Expected:**
   - GitHub asks you to authorise **A Thousand Words (dev)**, for read access to your profile and email address only.
-  - You come back to the home page signed in. The header shows **Upload**, your GitHub avatar, your name (hidden on narrow screens) and **Sign out**.
+  - You come back to the home page signed in. The header shows your GitHub avatar, your name (hidden on narrow screens) and **Sign out**. A brand-new account also shows **Awaiting approval** where **Upload** would be, until it's approved (SEC-03, SEC-04).
 - **Proves:** the full OAuth flow works end to end: client ID and secret, redirect URI, `state` and PKCE checks, and session creation.
 - **Automation:** Manual
 
@@ -104,7 +104,7 @@ Unless a test says otherwise:
 - **Steps:**
   1. Open Studio and check `User`, `Account` and `Session`.
 - **Expected:**
-  - `User`: one row for you, with your GitHub name, email and `image` (avatar URL). Any old "Demo user" row is unrelated.
+  - `User`: one row for you, with your GitHub name, email and `image` (avatar URL). `approvedAt` is empty for a brand-new account (it's pending). Any old "Demo user" row is unrelated.
   - `Account`: one row with `provider` = `github`, linked to your user.
   - `Session`: one row for your current sign-in.
 - **Proves:** the Prisma adapter stores users, linked accounts and database sessions as designed (ADR 0007).
@@ -201,7 +201,7 @@ Unless a test says otherwise:
 
 ### SEC-01: Upload page asks signed-out visitors to sign in
 
-- **Needs:** signed out; a real GitHub account
+- **Needs:** signed out; a real GitHub account whose account here is approved
 - **Steps:**
   1. Go to http://localhost:3000/upload directly.
   2. Click **Sign in with GitHub** on the page, and complete sign-in.
@@ -223,6 +223,36 @@ Unless a test says otherwise:
   - Step 3 shows "Sign in to upload images."
   - In step 4, there's no new `Image` row. No file is uploaded to R2, because no signed URL was issued.
 - **Proves:** the server actions check the session themselves rather than relying on the page. Server actions can be called by direct POST, so this is the check that actually protects uploads.
+- **Automation:** Manual
+
+### SEC-03: A pending account can browse but not contribute
+
+- **Needs:** signed in with an account whose `approvedAt` is empty: a new GitHub account, or your own with `approvedAt` cleared in Studio
+- **Steps:**
+  1. Look at the header.
+  2. Go to `/upload`.
+  3. Open any image page.
+- **Expected:**
+  - Step 1 shows **Awaiting approval** instead of **Upload**.
+  - Step 2 shows "Your account is waiting for approval. You can upload and annotate once it's approved." instead of the form.
+  - Step 3 shows the same message instead of the **Annotate** button. Existing annotations still show and can be read.
+- **Proves:** new accounts can't contribute until approved. Every upload, annotation and image action also returns that message to a pending account, so a direct POST is refused too.
+- **Automation:** Manual
+
+### SEC-04: Approve a pending account
+
+- **Needs:** a pending account, as in SEC-03
+- **Steps:**
+  1. Run `npm run db:users`.
+  2. Run `npm run db:users -- approve <github-login>`, using the login listed in step 1.
+  3. Reload any page in the browser where the pending account is signed in.
+  4. Run step 2 again, then `npm run db:users -- approve nobody-xyz` (a login that hasn't signed in).
+- **Expected:**
+  - Step 1 lists the account with its GitHub login, name, email, sign-up date and a link to its GitHub profile.
+  - Step 2 prints "Approved …".
+  - After step 3, the header shows **Upload**, and the upload form and **Annotate** button are back. No sign-out is needed.
+  - Step 4 prints "… was already approved …", then "No account found …" (exit code 1).
+- **Proves:** the approval script finds accounts by GitHub login and approves them, and approval takes effect on the next page load. `prod:users` runs the same script against production.
 - **Automation:** Manual
 
 
@@ -478,3 +508,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | Milestone 4 (written with the code) | ANN-01 to ANN-06 |
 | Milestone 5 (written with the code) | MAN-01 to MAN-07 |
 | Milestone 6 (written with the code) | PROD-01 to PROD-05 |
+| User approval (written with the code) | SEC-03, SEC-04 |

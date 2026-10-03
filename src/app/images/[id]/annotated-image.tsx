@@ -36,7 +36,7 @@ type Props = {
   image: ImageData;
   annotations: AnnotationData[];
   canAnnotate: boolean;
-  /** Shown instead of the Annotate button to signed-out visitors. */
+  /** Shown instead of the Annotate button to visitors who can't annotate: signed out, or awaiting approval. */
   signInPrompt: ReactNode;
 };
 
