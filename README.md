@@ -4,7 +4,7 @@
 
 Genius.com for images: upload an image, draw a region on it, and attach an annotation that explains what's there.
 
-**Status:** milestone 5 (read and manage) done. Signed-in users annotate any image; everyone can read annotations by hovering or tapping a region; authors edit and delete their own annotations and images. Sign in with GitHub to upload and annotate. See [the one-pager](docs/one-pager.md) for scope and milestones.
+**Status:** milestone 6 (ship) done. Live at https://a-thousand-words-pi.vercel.app/, with 12 annotated public-domain paintings. Signed-in users upload and annotate any image; everyone can read annotations by hovering or tapping a region; authors edit and delete their own annotations and images; every image has a "Report it" link. Sign in with GitHub to upload and annotate. Next: automating the system tests (milestone 7). See [the one-pager](docs/one-pager.md) for scope and milestones.
 
 ## Stack
 
