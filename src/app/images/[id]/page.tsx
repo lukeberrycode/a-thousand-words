@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/current-user";
+import { PENDING_APPROVAL, getCurrentUser } from "@/lib/current-user";
 import { publicUrl } from "@/lib/storage";
 import { SignInButton } from "../../user-menu";
 import { AnnotatedImage } from "./annotated-image";
@@ -64,9 +64,11 @@ export default async function ImagePage({ params }: PageProps<"/images/[id]">) {
             createdAt: a.createdAt.toISOString(),
             updatedAt: a.updatedAt.toISOString(),
           }))}
-          canAnnotate={!!user}
+          canAnnotate={!!user?.approved}
           signInPrompt={
-            user ? null : (
+            user ? (
+              user.approved ? null : <p className="text-sm text-zinc-500">{PENDING_APPROVAL}</p>
+            ) : (
               <SignInButton redirectTo={`/images/${image.id}`} label="Sign in with GitHub to annotate" />
             )
           }

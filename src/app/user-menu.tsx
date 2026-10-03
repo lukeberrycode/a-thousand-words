@@ -2,16 +2,20 @@ import Link from "next/link";
 import { signIn, signOut } from "@/auth";
 import { getCurrentUser } from "@/lib/current-user";
 
-/** Header controls: upload and sign out when signed in, otherwise a sign-in button. */
+/** Header controls: upload (once approved) and sign out when signed in, otherwise a sign-in button. */
 export async function UserMenu() {
   const user = await getCurrentUser();
   if (!user) return <SignInButton />;
 
   return (
     <div className="flex items-center gap-4 text-sm">
-      <Link href="/upload" className="hover:underline">
-        Upload
-      </Link>
+      {user.approved ? (
+        <Link href="/upload" className="hover:underline">
+          Upload
+        </Link>
+      ) : (
+        <span className="text-zinc-500">Awaiting approval</span>
+      )}
       {user.image && (
         // eslint-disable-next-line @next/next/no-img-element -- small external avatar
         <img src={user.image} alt="" width={24} height={24} className="size-6 rounded-full" />

@@ -18,7 +18,7 @@ See `prisma/schema.prisma`.
 
 | Entity | Key fields |
 | --- | --- |
-| User | id, name, email, image, createdAt |
+| User | id, name, email, image, approvedAt, createdAt |
 | Image | id, ownerId, title, description, storageKey, width, height, sha256, phash, createdAt |
 | Annotation | id, imageId, authorId, x, y, w, h (all 0–1), bodyMarkdown, createdAt, updatedAt |
 
@@ -32,6 +32,7 @@ Regions are stored as **fractions of the image's width and height**, not pixels,
 - Database sessions: the cookie holds a random token, and `auth()` looks it up in the `Session` table. Signing out deletes the row.
 - `getCurrentUser()` (`src/lib/current-user.ts`) returns the signed-in user or null. Pages use it to decide what to show; every server action checks it too, because server actions can be called by direct POST.
 - No proxy (middleware) check: database sessions can't be verified there without a database call, and only `/upload` is restricted.
+- **Approval:** a first sign-in creates a **pending** account (`User.approvedAt` is null). Pending users can browse and read annotations like visitors, but every upload, annotation and image action refuses them, and the pages show "waiting for approval" instead of the upload form and Annotate button. The site owner approves accounts with `npm run prod:users` (`scripts/users.ts`), which lists pending accounts with their GitHub logins and approves one by login, email or id. The session callback copies approval into the session, so it takes effect on the user's next page load. Accounts that existed before approval was added were approved by its migration, and the seed user is created approved.
 
 ## Key risks
 
