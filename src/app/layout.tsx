@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "A Thousand Words",
-  description: "Annotate the details of any image, Genius-style.",
+  description: "Annotate the details of any image: draw a region and explain what's there.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

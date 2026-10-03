@@ -4,7 +4,7 @@ Audience, prior art and the project name: [product background](product-backgroun
 
 ## Overview
 
-**A Thousand Words is Genius.com for images:** anyone can upload an image, draw a region on it, and attach an annotation that explains what's there.
+**A Thousand Words is community annotation for images:** anyone can upload an image, draw a region on it, and attach an annotation that explains what's there.
 
 Images are packed with meaning that viewers miss: references hidden in a painting, the joke behind a meme, the people in a historical photo, the design choices in a UI. Today that context is scattered across comment threads and blog posts, disconnected from the pixels it describes. A Thousand Words pins explanations directly to the part of the image they're about.
 
