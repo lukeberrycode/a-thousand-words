@@ -486,7 +486,7 @@ Unless a test says otherwise:
   - In steps 2 and 3, the editor sheet sits directly on top of the keyboard, with its text box and **Save** visible. The sheet takes at most about half of the space above the keyboard, and the box stays visible above the sheet (scroll if needed, but nothing is hidden behind the keyboard).
   - In step 4, the sheet drops back to the bottom of the screen.
 - **Proves:** the editor reads the visible area, not the full screen, on both iOS (visual viewport) and Android (`interactive-widget=resizes-content`).
-- **Automation:** Manual. Needs a real device.
+- **Automation:** Manual. Needs a real device. Passed on Android on 2026-10-04 (the `resizes-content` path). Not yet tested on an iPhone, the path where the sheet is lifted by `useKeyboardInset`.
 
 
 ## Production
