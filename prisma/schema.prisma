@@ -26,6 +26,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   images        Image[]
+  regions       Region[]
   annotations   Annotation[]
 }
 
@@ -81,27 +82,43 @@ model Image {
   sha256      String?
   phash       BigInt?
   createdAt   DateTime     @default(now())
-  annotations Annotation[]
+  regions     Region[]
 
   @@index([createdAt])
   @@index([sha256])
 }
 
-// Regions are stored as fractions (0–1) of the image's width and height,
-// so they stay aligned at any display size. See docs/adr/0005.
+// A box on an image. It holds one or more annotations, by any users (ADR 0011).
+// Stored as fractions (0–1) of the image's width and height, so it stays aligned at any
+// display size (ADR 0005).
+model Region {
+  id          String       @id @default(cuid())
+  imageId     String
+  image       Image        @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  // Who drew the box. Only they can move it, and only while it holds no one else's annotations.
+  authorId    String
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  x           Float
+  y           Float
+  w           Float
+  h           Float
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  annotations Annotation[]
+
+  @@index([imageId])
+}
+
+// One user's text about a region. Each user has at most one annotation per region.
 model Annotation {
   id           String   @id @default(cuid())
-  imageId      String
-  image        Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  regionId     String
+  region       Region   @relation(fields: [regionId], references: [id], onDelete: Cascade)
   authorId     String
   author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  x            Float
-  y            Float
-  w            Float
-  h            Float
   bodyMarkdown String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  @@index([imageId])
+  @@unique([regionId, authorId])
 }

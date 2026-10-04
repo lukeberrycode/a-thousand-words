@@ -20,9 +20,10 @@ See `prisma/schema.prisma`.
 | --- | --- |
 | User | id, name, email, image, approvedAt, createdAt |
 | Image | id, ownerId, title, description, storageKey, width, height, sha256, phash, createdAt |
-| Annotation | id, imageId, authorId, x, y, w, h (all 0–1), bodyMarkdown, createdAt, updatedAt |
+| Region | id, imageId, authorId, x, y, w, h (all 0–1), createdAt, updatedAt |
+| Annotation | id, regionId, authorId, bodyMarkdown, createdAt, updatedAt; at most one per user per region |
 
-Regions are stored as **fractions of the image's width and height**, not pixels, so they stay aligned at any display size ([ADR 0005](adr/0005-fractional-region-coordinates.md)). Annotorious works in pixel coordinates of the natural image, so the client converts using the stored `width` and `height`.
+A region is a box on the image, holding one or more annotations by any users ([ADR 0011](adr/0011-regions-and-overlap.md)). Regions are stored as **fractions of the image's width and height**, not pixels, so they stay aligned at any display size ([ADR 0005](adr/0005-fractional-region-coordinates.md)). Annotorious works in pixel coordinates of the natural image, so the client converts using the stored `width` and `height`.
 
 `Account`, `Session` and `VerificationToken` are Auth.js's tables, in the shape its Prisma adapter expects.
 
@@ -76,12 +77,12 @@ layout.tsx  root: <html>, header, fonts, globals.css                server
 │  │    title, description, Edit details, Delete image
 │  ├─ AnnotatedImage images/[id]/annotated-image.tsx                 client
 │  │    ├─ Annotorious ImageAnnotator: the image and its regions
-│  │    ├─ AnnotationCard, AnnotationEditor, EditorSheet (same file)
+│  │    ├─ RegionCard, AnnotationItem, AnnotationEditor, ClashNotice, EditorSheet
 │  │    └─ Markdown  images/[id]/markdown.tsx
 │  ├─ ReportLink     (in page.tsx)                                   server
 │  └─ actions: images/[id]/actions.ts
-│              createAnnotation, updateAnnotation, deleteAnnotation,
-│              updateImage, deleteImage
+│              createAnnotation, addAnnotation, updateAnnotation,
+│              deleteAnnotation, updateImage, deleteImage
 │
 ├─ /spike            spike/page.tsx, annotated-image.tsx, data.ts
 │     milestone 1 prototype; not linked from the site
@@ -105,11 +106,14 @@ Uploading requires sign-in; both server actions reject anonymous calls.
 
 ## Annotation flow
 
-1. The image page (`src/app/images/[id]/page.tsx`) loads the image with its annotations and each author's name, and passes them to a client component, `annotated-image.tsx`. It sends only the fields the browser needs.
-2. Annotorious draws each saved region, converting fractions to pixels with the image's stored size. Larger regions are added first, so smaller ones sit on top and stay clickable. Hovering a region previews its Markdown in the panel; clicking it, or its entry in the list, pins it there.
-3. Signed-in users click **Annotate** to turn on drawing, then drag a box. That box is a draft: it isn't saved yet, and it can be moved or resized. Only one draft exists at a time.
-4. **Save** reads the box as it is now, converts it to fractions, and calls the `createAnnotation` server action with the text.
-5. The action checks the session, the region (inside the image and not tiny) and the text (not empty, at most 5,000 characters), then creates the `Annotation` row. It calls `refresh()`, so the page re-renders with the new region, which is then selected.
+1. The image page (`src/app/images/[id]/page.tsx`) loads the image with its regions, each region's annotations and each author's name, and passes them to a client component, `annotated-image.tsx`. It sends only the fields the browser needs.
+2. Annotorious draws each saved region, converting fractions to pixels with the image's stored size. Where boxes overlap, a click goes to the smallest box under the pointer (Annotorious sorts its hits by area; [ADR 0011](adr/0011-regions-and-overlap.md)). Larger regions are added first, so smaller ones also look on top.
+3. **Clicking** a box, or its entry in the list, opens its annotations in the panel. Hovering does nothing. The box stays open until another box is opened: clicking empty image doesn't close it. The open box is drawn prominently (thick amber outline, light fill), and the others recede (thin, faint outlines).
+4. Approved users click **Annotate** to turn on drawing, then drag a box. That box is a draft: it isn't saved yet, and it can be moved or resized. Only one draft exists at a time.
+5. While the draft is drawn or adjusted, the browser checks it against the other boxes (`src/lib/overlap.ts`). If any box would keep less than 25% of its area clickable, the editor says so, disables Save, and offers **Add to that annotation** or **Adjust my box**.
+6. **Save** reads the box as it is now, converts it to fractions, and calls the `createAnnotation` server action with the text.
+7. The action checks the session, the region (inside the image and not tiny), the overlap rule and the text (not empty, at most 5,000 characters), then creates the `Region` with its first `Annotation`. It calls `refresh()`, so the page re-renders with the new region, which is then opened.
+8. An open box's card lists all its annotations, oldest first, with **+ Add your annotation** for approved users who haven't annotated it yet. That calls `addAnnotation`.
 
 Annotation text is untrusted, so it's rendered without HTML or images ([ADR 0008](adr/0008-markdown-rendering.md)).
 
@@ -118,8 +122,8 @@ Annotation text is untrusted, so it's rendered without HTML or images ([ADR 0008
 Authors can edit or delete their own annotations, and owners their own images ([ADR 0006](adr/0006-open-annotation-and-public-domain-seed.md)).
 
 - The page tells the browser which annotations and which image are the signed-in user's (a `mine` flag), so it can show Edit and Delete. That's only for display. Each server action checks again, with ownership in the write's `where` (for example `{ id, authorId }`), so checking and writing happen in one query.
-- **Edit annotation** makes its box movable and resizable and opens the editor with the text. Save sends the new region and text to `updateAnnotation`, and Cancel puts the box back.
-- **Delete annotation** and **Delete image** ask for confirmation inside the page, not with a browser dialog.
+- **Edit annotation** opens the editor with the text. If you drew the box and it holds only your annotations, the box also becomes movable and resizable, and Save sends the new region too, checked against the overlap rule. Cancel puts the box back.
+- **Delete annotation** and **Delete image** ask for confirmation inside the page, not with a browser dialog. Deleting a box's last annotation deletes the box too.
 - **Deleting an image** deletes the row, and with it every annotation on the image, including other people's, through `onDelete: Cascade`. Then it deletes the file from R2. If that fails, the error is logged and the file is left behind; see Known gaps.
 - **Mobile annotate mode:** while a box can be drawn or moved, the image has `touch-action: none`, so dragging edits the box instead of scrolling the page. Below the `lg` breakpoint, the editor is a sheet fixed to the bottom of the screen, so the box stays visible above it.
 
