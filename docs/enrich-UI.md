@@ -13,6 +13,7 @@ The aim is immersion: the experience should feel like looking closely at a paint
 | Term | Meaning |
 | --- | --- |
 | **Viewport** | The browser window's visible area. It's **portrait** if taller than wide, otherwise **landscape**. |
+| **Visible area** | The safe area minus anything an on-screen keyboard covers. Without a keyboard, it's the safe area. See Rule 8. |
 | **Safe area** | The part of the viewport not covered by a phone's notch, camera cut-out, rounded corners or home indicator. On screens without these, it's the whole viewport. See Rule 7. |
 | **Short edges** | The two edges along the viewport's shorter dimension: top and bottom in portrait, left and right in landscape. |
 | **Fit size** | The zoom at which the whole image is visible (see Rule 1). |
@@ -143,6 +144,22 @@ Phones with notches, camera cut-outs, rounded corners or a home indicator have a
 
 > **Example:** a phone in landscape with a camera cut-out on the left. At the fit size, the image sits inside the safe area, clear of the cut-out. The user zooms in, and the painting now runs all the way to the left edge of the screen, around the cut-out. When they pan to the painting's left edge, it stops at the safe area's edge, so its last strip is fully visible, not hidden under the cut-out.
 
+### 8. The on-screen keyboard
+
+On phones and tablets, writing or editing an annotation opens an on-screen keyboard that covers the bottom of the screen, often a third to a half of it. Content the layout puts there is hidden, though the page doesn't know it.
+
+8.1. **While the keyboard is open, the visible area is what counts.** Rule 7.2 measures fitting and limits against the safe area; while the keyboard is open, those same calculations use the **visible area**: the safe area minus the part the keyboard covers.
+
+8.2. **The card being typed into and its box both stay in the visible area.** When the keyboard opens, the view re-runs the auto-zoom (Rule 5.6) within the visible area, so the box and its card sit side by side above the keyboard. If they can't both fit even at the fit size, the card goes directly above the keyboard and the box as close above it as possible (Rule 5.7's overlap applies). The card's text field must never be behind the keyboard.
+
+8.3. **The card shrinks before the box disappears.** In the smaller visible area, the card's maximum size (Rule 5.5) is measured against the visible area, and long text scrolls inside it.
+
+8.4. **When the keyboard closes,** the view expands back to the safe area without moving the box: the extra space appears around it, and no new auto-zoom runs.
+
+8.5. **The UI panel** is hidden while a card is open (Rule 5.8), so the keyboard never pushes it around.
+
+> **Example:** a phone in portrait. The user draws a box in the lower half of a painting, and the card opens above it (closer to the image centre, Rule 5.3). They tap the text field and the keyboard covers the bottom 45% of the screen, including the box. The view re-zooms within the upper 55%: box and card now both sit above the keyboard. They save, the keyboard closes, and the box stays where it is with the extra space below it.
+
 ## Worked examples
 
 **Drag on a phone.** Portrait viewport, image zoomed in, panel at the bottom (default). The user drags up and slightly left, so the image moves up and they see more of its lower part. Only the vertical part counts (Rule 3.4), so the panel moves to the top, away from where they're heading.
@@ -158,6 +175,7 @@ These aren't decisions. They're things the implementation will need to settle, s
 - **Taking over zoom:** browsers zoom pages natively on pinch and Ctrl+scroll. The image page will need `touch-action: none` on the viewer, `preventDefault` on wheel events with `ctrlKey` (registered as non-passive), handling for Ctrl + `+` / `-` key presses, and on iOS Safari, the `gesturestart` events. iOS ignores `user-scalable=no`, so the CSS and event handling must do the work.
 - **A zoom library:** OpenSeadragon is a mature zoom-and-pan viewer for large images. It handles pinch, wheel, inertia and zoom limits, and Annotorious has an official OpenSeadragon plugin (`@annotorious/openseadragon`). Adopting it would replace the current `ImageAnnotator` setup ([ADR 0004](adr/0004-annotorious.md)) and should get its own ADR. The alternative is a lighter custom transform around the current `ImageAnnotator`.
 - **Deep zoom:** zooming to 4× native pixels on large paintings means downloading full-size originals. Tiled images (generated at upload and stored in R2) would cut bandwidth, but can come later.
+- **Detecting the keyboard:** no browser reports the keyboard directly. `window.visualViewport` (iOS Safari and Android Chrome) shrinks when it opens, while the layout viewport doesn't, so the covered height is `innerHeight − visualViewport.height − visualViewport.offsetTop`, counted only while `visualViewport.scale` is about 1 (pinch-zoom shrinks it too). With app-owned zoom (Rule 2.1), the browser's own zoom stays at 1, so this is reliable. The current image page already uses this in `src/lib/use-keyboard-inset.ts`, and sets `interactiveWidget: "resizes-content"` so Android shrinks the layout viewport instead. Hardware keyboards and iPad floating keyboards cover nothing, and correctly change nothing. Emulators don't reproduce mobile keyboards faithfully, so this needs real phones.
 - **Safe areas:** by default, mobile browsers keep the page inside the safe area, so the image could never reach the screen's edge. Setting `viewportFit: "cover"` in the root layout's `viewport` export lets the page draw edge to edge. The CSS values `env(safe-area-inset-top)`, `-right`, `-bottom` and `-left` then give the insets, for positioning the UI panel and cards and for the fit and pan calculations. They're 0 on screens without cut-outs.
 - **Stored regions are unaffected:** regions are fractions of the image ([ADR 0005](adr/0005-fractional-region-coordinates.md)), so they don't depend on zoom.
 - **System tests:** MAN-07, ANN-02 and other image page tests in [system-tests.md](system-tests.md) would need rewriting, and real-phone testing (as in PROD-05) matters even more for gestures.

@@ -126,6 +126,7 @@ Authors can edit or delete their own annotations, and owners their own images ([
 - **Delete annotation** and **Delete image** ask for confirmation inside the page, not with a browser dialog. Deleting a box's last annotation deletes the box too.
 - **Deleting an image** deletes the row, and with it every annotation on the image, including other people's, through `onDelete: Cascade`. Then it deletes the file from R2. If that fails, the error is logged and the file is left behind; see Known gaps.
 - **Mobile annotate mode:** while a box can be drawn or moved, the image has `touch-action: none`, so dragging edits the box instead of scrolling the page. Below the `lg` breakpoint, the editor is a sheet fixed to the bottom of the screen, so the box stays visible above it.
+- **On-screen keyboard:** browsers don't report it, so `useKeyboardInset` (`src/lib/use-keyboard-inset.ts`) compares the visual viewport with the layout viewport. The editor sheet sits on top of the keyboard and takes at most 55% of the area left visible. On iOS, which only shrinks the visual viewport, that lifts the sheet; on Android, the root layout's `interactiveWidget: "resizes-content"` shrinks the layout viewport, so the sheet is already above the keyboard. Pinch-zoom also shrinks the visual viewport, so it only counts when the page isn't zoomed.
 
 ## Deployment
 
