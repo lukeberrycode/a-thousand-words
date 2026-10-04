@@ -84,7 +84,7 @@ This covers the image page (`/images/[id]`). The home page and upload page are u
 
 4.3. Tapping or clicking a box selects it: its card opens, with the auto-zoom in Rule 5. Selecting another box replaces it.
 
-4.4. On desktop, hovering over a box shows a light preview of its text without zooming or hiding the UI panel.
+4.4. Hovering over a box doesn't show its text: reading always needs an explicit tap or click ([ADR 0011](adr/0011-regions-and-overlap.md)). The open box is drawn prominently and the others recede, so it's always clear which box the card belongs to.
 
 4.5. The UI panel has an **annotation list** (a collapsible "N annotations" button). Picking an annotation from it selects it, as in Rule 4.3. This replaces today's side panel.
 

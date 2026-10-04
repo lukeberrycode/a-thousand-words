@@ -14,9 +14,14 @@ const getImage = cache((id: string) =>
     where: { id },
     include: {
       owner: { select: { name: true } },
-      annotations: {
+      regions: {
         orderBy: { createdAt: "asc" },
-        include: { author: { select: { name: true } } },
+        include: {
+          annotations: {
+            orderBy: { createdAt: "asc" },
+            include: { author: { select: { name: true } } },
+          },
+        },
       },
     },
   }),
@@ -44,7 +49,7 @@ export default async function ImagePage({ params }: PageProps<"/images/[id]">) {
           year: "numeric",
         })}`}
         mine={user?.id === image.ownerId}
-        annotationCount={image.annotations.length}
+        annotationCount={image.regions.reduce((n, r) => n + r.annotations.length, 0)}
       />
       <div className="mt-6">
         <AnnotatedImage
@@ -55,14 +60,20 @@ export default async function ImagePage({ params }: PageProps<"/images/[id]">) {
             size: { width: image.width, height: image.height },
           }}
           // Only what the browser needs: no emails or other user fields.
-          annotations={image.annotations.map((a) => ({
-            id: a.id,
-            region: { x: a.x, y: a.y, w: a.w, h: a.h },
-            body: a.bodyMarkdown,
-            authorName: a.author.name,
-            mine: user?.id === a.authorId,
-            createdAt: a.createdAt.toISOString(),
-            updatedAt: a.updatedAt.toISOString(),
+          regions={image.regions.map((r) => ({
+            id: r.id,
+            region: { x: r.x, y: r.y, w: r.w, h: r.h },
+            // Only the box's creator can move it, while it holds only their annotations.
+            movable: !!user && r.authorId === user.id && r.annotations.every((a) => a.authorId === user.id),
+            updatedAt: r.updatedAt.toISOString(),
+            annotations: r.annotations.map((a) => ({
+              id: a.id,
+              body: a.bodyMarkdown,
+              authorName: a.author.name,
+              mine: user?.id === a.authorId,
+              createdAt: a.createdAt.toISOString(),
+              updatedAt: a.updatedAt.toISOString(),
+            })),
           }))}
           canAnnotate={!!user?.approved}
           signInPrompt={

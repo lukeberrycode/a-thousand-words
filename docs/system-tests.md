@@ -269,7 +269,7 @@ Unless a test says otherwise:
 - **Expected:**
   - After step 1, the button reads **Done annotating**, with a hint to drag a box.
   - After step 2, an editor appears beside the image.
-  - After step 4, the editor closes and annotate mode ends. The new region is highlighted and selected, and the panel shows the formatted text and your name. The region sits where the box was when you clicked Save.
+  - After step 4, the editor closes and annotate mode ends. The new region is open: drawn with a thick amber outline while the others recede, and the panel shows the formatted text and your name. The region sits where the box was when you clicked Save.
 - **Proves:** drawing, the pixels-to-fractions conversion, the server action and the page refresh work together.
 - **Automation:** Manual
 
@@ -343,21 +343,41 @@ Unless a test says otherwise:
 - **Automation:** Manual
 
 
+### ANN-07: A click on nested boxes goes to the smaller one
+
+- **Needs:** The School of Athens (seeded): Raphael's small box overlaps the larger Ptolemy box at the far right
+- **Steps:**
+  1. Click inside the Ptolemy box, away from Raphael's box.
+  2. Click where Raphael's box overlaps the Ptolemy box.
+- **Expected:**
+  - Step 1 opens Ptolemy's annotation.
+  - Step 2 opens Raphael's, not Ptolemy's.
+- **Proves:** Annotorious gives a click to the smallest box under the pointer, so nested boxes stay reachable (ADR 0011). Checked on 2026-10-04 with Annotorious 3.9.3; re-run after upgrading Annotorious.
+- **Automation:** Manual
+
+### ANN-08: An overlapping box is refused, and you can add to the existing one instead
+
+- **Needs:** signed in and approved; an image with a box you haven't annotated
+- **Steps:**
+  1. Click **Annotate** and draw a box almost exactly over the existing one.
+  2. Resize the new box to be clearly larger than the existing one, then shrink it back over it.
+  3. Click **Add to that annotation**.
+  4. Write some text and click **Save**.
+  5. Click **Edit** on your new annotation, change the text and save.
+- **Expected:**
+  - Step 1: as soon as the box is drawn, the editor says "This box overlaps an existing one too much…", with **Add to that annotation** and **Adjust my box**, and **Save** is disabled.
+  - Step 2: the warning disappears while the box is larger, and comes back when it's shrunk back.
+  - Step 3: the new box goes, annotate mode ends, and the existing box opens with an "Add your annotation" form.
+  - Step 4: the card shows both annotations, oldest first. Yours has **Edit** and **Delete**, the other doesn't, and "+ Add your annotation" is gone. The list entry shows "+1".
+  - Step 5: only the text is editable (no box handles), because someone else drew the box.
+- **Proves:** the overlap rule is checked live in the browser, the user is steered to add to the existing box, and a box holds several annotations (ADR 0011). The server checks the rule too, so a direct POST can't get round it.
+- **Automation:** Manual
+
 ## Reading and managing
 
 ### MAN-01: Hover previews, click pins
 
-- **Needs:** an image with at least one annotation; a mouse
-- **Steps:**
-  1. Hover over a region.
-  2. Move the pointer off it.
-  3. Click a region, then hover over a different one, then move off.
-- **Expected:**
-  - Step 1 shows that annotation in the panel.
-  - Step 2 brings back the hint, "Hover over or tap a highlighted region…".
-  - In step 3, the hovered annotation shows while hovering, and the clicked one returns afterwards.
-- **Proves:** reading needs no clicks on desktop, and a pinned annotation stays pinned.
-- **Automation:** Manual
+**Retired** (2026-10-04): hovering no longer shows annotation text; reading needs an explicit click (ADR 0011). Replaced by MAN-08.
 
 ### MAN-02: Only your own content shows Edit and Delete
 
@@ -382,7 +402,7 @@ Unless a test says otherwise:
   - Step 1: the box gets handles, and the editor opens with the current text.
   - Step 2: the editor shows **Saving…**, then the card shows the new text and "· edited". The box stays where you left it, and old text never reappears.
   - Step 3: the box jumps back to its saved position.
-- **Proves:** region and text edits save together, and unsaved moves can be undone.
+- **Proves:** region and text edits save together, and unsaved moves can be undone. Only for a box you drew that holds only your annotations; see ANN-08 for the text-only case.
 - **Automation:** Manual
 
 ### MAN-04: Delete an annotation
@@ -393,8 +413,8 @@ Unless a test says otherwise:
   2. Click **Delete**, then the red **Delete**.
 - **Expected:**
   - Step 1 changes nothing.
-  - Step 2 removes the region and its list entry. In Studio, the row is gone.
-- **Proves:** deletion asks first and then removes the annotation everywhere.
+  - Step 2 removes the annotation. If it was the box's only annotation, the region and its list entry go too, and in Studio both the `Annotation` and its `Region` row are gone. If others remain, the box stays with theirs.
+- **Proves:** deletion asks first and then removes the annotation everywhere, and doesn't leave empty boxes.
 - **Automation:** Manual
 
 ### MAN-05: Edit and delete your own image
@@ -437,6 +457,22 @@ Unless a test says otherwise:
 - **Proves:** touch drawing doesn't fight with scrolling, and the editor doesn't hide the box.
 - **Automation:** Manual. Passed on real phones on the deployed site on 2026-10-03 (PROD-05). Before that, it had only been checked at narrow width with a mouse.
 
+
+### MAN-08: Click to read; the open box stays open and stands out
+
+- **Needs:** an image with at least three annotations; a mouse
+- **Steps:**
+  1. Hover over a region without clicking.
+  2. Click a region.
+  3. Click an empty part of the image.
+  4. Click a different region, or pick one from the list.
+- **Expected:**
+  - Step 1 changes nothing in the panel, which shows "Click or tap a highlighted region, or pick one below."
+  - Step 2 shows that box's annotations. The box gets a thick amber outline and a light fill; the other boxes become thin and faint.
+  - Step 3 leaves the same box open and highlighted.
+  - Step 4 switches the panel and the highlight to the new box.
+- **Proves:** reading needs an explicit click, stays put until another box is chosen, and it's always clear which box the text belongs to.
+- **Automation:** Manual
 
 ## Production
 
@@ -509,3 +545,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | Milestone 5 (written with the code) | MAN-01 to MAN-07 |
 | Milestone 6 (written with the code) | PROD-01 to PROD-05 |
 | User approval (written with the code) | SEC-03, SEC-04 |
+| Boxes and overlap, ADR 0011 (written with the code) | ANN-07, ANN-08, MAN-08 |

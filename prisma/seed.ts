@@ -73,13 +73,14 @@ async function main() {
           height,
           sha256,
           phash,
-          annotations: {
-            // Pages list annotations oldest first; space the timestamps so they keep this order.
+          regions: {
+            // Pages list boxes oldest first; space the timestamps so they keep this order.
+            // Each seed box holds one annotation.
             create: art.annotations.map((a, i) => ({
               authorId: owner.id,
               ...a.region,
-              bodyMarkdown: a.body,
               createdAt: new Date(Date.now() + i * 1000),
+              annotations: { create: { authorId: owner.id, bodyMarkdown: a.body } },
             })),
           },
         },
