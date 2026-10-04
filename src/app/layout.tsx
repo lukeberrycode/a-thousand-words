@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -18,6 +18,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "A Thousand Words",
   description: "Annotate the details of any image: draw a region and explain what's there.",
+};
+
+// On Android, let the on-screen keyboard shrink the layout viewport, so fixed content such as
+// the annotation editor sheet sits above it. iOS ignores this; see src/lib/use-keyboard-inset.ts.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
   useTransition,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import {
@@ -26,6 +27,7 @@ import "@annotorious/react/annotorious-react.css";
 import { BODY_MAX, checkBody, checkRegion } from "@/lib/annotations";
 import { findClash } from "@/lib/overlap";
 import { toFraction, toImageAnnotation, type ImageSize, type Region } from "@/lib/regions";
+import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 import { addAnnotation, createAnnotation, deleteAnnotation, updateAnnotation } from "./actions";
 import { Markdown } from "./markdown";
 
@@ -454,11 +456,21 @@ function currentRegion(anno: AnnotoriousImageAnnotator | undefined, id: string |
 
 /**
  * On narrow screens the editor sits fixed at the bottom of the screen, so the box being
- * drawn stays in view above it. From the lg breakpoint it sits in the side panel.
+ * drawn stays in view above it. It rides on top of the on-screen keyboard and takes at most
+ * 55% of the area left visible, so neither the keyboard nor the sheet hides the box.
+ * From the lg breakpoint it sits in the side panel.
  */
 function EditorSheet({ children }: { children: ReactNode }) {
+  const { inset, visibleHeight } = useKeyboardInset();
+  const vars = {
+    "--keyboard-inset": `${inset}px`,
+    "--visible-height": visibleHeight === null ? "100dvh" : `${visibleHeight}px`,
+  } as CSSProperties;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 flex max-h-[55vh] flex-col gap-3 overflow-y-auto border-t border-zinc-200 bg-white p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] dark:border-zinc-800 dark:bg-zinc-950 lg:static lg:z-auto lg:max-h-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none dark:lg:bg-transparent">
+    <div
+      style={vars}
+      className="fixed inset-x-0 bottom-[var(--keyboard-inset)] z-20 flex max-h-[calc(var(--visible-height)*0.55)] flex-col gap-3 overflow-y-auto border-t border-zinc-200 bg-white p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] dark:border-zinc-800 dark:bg-zinc-950 lg:static lg:z-auto lg:max-h-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none dark:lg:bg-transparent"
+    >
       {children}
     </div>
   );

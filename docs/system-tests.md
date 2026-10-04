@@ -474,6 +474,21 @@ Unless a test says otherwise:
 - **Proves:** reading needs an explicit click, stays put until another box is chosen, and it's always clear which box the text belongs to.
 - **Automation:** Manual
 
+### MAN-09: The editor stays above the on-screen keyboard
+
+- **Needs:** signed in and approved; a real phone (an iPhone and an Android phone if possible). Emulators and DevTools' device mode don't reproduce the keyboard.
+- **Steps:**
+  1. On an image page, turn on **Annotate** and draw a box in the lower half of the image.
+  2. Tap the editor's text box, and type a few lines.
+  3. Tap **Cancel**, open one of your own annotations, and tap **Edit**, then the text box.
+  4. Close the keyboard (the keyboard's own close or done key).
+- **Expected:**
+  - In steps 2 and 3, the editor sheet sits directly on top of the keyboard, with its text box and **Save** visible. The sheet takes at most about half of the space above the keyboard, and the box stays visible above the sheet (scroll if needed, but nothing is hidden behind the keyboard).
+  - In step 4, the sheet drops back to the bottom of the screen.
+- **Proves:** the editor reads the visible area, not the full screen, on both iOS (visual viewport) and Android (`interactive-widget=resizes-content`).
+- **Automation:** Manual. Needs a real device.
+
+
 ## Production
 
 Run these on the deployed site before sharing its URL. "Production" means the Vercel URL, signed in with the production GitHub OAuth app.
@@ -523,7 +538,7 @@ Run these on the deployed site before sharing its URL. "Production" means the Ve
 
 - **Needs:** an iPhone and an Android phone, if available
 - **Steps:**
-  1. Run MAN-07 (mobile annotate mode) on each phone.
+  1. Run MAN-07 (mobile annotate mode) and MAN-09 (the on-screen keyboard) on each phone.
   2. Read annotations by tapping regions (ANN-02).
 - **Expected:** as described in those tests. Drawing doesn't fight with scrolling, and the editor's bottom sheet keeps the box visible.
 - **Proves:** the site works on the touch screens most visitors will use.
@@ -546,3 +561,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | Milestone 6 (written with the code) | PROD-01 to PROD-05 |
 | User approval (written with the code) | SEC-03, SEC-04 |
 | Boxes and overlap, ADR 0011 (written with the code) | ANN-07, ANN-08, MAN-08 |
+| On-screen keyboard (written with the code) | MAN-09 |
