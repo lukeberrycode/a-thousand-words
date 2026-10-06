@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PENDING_APPROVAL, getCurrentUser } from "@/lib/current-user";
-import { SignInButton } from "../user-menu";
+import { SignInButton } from "../../user-menu";
 import { UploadForm } from "./upload-form";
 
 export const metadata: Metadata = { title: "Upload · A Thousand Words" };
