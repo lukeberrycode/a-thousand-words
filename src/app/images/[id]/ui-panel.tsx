@@ -131,7 +131,7 @@ export function UiPanel({
 
       {section && (
         <div
-          className={`min-h-0 overflow-y-auto overscroll-contain border-zinc-200 p-3 dark:border-zinc-800 ${
+          className={`min-h-0 touch-pan-y overflow-y-auto overscroll-contain border-zinc-200 p-3 dark:border-zinc-800 ${
             portrait && edge === "end" ? "border-b" : "border-t"
           }`}
         >

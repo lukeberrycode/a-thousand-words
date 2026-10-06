@@ -25,8 +25,9 @@ export type ScreenLayout = {
  *   `interactive-widget=resizes-content`), it shrinks only the visual viewport, so the visible
  *   part is `visualViewport.offsetTop` to `offsetTop + height`. With `resizes-content` (set on the
  *   image page), Android shrinks the layout viewport instead, so `innerHeight` already excludes it.
- *   Pinch-zoom also shrinks the visual viewport, but the image page owns zoom, so the browser's
- *   stays at 1; a shrink only counts while it is.
+ *   Pinch-zoom also shrinks the visual viewport, so a shrink only counts as a keyboard at scale 1.
+ * - **Browser pinch-zoom:** the image page owns zoom, so the browser's should stay at 1. If it
+ *   doesn't, the area is the part of the layout viewport still visible, so the panel stays on screen.
  * - **Orientation** only changes when the width does, so a keyboard shrinking the height of a
  *   portrait phone doesn't turn it into landscape.
  *
@@ -55,21 +56,32 @@ export function useScreenLayout(): ScreenLayout | null {
       const bottom = parseFloat(cs.paddingBottom) || 0;
       const left = parseFloat(cs.paddingLeft) || 0;
 
+      let visibleLeft = 0;
+      let visibleRight = W;
       let visibleTop = 0;
       let visibleBottom = H;
       const vv = window.visualViewport;
-      if (vv && Math.abs(vv.scale - 1) < 0.01) {
+      if (vv) {
         visibleTop = Math.max(0, vv.offsetTop);
         visibleBottom = Math.min(H, vv.offsetTop + vv.height);
+        // The browser's own pinch-zoom should stay at 1, but can slip through (say, a touchscreen
+        // pinch before hydration), and Chrome restores it on reload. Keep to the part still visible.
+        if (Math.abs(vv.scale - 1) >= 0.01) {
+          visibleLeft = Math.max(0, vv.offsetLeft);
+          visibleRight = Math.min(W, vv.offsetLeft + vv.width);
+        }
       }
+      const x = Math.max(left, visibleLeft);
+      const xEnd = Math.min(W - right, visibleRight);
       const y = Math.max(top, visibleTop);
       const yEnd = Math.min(H - bottom, visibleBottom);
-      const area = { x: left, y, w: Math.max(1, W - left - right), h: Math.max(1, yEnd - y) };
+      const area = { x, y, w: Math.max(1, xEnd - x), h: Math.max(1, yEnd - y) };
 
       const tallestHere = Math.max(tallest.current.get(W) ?? 0, H);
       tallest.current.set(W, tallestHere);
       const typing = isTextField(document.activeElement);
-      const keyboard = typing && (visibleBottom < H - 40 || H < tallestHere - 80);
+      const unzoomed = !vv || Math.abs(vv.scale - 1) < 0.01;
+      const keyboard = typing && ((unzoomed && visibleBottom < H - 40) || H < tallestHere - 80);
 
       setLayout((prev) => {
         const orientation =
