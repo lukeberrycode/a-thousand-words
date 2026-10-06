@@ -528,7 +528,7 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
 
 ## Production
 
-Run these on the deployed site before sharing its URL. "Production" means the Vercel URL, signed in with the production GitHub OAuth app.
+Run these on the deployed site before sharing its URL. "Production" means the Vercel URL (https://a-thousand-words-pi.vercel.app/), signed in with the production GitHub OAuth app.
 
 ### PROD-01: Seed content is live
 

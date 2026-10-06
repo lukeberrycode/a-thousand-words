@@ -647,7 +647,7 @@ function FloatingCard({
           <path d="M6 6l12 12M18 6 6 18" />
         </svg>
       </button>
-      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-4 pr-10">{children}</div>
+      <div className="flex min-h-0 touch-pan-y flex-col gap-3 overflow-y-auto overscroll-contain p-4 pr-10">{children}</div>
     </div>
   );
 }

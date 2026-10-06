@@ -4,6 +4,8 @@
 
 Community annotation for images: upload an image, draw a region on it, and attach an annotation that explains what's there.
 
+**Live site:** https://a-thousand-words-pi.vercel.app/
+
 **Status:** milestone 7 (automated system tests) done. Live at https://a-thousand-words-pi.vercel.app/, with 12 annotated public-domain paintings. Signed-in users upload and annotate any image; everyone can read annotations by hovering or tapping a region; authors edit and delete their own annotations and images; every image has a "Report it" link. Sign in with GitHub to upload and annotate. Most system tests now run automatically with Playwright (`npm run test:system`). Next: user experience documentation (milestone 8). See [the one-pager](docs/one-pager.md) for scope and milestones.
 
 ## Stack
@@ -43,7 +45,7 @@ npm run dev                # http://localhost:3000
 
 ## Deploying
 
-The site runs on Vercel with Neon Postgres and a production R2 bucket ([ADR 0009](docs/adr/0009-deploy-vercel-neon.md)). Pushing to `main` deploys.
+The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Postgres and a production R2 bucket ([ADR 0009](docs/adr/0009-deploy-vercel-neon.md)). Pushing to `main` deploys.
 
 - **Vercel environment variables:**
   - `DATABASE_URL`: Neon's pooled connection string
