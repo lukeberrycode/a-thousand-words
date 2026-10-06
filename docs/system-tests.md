@@ -494,14 +494,14 @@ Unless a test says otherwise:
 - **Needs:** an image page; a laptop with a mouse or trackpad, and a phone
 - **Steps:**
   1. Open the page in a landscape window, then in portrait on the phone.
-  2. Zoom in with the mouse wheel, a trackpad pinch, Ctrl + `+`, and on the phone a pinch and a double-tap. Zoom out the same ways as far as it goes.
+  2. Zoom in with the mouse wheel, a trackpad pinch, Ctrl + `+`, the panel's **Zoom in** button, and on the phone a pinch and a double-tap. Zoom out the same ways as far as it goes.
   3. Zoomed in, drag the image left (landscape) or up (portrait), then the other way. Then tap the panel's flip button.
   4. Zoomed in, pan with a trackpad two-finger scroll and with the arrow keys.
   5. Tap the boxes button, then **Annotate**.
   6. On a phone with a notch or camera cut-out, in landscape, zoom in and pan to the image's edges.
 - **Expected:**
   - Step 1: the whole image is visible at first. The panel is on the right in landscape and at the bottom in portrait, with the image at the opposite edge.
-  - Step 2: each zooms around the pointer, fingers or centre; the page itself never zooms, and the panel stays the same size. Zooming out stops when the whole image is visible.
+  - Step 2: each zooms around the pointer, fingers or centre; the page itself never zooms, and the panel stays the same size. Zooming out stops when the whole image is visible. The zoom buttons show next to the flip button on the laptop, not on the phone, and are disabled in annotate mode.
   - Step 3: dragging the image left puts the panel on the left (portrait: up puts it at the top), and the other way moves it back. The flip button swaps edges, and at the fit size the image moves to the opposite edge.
   - Step 4: both pan, and move the panel like a drag.
   - Step 5: the boxes disappear, then come back when annotate mode starts.

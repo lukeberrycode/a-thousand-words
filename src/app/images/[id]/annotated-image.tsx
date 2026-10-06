@@ -162,7 +162,7 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt, about 
   const anchorRegion =
     anchorId === null ? null : live?.id === anchorId ? live.region : (byId.get(anchorId)?.region ?? null);
 
-  const { rootRef, stageRef, store, zoomTo } = useZoomView({
+  const { rootRef, stageRef, store, zoomTo, zoomStep } = useZoomView({
     size: image.size,
     layout,
     panel: panelEdge,
@@ -531,6 +531,8 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt, about 
           edge={panelEdge}
           hidden={cardOpen}
           onFlip={() => setPanelEdge(panelEdge === "start" ? "end" : "start")}
+          onZoom={zoomStep}
+          zoomDisabled={boxActive}
           title={image.title}
           annotate={
             canAnnotate ? (

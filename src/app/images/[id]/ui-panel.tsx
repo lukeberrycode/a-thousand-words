@@ -13,6 +13,13 @@ type Props = {
   /** Hidden while a card is open (Rule 3.7). */
   hidden: boolean;
   onFlip: () => void;
+  /**
+   * Zoom one step around the centre: a fallback for mouse and trackpad users whose browser doesn't
+   * pass on trackpad pinches (e.g. some on Linux under X11). Not shown on touch screens.
+   */
+  onZoom: (direction: "in" | "out") => void;
+  /** Zoom is off in annotate mode (Rule 2.5). */
+  zoomDisabled: boolean;
   title: string;
   /** The Annotate button, or what visitors who can't annotate see instead. */
   annotate: ReactNode;
@@ -36,6 +43,8 @@ export function UiPanel({
   edge,
   hidden,
   onFlip,
+  onZoom,
+  zoomDisabled,
   title,
   annotate,
   hint,
@@ -58,7 +67,8 @@ export function UiPanel({
       }
     : {
         top: area.y,
-        width: Math.min(320, area.w * 0.45),
+        // Wide enough for the site name and buttons, and the controls, each on one row.
+        width: Math.min(420, area.w * 0.45),
         maxHeight: area.h,
         ...(edge === "start" ? { left: area.x } : { right: screen.w - (area.x + area.w) }),
       };
@@ -79,19 +89,24 @@ export function UiPanel({
       } ${portrait ? "" : edge === "start" ? "ml-3 mt-3" : "mr-3 mt-3"}`}
     >
       <div className={`flex shrink-0 flex-col gap-2 p-3 ${portrait && edge === "end" && section ? "order-last" : ""}`}>
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <Link href="/" className="text-xs font-semibold text-zinc-500 hover:underline">
-              A Thousand Words
-            </Link>
-            <h1 className="truncate font-semibold leading-snug" title={title}>
-              {title}
-            </h1>
-          </div>
+        <div className="flex items-center gap-2">
+          <Link href="/" className="min-w-0 flex-1 truncate text-xs font-semibold text-zinc-500 hover:underline">
+            A Thousand Words
+          </Link>
+          <IconButton label="Zoom out" onClick={() => onZoom("out")} disabled={zoomDisabled} className="hidden pointer-fine:grid">
+            <MinusIcon />
+          </IconButton>
+          <IconButton label="Zoom in" onClick={() => onZoom("in")} disabled={zoomDisabled} className="hidden pointer-fine:grid">
+            <PlusIcon />
+          </IconButton>
           <IconButton label={flipLabel} onClick={onFlip}>
             {portrait ? <FlipVerticalIcon /> : <FlipHorizontalIcon />}
           </IconButton>
         </div>
+        {/* Its own line, so the buttons above never squeeze it. Long titles wrap to two lines. */}
+        <h1 className="line-clamp-2 font-semibold leading-snug" title={title}>
+          {title}
+        </h1>
         <div className="flex flex-wrap items-center gap-2">
           {annotate}
           <button
@@ -150,11 +165,16 @@ export function UiPanel({
 function IconButton({
   label,
   pressed,
+  disabled,
+  className = "grid",
   onClick,
   children,
 }: {
   label: string;
   pressed?: boolean;
+  disabled?: boolean;
+  /** Display classes; `grid` unless the button is sometimes hidden. */
+  className?: string;
   onClick: () => void;
   children: ReactNode;
 }) {
@@ -164,8 +184,9 @@ function IconButton({
       onClick={onClick}
       aria-label={label}
       aria-pressed={pressed}
+      disabled={disabled}
       title={label}
-      className={`grid size-9 shrink-0 place-items-center rounded-md border border-zinc-300 dark:border-zinc-700 ${
+      className={`${className} size-9 shrink-0 place-items-center rounded-md border border-zinc-300 disabled:opacity-50 dark:border-zinc-700 ${
         pressed ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900" : ""
       }`}
     >
@@ -191,6 +212,18 @@ function Icon({ children }: { children: ReactNode }) {
     </svg>
   );
 }
+
+const PlusIcon = () => (
+  <Icon>
+    <path d="M12 5v14M5 12h14" />
+  </Icon>
+);
+
+const MinusIcon = () => (
+  <Icon>
+    <path d="M5 12h14" />
+  </Icon>
+);
 
 const FlipVerticalIcon = () => (
   <Icon>
