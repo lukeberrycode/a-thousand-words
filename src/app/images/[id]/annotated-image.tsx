@@ -3,12 +3,12 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   useTransition,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import {
@@ -27,9 +27,12 @@ import "@annotorious/react/annotorious-react.css";
 import { BODY_MAX, checkBody, checkRegion } from "@/lib/annotations";
 import { findClash } from "@/lib/overlap";
 import { toFraction, toImageAnnotation, type ImageSize, type Region } from "@/lib/regions";
-import { useKeyboardInset } from "@/lib/use-keyboard-inset";
+import { isTextField, useScreenLayout, type ScreenLayout } from "@/lib/use-screen-layout";
+import { cardMaxSize, cardSide, placeCard, regionOnScreen, type Edge, type Size } from "@/lib/view-geometry";
 import { addAnnotation, createAnnotation, deleteAnnotation, updateAnnotation } from "./actions";
 import { Markdown } from "./markdown";
+import { UiPanel } from "./ui-panel";
+import { useZoomView, type ViewStore } from "./use-zoom-view";
 
 export type ImageData = { id: string; src: string; title: string; size: ImageSize };
 
@@ -59,6 +62,8 @@ type Props = {
   canAnnotate: boolean;
   /** Shown instead of the Annotate button to visitors who can't annotate: signed out, or awaiting approval. */
   signInPrompt: ReactNode;
+  /** The UI panel's About section: byline, description, image actions, account and report link. */
+  about: ReactNode;
 };
 
 /**
@@ -85,7 +90,11 @@ export function AnnotatedImage(props: Props) {
   );
 }
 
-function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Props) {
+/**
+ * The image page's view (docs/enrich-UI.md): the artwork fills the screen and the app owns zoom and
+ * pan. Annotations open as cards beside their boxes, and everything else is in the UI panel.
+ */
+function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt, about }: Props) {
   const anno = useAnnotator<AnnotoriousImageAnnotator>();
   const [annotating, setAnnotating] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -95,10 +104,17 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
   const [draftClash, setDraftClash] = useState<string | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [adding, setAdding] = useState<Adding | null>(null);
-  // The box whose annotations are showing. Opened by clicking a box or picking it from the list,
-  // and stays open until another box is opened: clicking empty image doesn't close it.
+  // The box whose card is open (Rule 4.3). Opened by clicking a box or picking it from the list.
   const [openId, setOpenId] = useState<string | null>(null);
+  // Where the draft, or the box being edited, is now: the user may be moving it.
+  const [live, setLive] = useState<{ id: string; region: Region } | null>(null);
+  const [boxesVisible, setBoxesVisible] = useState(true);
+  const [panelEdge, setPanelEdge] = useState<Edge>("end");
+  // Bumped to auto-zoom to the box whose card is open (Rule 5.6).
+  const [focusRequest, setFocusRequest] = useState(0);
+  const requestFocus = () => setFocusRequest((n) => n + 1);
 
+  const layout = useScreenLayout();
   const byId = useMemo(() => new Map(regions.map((r) => [r.id, r])), [regions]);
 
   // Read by Annotorious event handlers, which outlive a single render.
@@ -107,6 +123,10 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
   const regionsRef = useRef(regions);
   // A region to open once the refreshed page data includes it.
   const selectAfterSave = useRef<string | null>(null);
+  // The box whose position to follow as it's moved, and whether a form in the card is open.
+  const trackedRef = useRef<string | null>(null);
+  const writingRef = useRef(false);
+  const openIdRef = useRef<string | null>(null);
 
   // ImageAnnotator attaches in the <img> onLoad handler, which never fires if the
   // server-rendered image finishes loading before hydration. Mount it client-only (ADR 0004).
@@ -115,6 +135,46 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
     () => true,
     () => false,
   );
+
+  const open = openId ? byId.get(openId) : undefined;
+
+  // After saving, keep the editor until the refreshed page data includes the change, so
+  // nothing blinks out or shows stale text.
+  const awaitingSaved = savedId !== null && !byId.has(savedId);
+  const showDraft = draftId !== null && (savedId === null || awaitingSaved);
+  const editedAnnotation = editing
+    ? byId.get(editing.regionId)?.annotations.find((a) => a.id === editing.annotationId)
+    : undefined;
+  const awaitingEdit = editing?.saved === true && editedAnnotation?.updatedAt === editing.since;
+  const editingNow = editing && editedAnnotation && (!editing.saved || awaitingEdit) ? editing : null;
+  const addingTo = adding ? byId.get(adding.regionId) : undefined;
+  const awaitingAdd = adding?.saved === true && !addingTo?.annotations.some((a) => a.mine);
+  const addingNow = adding && addingTo && (!adding.saved || awaitingAdd) ? adding : null;
+
+  // While a box can be drawn or moved, dragging on the image does that, so zoom and pan are off
+  // (Rules 2.5 and 6.1).
+  const boxActive = annotating || showDraft || (editingNow?.movable ?? false);
+  const writing = showDraft || editingNow !== null || addingNow !== null;
+  const cardOpen = showDraft || editingNow !== null || open !== undefined;
+
+  // The box the open card belongs to, where it is now.
+  const anchorId = showDraft ? draftId : (editingNow?.regionId ?? open?.id ?? null);
+  const anchorRegion =
+    anchorId === null ? null : live?.id === anchorId ? live.region : (byId.get(anchorId)?.region ?? null);
+
+  const { rootRef, stageRef, store, zoomTo } = useZoomView({
+    size: image.size,
+    layout,
+    panel: panelEdge,
+    onPanelEdge: setPanelEdge,
+    gestures: !boxActive,
+  });
+
+  useLayoutEffect(() => {
+    trackedRef.current = showDraft ? draftId : editingNow?.movable ? editingNow.regionId : null;
+    writingRef.current = writing;
+    openIdRef.current = openId;
+  });
 
   // Show the saved regions. Larger regions go first, so smaller ones render on top; clicks go to
   // the smallest box under the pointer anyway (Annotorious's hit-testing, ADR 0011).
@@ -133,6 +193,10 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anno, regions, byId, image.size]);
 
+  useEffect(() => {
+    anno?.setVisible(boxesVisible);
+  }, [anno, boxesVisible]);
+
   /** Check the draft box against the saved ones, as it's drawn and whenever it's moved. */
   const checkDraft = useCallback(
     (id: string) => {
@@ -147,9 +211,15 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
     if (!anno) return;
     const onSelectionChanged = (selection: ImageAnnotation[]) => {
       const id = selection[0]?.id;
-      // An empty selection (a click on empty image) leaves the open box open.
-      if (!id || id === draftRef.current) return;
+      if (!id) {
+        // A tap on empty image closes the card (Rule 5.10), unless the user is writing in it.
+        if (!writingRef.current) setOpenId(null);
+        return;
+      }
+      if (id === draftRef.current) return;
       if (savedIds.current.has(id)) {
+        // Auto-zoom to a newly opened box. Selecting the open box again (to edit it) doesn't.
+        if (id !== openIdRef.current) requestFocus();
         setOpenId(id);
         // Opening another box closes the add form. This event can arrive after addToExisting
         // opened the form for this same box, so keep it then.
@@ -163,14 +233,23 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
       draftRef.current = id;
       setDraftId(id);
       setSavedId(null);
+      // Drawing a new box closes the previous card (Rule 6.6), and zooms to the new one (Rule 6.3).
+      setOpenId(null);
+      setAdding(null);
+      const region = currentRegion(anno, id, image.size);
+      setLive(region ? { id, region } : null);
+      requestFocus();
       checkDraft(id);
     };
-    // Re-check the draft as it's moved or resized. The store reports every change as it happens;
-    // Annotorious's updateAnnotation event only fires once the box is deselected.
+    // Follow the draft, or the box being edited, as it's moved or resized. The store reports every
+    // change as it happens; Annotorious's updateAnnotation event only fires once it's deselected.
     const store = anno.state.store;
     const onStoreChange = (event: StoreChangeEvent<ImageAnnotation>) => {
-      const draft = draftRef.current;
-      if (draft && event.changes.updated?.some((u) => u.newValue.id === draft)) checkDraft(draft);
+      const tracked = trackedRef.current;
+      if (!tracked || !event.changes.updated?.some((u) => u.newValue.id === tracked)) return;
+      const region = currentRegion(anno, tracked, image.size);
+      if (region) setLive({ id: tracked, region });
+      if (tracked === draftRef.current) checkDraft(tracked);
     };
     anno.on("selectionChanged", onSelectionChanged);
     store.observe(onStoreChange);
@@ -178,7 +257,23 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
       anno.off("selectionChanged", onSelectionChanged);
       store.unobserve(onStoreChange);
     };
-  }, [anno, checkDraft]);
+  }, [anno, checkDraft, image.size]);
+
+  // Auto-zoom to the box whose card just opened (Rule 5.6).
+  const anchorRef = useRef(anchorRegion);
+  useLayoutEffect(() => {
+    anchorRef.current = anchorRegion;
+  });
+  useEffect(() => {
+    if (focusRequest > 0 && anchorRef.current) zoomTo(anchorRef.current);
+  }, [focusRequest, zoomTo]);
+
+  // When the on-screen keyboard opens over a card being typed into, zoom again within the space
+  // left, so the box and the card both stay above it (Rule 8.2).
+  const keyboard = layout?.keyboard ?? false;
+  useEffect(() => {
+    if (keyboard && writing && anchorRef.current) zoomTo(anchorRef.current);
+  }, [keyboard, writing, zoomTo]);
 
   function selectSavedIfReady() {
     const id = selectAfterSave.current;
@@ -189,11 +284,13 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
     }
   }
 
-  /** Open a box's annotations, as a click on it would. */
+  /** Open a box's card, as a click on it would, and zoom to it. */
   function openRegion(id: string) {
     anno?.setSelected(id);
     setOpenId(id);
     setAdding(null);
+    setBoxesVisible(true);
+    requestFocus();
   }
 
   function discardDraft() {
@@ -213,7 +310,28 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
   function stopEditing() {
     if (editingNow) restoreShape(editingNow.regionId);
     setEditing(null);
+    setLive(null);
   }
+
+  /** Close the card (its close button, Escape, or a tap on empty image), leaving the view as it is (Rule 5.10). */
+  const closeCard = useCallback(() => {
+    discardDraft();
+    stopEditing();
+    setAdding(null);
+    setOpenId(null);
+    anno?.cancelSelected();
+    // discardDraft and stopEditing only use refs, state setters and the current render's data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anno, editingNow, byId]);
+
+  useEffect(() => {
+    if (!cardOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isTextField(document.activeElement)) closeCard();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [cardOpen, closeCard]);
 
   function toggleAnnotating() {
     // Also clears a draft left over from the last save.
@@ -221,6 +339,8 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
     stopEditing();
     setAdding(null);
     anno?.cancelSelected();
+    // Entering annotate mode shows the boxes (Rule 6.2).
+    if (!annotating) setBoxesVisible(true);
     setAnnotating(!annotating);
   }
 
@@ -248,25 +368,6 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
     setAdding({ regionId, saved: false });
   }
 
-  const open = openId ? byId.get(openId) : undefined;
-
-  // After saving, keep the editor until the refreshed page data includes the change, so
-  // nothing blinks out or shows stale text.
-  const awaitingSaved = savedId !== null && !byId.has(savedId);
-  const showDraft = draftId !== null && (savedId === null || awaitingSaved);
-  const editedAnnotation = editing
-    ? byId.get(editing.regionId)?.annotations.find((a) => a.id === editing.annotationId)
-    : undefined;
-  const awaitingEdit = editing?.saved === true && editedAnnotation?.updatedAt === editing.since;
-  const editingNow = editing && editedAnnotation && (!editing.saved || awaitingEdit) ? editing : null;
-  const addingTo = adding ? byId.get(adding.regionId) : undefined;
-  const awaitingAdd = adding?.saved === true && !addingTo?.annotations.some((a) => a.mine);
-  const addingNow = adding && addingTo && (!adding.saved || awaitingAdd) ? adding : null;
-
-  // While a box can be drawn or moved, dragging on the image must do that rather than
-  // scroll the page. Matters on touch screens (mobile annotate mode).
-  const boxActive = annotating || showDraft || (editingNow?.movable ?? false);
-
   // The box being drawn or edited, or else the open one, stands out. Annotorious re-applies
   // this whenever it changes.
   const highlighted = showDraft ? draftId : (editingNow?.regionId ?? open?.id ?? null);
@@ -282,42 +383,115 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
       alt={image.title}
       width={image.size.width}
       height={image.size.height}
-      className="h-auto w-full"
+      draggable={false}
+      className="block size-full max-w-none"
     />
   );
 
+  let card: ReactNode = null;
+  if (showDraft) {
+    card = (
+      <>
+        {draftClash && byId.has(draftClash) && (
+          <ClashNotice
+            onAdd={() => addToExisting(draftClash)}
+            onAdjust={() => draftId && anno?.setSelected(draftId, true)}
+          />
+        )}
+        <AnnotationEditor
+          key={draftId}
+          label="What's in this region?"
+          initialBody=""
+          saving={awaitingSaved}
+          blocked={draftClash !== null}
+          onCancel={discardDraft}
+          onSave={async (body) => {
+            const region = currentRegion(anno, draftId, image.size);
+            if (!region) return { ok: false, error: "Draw a box on the image first." };
+            const problem = checkRegion(region);
+            if (problem) return { ok: false, error: problem };
+            const result = await createAnnotation({ imageId: image.id, region, body });
+            if (!result.ok) {
+              // Someone else's box may have arrived since the page loaded.
+              if ("clashWith" in result) setDraftClash(result.clashWith);
+              return result;
+            }
+            // Stay in annotate mode, to draw another box nearby (Rule 6.6).
+            setSavedId(result.regionId);
+            // The refreshed page data may arrive before or after this point. When it does,
+            // replacing the annotations removes the draft box and opens the saved one.
+            selectAfterSave.current = result.regionId;
+            selectSavedIfReady();
+            return result;
+          }}
+        />
+      </>
+    );
+  } else if (editingNow && editedAnnotation) {
+    card = (
+      <>
+        {editingNow.movable && <p className="text-sm text-zinc-500">Drag the box or its corners to adjust it.</p>}
+        <AnnotationEditor
+          key={editingNow.annotationId}
+          label="Edit annotation"
+          initialBody={editedAnnotation.body}
+          saving={awaitingEdit}
+          onCancel={() => {
+            stopEditing();
+            openRegion(editingNow.regionId);
+          }}
+          onSave={async (body) => {
+            let region: Region | undefined;
+            if (editingNow.movable) {
+              const box = currentRegion(anno, editingNow.regionId, image.size);
+              if (!box) return { ok: false, error: "Select the box on the image first." };
+              const problem = checkRegion(box);
+              if (problem) return { ok: false, error: problem };
+              region = box;
+            }
+            const result = await updateAnnotation({ id: editingNow.annotationId, region, body });
+            if (result.ok) {
+              setEditing({ ...editingNow, saved: true });
+              selectAfterSave.current = editingNow.regionId;
+            }
+            return result;
+          }}
+        />
+      </>
+    );
+  } else if (open) {
+    card = (
+      <RegionCard
+        key={open.id}
+        region={open}
+        canAdd={canAnnotate && !open.annotations.some((a) => a.mine)}
+        adding={addingNow !== null && addingNow.regionId === open.id}
+        addSaving={awaitingAdd}
+        onStartAdd={() => setAdding({ regionId: open.id, saved: false })}
+        onCancelAdd={() => setAdding(null)}
+        onAdd={async (body) => {
+          const result = await addAnnotation({ regionId: open.id, body });
+          if (result.ok) setAdding({ regionId: open.id, saved: true });
+          return result;
+        }}
+        onEdit={(a) => startEditing(open, a)}
+      />
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      <div className="min-w-0 flex-1">
-        <div className="mb-3 flex min-h-9 flex-wrap items-center gap-3">
-          {canAnnotate ? (
-            <>
-              <button
-                type="button"
-                onClick={toggleAnnotating}
-                aria-pressed={annotating}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-                  annotating
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                    : "border border-zinc-300 dark:border-zinc-700"
-                }`}
-              >
-                {annotating ? "Done annotating" : "Annotate"}
-              </button>
-              {annotating && !showDraft && (
-                <span className="text-sm text-zinc-500">Drag a box over the part of the image you want to explain.</span>
-              )}
-              {editingNow?.movable && (
-                <span className="text-sm text-zinc-500">Drag the box or its corners to adjust it.</span>
-              )}
-            </>
-          ) : (
-            signInPrompt
-          )}
-        </div>
-        <div style={boxActive ? { touchAction: "none" } : undefined}>
+    <>
+      <div
+        ref={rootRef}
+        className={`fixed inset-0 touch-none select-none overflow-hidden bg-neutral-900 ${
+          boxActive ? "cursor-crosshair" : "cursor-grab data-dragging:cursor-grabbing"
+        }`}
+      >
+        {/* Sized and positioned as the image by useZoomView; hidden until it's measured the screen. */}
+        <div ref={stageRef} className="invisible absolute left-0 top-0">
           {isClient ? (
             <ImageAnnotator
+              containerClassName="size-full"
               drawingEnabled={annotating && !showDraft}
               style={style}
               userSelectAction={(a: ImageAnnotation) =>
@@ -331,119 +505,70 @@ function AnnotatedImageInner({ image, regions, canAnnotate, signInPrompt }: Prop
           ) : (
             plainImage
           )}
+          {/* Keyboard access to the boxes, in list order: Tab moves through them, Enter opens one. */}
+          {boxesVisible &&
+            regions.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => openRegion(r.id)}
+                aria-label={`Annotation: ${summary(r.annotations[0]?.body ?? "")}`}
+                style={{
+                  left: `${r.region.x * 100}%`,
+                  top: `${r.region.y * 100}%`,
+                  width: `${r.region.w * 100}%`,
+                  height: `${r.region.h * 100}%`,
+                }}
+                className="pointer-events-none absolute opacity-0 outline-2 outline-offset-2 outline-sky-400 focus-visible:opacity-100 focus-visible:outline"
+              />
+            ))}
         </div>
       </div>
 
-      <aside className="flex flex-col gap-4 lg:w-80 lg:shrink-0">
-        {showDraft ? (
-          <EditorSheet>
-            {draftClash && byId.has(draftClash) && (
-              <ClashNotice
-                onAdd={() => addToExisting(draftClash)}
-                onAdjust={() => draftId && anno?.setSelected(draftId, true)}
-              />
-            )}
-            <AnnotationEditor
-              key={draftId}
-              label="What's in this region?"
-              initialBody=""
-              saving={awaitingSaved}
-              blocked={draftClash !== null}
-              onCancel={discardDraft}
-              onSave={async (body) => {
-                const region = currentRegion(anno, draftId, image.size);
-                if (!region) return { ok: false, error: "Draw a box on the image first." };
-                const problem = checkRegion(region);
-                if (problem) return { ok: false, error: problem };
-                const result = await createAnnotation({ imageId: image.id, region, body });
-                if (!result.ok) {
-                  // Someone else's box may have arrived since the page loaded.
-                  if ("clashWith" in result) setDraftClash(result.clashWith);
-                  return result;
-                }
-                setAnnotating(false);
-                setSavedId(result.regionId);
-                // The refreshed page data may arrive before or after this point. When it does,
-                // replacing the annotations removes the draft box and opens the saved one.
-                selectAfterSave.current = result.regionId;
-                selectSavedIfReady();
-                return result;
-              }}
-            />
-          </EditorSheet>
-        ) : editingNow && editedAnnotation ? (
-          <EditorSheet>
-            <AnnotationEditor
-              key={editingNow.annotationId}
-              label="Edit annotation"
-              initialBody={editedAnnotation.body}
-              saving={awaitingEdit}
-              onCancel={() => {
-                stopEditing();
-                openRegion(editingNow.regionId);
-              }}
-              onSave={async (body) => {
-                let region: Region | undefined;
-                if (editingNow.movable) {
-                  const box = currentRegion(anno, editingNow.regionId, image.size);
-                  if (!box) return { ok: false, error: "Select the box on the image first." };
-                  const problem = checkRegion(box);
-                  if (problem) return { ok: false, error: problem };
-                  region = box;
-                }
-                const result = await updateAnnotation({ id: editingNow.annotationId, region, body });
-                if (result.ok) {
-                  setEditing({ ...editingNow, saved: true });
-                  selectAfterSave.current = editingNow.regionId;
-                }
-                return result;
-              }}
-            />
-          </EditorSheet>
-        ) : open ? (
-          <RegionCard
-            key={open.id}
-            region={open}
-            canAdd={canAnnotate && !open.annotations.some((a) => a.mine)}
-            adding={addingNow !== null && addingNow.regionId === open.id}
-            addSaving={awaitingAdd}
-            onStartAdd={() => setAdding({ regionId: open.id, saved: false })}
-            onCancelAdd={() => setAdding(null)}
-            onAdd={async (body) => {
-              const result = await addAnnotation({ regionId: open.id, body });
-              if (result.ok) setAdding({ regionId: open.id, saved: true });
-              return result;
-            }}
-            onEdit={(a) => startEditing(open, a)}
-          />
-        ) : (
-          <p className="text-sm text-zinc-500">
-            {regions.length > 0 ? "Click or tap a highlighted region, or pick one below." : "No annotations yet."}
-          </p>
-        )}
+      {layout && (
+        <UiPanel
+          layout={layout}
+          edge={panelEdge}
+          hidden={cardOpen}
+          onFlip={() => setPanelEdge(panelEdge === "start" ? "end" : "start")}
+          title={image.title}
+          annotate={
+            canAnnotate ? (
+              <button
+                type="button"
+                onClick={toggleAnnotating}
+                aria-pressed={annotating}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                  annotating
+                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                    : "border border-zinc-300 dark:border-zinc-700"
+                }`}
+              >
+                {annotating ? "Done annotating" : "Annotate"}
+              </button>
+            ) : (
+              signInPrompt
+            )
+          }
+          hint={annotating ? "Drag a box over the part of the image you want to explain." : null}
+          entries={regions.map((r) => ({
+            id: r.id,
+            label: summary(r.annotations[0]?.body ?? ""),
+            more: r.annotations.length - 1,
+          }))}
+          onPick={openRegion}
+          boxesVisible={boxesVisible}
+          onToggleBoxes={() => setBoxesVisible(!boxesVisible)}
+          about={about}
+        />
+      )}
 
-        {regions.length > 0 && (
-          <ul className="flex flex-col gap-1">
-            {regions.map((r) => (
-              <li key={r.id}>
-                <button
-                  type="button"
-                  onClick={() => openRegion(r.id)}
-                  className={`w-full truncate rounded-md px-2 py-1 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-900 ${
-                    open?.id === r.id ? "font-semibold" : ""
-                  }`}
-                >
-                  {summary(r.annotations[0]?.body ?? "")}
-                  {r.annotations.length > 1 && (
-                    <span className="font-normal text-zinc-500"> +{r.annotations.length - 1}</span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </aside>
-    </div>
+      {layout && card && anchorRegion && (
+        <FloatingCard store={store} layout={layout} region={anchorRegion} size={image.size} onClose={closeCard}>
+          {card}
+        </FloatingCard>
+      )}
+    </>
   );
 }
 
@@ -455,23 +580,72 @@ function currentRegion(anno: AnnotoriousImageAnnotator | undefined, id: string |
 }
 
 /**
- * On narrow screens the editor sits fixed at the bottom of the screen, so the box being
- * drawn stays in view above it. It rides on top of the on-screen keyboard and takes at most
- * 55% of the area left visible, so neither the keyboard nor the sheet hides the box.
- * From the lg breakpoint it sits in the side panel.
+ * A card floating beside its box (Rule 5): a constant size on screen, inside the visible area, and
+ * following the box as the view moves. If it has to cover the box, its background turns
+ * translucent so both stay readable (Rule 5.7).
  */
-function EditorSheet({ children }: { children: ReactNode }) {
-  const { inset, visibleHeight } = useKeyboardInset();
-  const vars = {
-    "--keyboard-inset": `${inset}px`,
-    "--visible-height": visibleHeight === null ? "100dvh" : `${visibleHeight}px`,
-  } as CSSProperties;
+function FloatingCard({
+  store,
+  layout,
+  region,
+  size,
+  onClose,
+  children,
+}: {
+  store: ViewStore;
+  layout: ScreenLayout;
+  region: Region;
+  size: ImageSize;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const view = useSyncExternalStore(store.subscribe, store.get, store.get);
+  const ref = useRef<HTMLDivElement>(null);
+  const [measured, setMeasured] = useState<Size | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setMeasured({ w: el.offsetWidth, h: el.offsetHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const { area, orientation, keyboard } = layout;
+  const max = cardMaxSize(area, orientation);
+  const place = measured
+    ? placeCard(regionOnScreen(region, size, view), measured, area, orientation, cardSide(region, orientation), keyboard)
+    : null;
+
   return (
     <div
-      style={vars}
-      className="fixed inset-x-0 bottom-[var(--keyboard-inset)] z-20 flex max-h-[calc(var(--visible-height)*0.55)] flex-col gap-3 overflow-y-auto border-t border-zinc-200 bg-white p-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] dark:border-zinc-800 dark:bg-zinc-950 lg:static lg:z-auto lg:max-h-none lg:overflow-visible lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none dark:lg:bg-transparent"
+      ref={ref}
+      role="dialog"
+      aria-label="Annotation"
+      style={{
+        left: place?.x ?? 0,
+        top: place?.y ?? 0,
+        width: max.w,
+        maxHeight: max.h,
+        visibility: place ? "visible" : "hidden",
+      }}
+      className={`fixed z-30 flex touch-pan-y flex-col overflow-hidden rounded-xl text-zinc-900 shadow-xl dark:text-zinc-100 ${
+        place?.overlap ? "bg-white/80 backdrop-blur-md dark:bg-zinc-900/80" : "bg-white dark:bg-zinc-900"
+      }`}
     >
-      {children}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute right-1.5 top-1.5 z-10 grid size-8 place-items-center rounded-md text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+      >
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+      </button>
+      <div className="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain p-4 pr-10">{children}</div>
     </div>
   );
 }
@@ -479,7 +653,7 @@ function EditorSheet({ children }: { children: ReactNode }) {
 /** Shown while a new box overlaps an existing one too much (ADR 0011). */
 function ClashNotice({ onAdd, onAdjust }: { onAdd: () => void; onAdjust: () => void }) {
   return (
-    <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-700 dark:bg-amber-950">
+    <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950">
       <p>
         This box overlaps an existing one too much: one of them would be hard to click. Add to that annotation instead,
         or adjust your box.
@@ -522,7 +696,7 @@ function RegionCard({
   onEdit: (annotation: AnnotationData) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       {region.annotations.map((a) => (
         <AnnotationItem key={a.id} annotation={a} onEdit={() => onEdit(a)} />
       ))}
@@ -564,7 +738,7 @@ function AnnotationItem({ annotation: a, onEdit }: { annotation: AnnotationData;
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+    <div className="border-zinc-200 pt-4 first:pt-0 dark:border-zinc-800 [&:not(:first-child)]:border-t">
       <Markdown>{a.body}</Markdown>
       <p className="mt-3 text-xs text-zinc-500">
         By {a.authorName ?? "someone"} · {formatDate(a.createdAt)}
@@ -650,18 +824,18 @@ function AnnotationEditor({
         e.preventDefault();
         save();
       }}
-      className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800"
+      className="flex flex-col gap-3"
     >
       <label className="flex flex-col gap-2">
         <span className="text-sm font-medium">{label}</span>
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          rows={5}
+          rows={4}
           maxLength={BODY_MAX}
           ref={textarea}
           disabled={busy}
-          className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+          className="rounded-md border border-zinc-300 px-3 py-2 text-base sm:text-sm dark:border-zinc-700 dark:bg-zinc-950"
         />
         <span className="text-xs text-zinc-500">
           Markdown works: **bold**, _italic_, [links](https://example.com), lists.
@@ -692,7 +866,7 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
-/** First line of an annotation as plain-ish text, for the list. */
+/** First line of an annotation as plain-ish text, for the list and box labels. */
 function summary(body: string) {
   const firstLine = body.split("\n").find((line) => line.trim()) ?? "";
   return firstLine.replace(/[#*_`>\[\]]/g, "").replace(/\(https?:[^)]*\)/g, "").trim() || "Annotation";

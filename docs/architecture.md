@@ -38,7 +38,7 @@ A region is a box on the image, holding one or more annotations by any users ([A
 ## Key risks
 
 - **Region alignment on resize and zoom:** fractional coordinates plus an overlay over the rendered image. Milestone 1 proves this.
-- **Mobile interaction:** dragging a box conflicts with scrolling, so drawing only happens in an explicit "annotate mode".
+- **Mobile interaction:** dragging a box conflicts with panning, so drawing only happens in an explicit "annotate mode", where zoom and pan are off.
 - **Overlapping regions:** smaller regions render on top so they stay clickable.
 - **Image storage and abuse:** size limits on signed uploads; a report/takedown path.
 
@@ -58,34 +58,36 @@ src/generated/prisma  Generated Prisma Client (gitignored)
 Each URL is a separate page rendered on the server. Next.js then navigates between pages in the browser without full reloads, so the site behaves like a single-page app. Folders under `src/app` are URL paths, and `[id]` is a dynamic segment (any image ID). Only `page.tsx`, `layout.tsx` and `route.ts` create routes; other files in a folder belong to that page. Paths below are relative to `src/app/`.
 
 ```
-layout.tsx  root: <html>, header, fonts, globals.css                server
-├─ user-menu.tsx  UserMenu / SignInButton (header, in <Suspense>)    server
+layout.tsx  root: <html>, fonts, globals.css, viewport              server
+├─ user-menu.tsx  UserMenu / SignInButton                            server
 │
-├─ /                 page.tsx                                        server
-│     home: grid of recent images, linking to /images/[id]
-│
-├─ /upload           upload/page.tsx                                 server
-│  │  signed out → SignInButton (user-menu.tsx)
-│  └─ UploadForm     upload/upload-form.tsx                          client
-│       └─ DuplicateWarning (same file)
-│       actions: upload/actions.ts
-│                requestUpload, createImage, discardUpload
+├─ (site)/layout.tsx  the site header, on every page but the image page
+│  ├─ /              (site)/page.tsx                                 server
+│  │    home: grid of recent images, linking to /images/[id]
+│  ├─ /upload        (site)/upload/page.tsx                          server
+│  │  │  signed out → SignInButton (user-menu.tsx)
+│  │  └─ UploadForm  (site)/upload/upload-form.tsx                   client
+│  │       └─ DuplicateWarning (same file)
+│  │       actions: (site)/upload/actions.ts
+│  │                requestUpload, createImage, discardUpload
+│  └─ /spike         (site)/spike/page.tsx, annotated-image.tsx, data.ts
+│       milestone 1 prototype; not linked from the site
 │
 ├─ /images/[id]      images/[id]/page.tsx                            server
-│  │  loads the image and its annotations; 404 if the ID is unknown
-│  ├─ ImageHeader    images/[id]/image-header.tsx                    client
-│  │    title, description, Edit details, Delete image
+│  │  loads the image and its annotations; 404 if the ID is unknown.
+│  │  Full screen, no site header (docs/enrich-UI.md, ADR 0012)
 │  ├─ AnnotatedImage images/[id]/annotated-image.tsx                 client
+│  │    ├─ useZoomView  images/[id]/use-zoom-view.ts: zoom, pan, gestures
 │  │    ├─ Annotorious ImageAnnotator: the image and its regions
-│  │    ├─ RegionCard, AnnotationItem, AnnotationEditor, ClashNotice, EditorSheet
+│  │    ├─ FloatingCard: RegionCard, AnnotationItem, AnnotationEditor, ClashNotice
+│  │    ├─ UiPanel   images/[id]/ui-panel.tsx: title, Annotate, list, About
 │  │    └─ Markdown  images/[id]/markdown.tsx
-│  ├─ ReportLink     (in page.tsx)                                   server
+│  ├─ ImageDetails   images/[id]/image-details.tsx (the panel's About)  client
+│  │    byline, description, Edit details, Delete image
+│  ├─ UserMenu, ReportLink (the panel's About; ReportLink in page.tsx)  server
 │  └─ actions: images/[id]/actions.ts
 │              createAnnotation, addAnnotation, updateAnnotation,
 │              deleteAnnotation, updateImage, deleteImage
-│
-├─ /spike            spike/page.tsx, annotated-image.tsx, data.ts
-│     milestone 1 prototype; not linked from the site
 │
 └─ /api/auth/*       api/auth/[...nextauth]/route.ts → src/auth.ts
       GitHub sign-in and sign-out; no view of its own
@@ -108,11 +110,11 @@ Uploading requires sign-in; both server actions reject anonymous calls.
 
 1. The image page (`src/app/images/[id]/page.tsx`) loads the image with its regions, each region's annotations and each author's name, and passes them to a client component, `annotated-image.tsx`. It sends only the fields the browser needs.
 2. Annotorious draws each saved region, converting fractions to pixels with the image's stored size. Where boxes overlap, a click goes to the smallest box under the pointer (Annotorious sorts its hits by area; [ADR 0011](adr/0011-regions-and-overlap.md)). Larger regions are added first, so smaller ones also look on top.
-3. **Clicking** a box, or its entry in the list, opens its annotations in the panel. Hovering does nothing. The box stays open until another box is opened: clicking empty image doesn't close it. The open box is drawn prominently (thick amber outline, light fill), and the others recede (thin, faint outlines).
-4. Approved users click **Annotate** to turn on drawing, then drag a box. That box is a draft: it isn't saved yet, and it can be moved or resized. Only one draft exists at a time.
+3. **Clicking** a box, or its entry in the UI panel's list, opens its annotations in a card beside it, and the view zooms so the box and card fill the screen side by side ([enrich-UI.md](enrich-UI.md), Rule 5). Hovering does nothing. Clicking empty image, Escape or the card's close button closes it, leaving the view where it is. The open box is drawn prominently (thick amber outline, light fill), and the others recede (thin, faint outlines).
+4. Approved users click **Annotate** to turn on drawing (zoom and pan are off meanwhile), then drag a box. The editor opens as a card beside it. That box is a draft: it isn't saved yet, and it can be moved or resized. Only one draft exists at a time.
 5. While the draft is drawn or adjusted, the browser checks it against the other boxes (`src/lib/overlap.ts`). If any box would keep less than 25% of its area clickable, the editor says so, disables Save, and offers **Add to that annotation** or **Adjust my box**.
 6. **Save** reads the box as it is now, converts it to fractions, and calls the `createAnnotation` server action with the text.
-7. The action checks the session, the region (inside the image and not tiny), the overlap rule and the text (not empty, at most 5,000 characters), then creates the `Region` with its first `Annotation`. It calls `refresh()`, so the page re-renders with the new region, which is then opened.
+7. The action checks the session, the region (inside the image and not tiny), the overlap rule and the text (not empty, at most 5,000 characters), then creates the `Region` with its first `Annotation`. It calls `refresh()`, so the page re-renders with the new region, which is then opened. The user stays in annotate mode, to draw another box.
 8. An open box's card lists all its annotations, oldest first, with **+ Add your annotation** for approved users who haven't annotated it yet. That calls `addAnnotation`.
 
 Annotation text is untrusted, so it's rendered without HTML or images ([ADR 0008](adr/0008-markdown-rendering.md)).
@@ -125,8 +127,8 @@ Authors can edit or delete their own annotations, and owners their own images ([
 - **Edit annotation** opens the editor with the text. If you drew the box and it holds only your annotations, the box also becomes movable and resizable, and Save sends the new region too, checked against the overlap rule. Cancel puts the box back.
 - **Delete annotation** and **Delete image** ask for confirmation inside the page, not with a browser dialog. Deleting a box's last annotation deletes the box too.
 - **Deleting an image** deletes the row, and with it every annotation on the image, including other people's, through `onDelete: Cascade`. Then it deletes the file from R2. If that fails, the error is logged and the file is left behind; see Known gaps.
-- **Mobile annotate mode:** while a box can be drawn or moved, the image has `touch-action: none`, so dragging edits the box instead of scrolling the page. Below the `lg` breakpoint, the editor is a sheet fixed to the bottom of the screen, so the box stays visible above it.
-- **On-screen keyboard:** browsers don't report it, so `useKeyboardInset` (`src/lib/use-keyboard-inset.ts`) compares the visual viewport with the layout viewport. The editor sheet sits on top of the keyboard and takes at most 55% of the area left visible. On iOS, which only shrinks the visual viewport, that lifts the sheet; on Android, the root layout's `interactiveWidget: "resizes-content"` shrinks the layout viewport, so the sheet is already above the keyboard. Pinch-zoom also shrinks the visual viewport, so it only counts when the page isn't zoomed.
+- **Mobile annotate mode:** the whole image page has `touch-action: none` and the app owns zoom ([ADR 0012](adr/0012-app-owned-zoom.md)). While a box can be drawn or moved, dragging edits the box instead of panning. When the on-screen keyboard opens over a card, the view zooms again within the space left above it.
+- **On-screen keyboard and safe area:** browsers don't report the keyboard, so `useScreenLayout` (`src/lib/use-screen-layout.ts`) compares the visual viewport with the layout viewport, and reads the safe area from `env(safe-area-inset-*)` (the image page sets `viewport-fit=cover`). The view, the UI panel and cards use the resulting visible area. On iOS, the keyboard only shrinks the visual viewport; on Android, the root layout's `interactiveWidget: "resizes-content"` shrinks the layout viewport. Pinch-zoom also shrinks the visual viewport, but the image page owns zoom, so the browser's stays at 1.
 
 ## Deployment
 
@@ -136,3 +138,4 @@ Vercel hosts the app, with Neon Postgres and a production R2 bucket ([ADR 0009](
 
 - An upload abandoned between steps 3 and 4, or an R2 delete that fails after an image is deleted, leaves an orphaned object in R2. A periodic cleanup of keys with no `Image` row would fix both.
 - The home grid loads full-size images as thumbnails; resized variants would cut bandwidth.
+- The image page zooms the full-size original up to 4× native pixels; tiled images would cut bandwidth on large paintings (ADR 0012).

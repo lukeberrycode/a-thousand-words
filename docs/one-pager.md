@@ -28,7 +28,7 @@ The MVP proves the core loop: upload an image, mark a region, explain it, and le
 | Image upload | JPEG, PNG, WebP up to 10 MB; title and short description |
 | Image page | Public URL per image; annotated regions shown as subtle highlights |
 | Create annotation | Draw a rectangle, write Markdown text, save |
-| Read annotation | Hover or tap a region to open its annotation in a side panel |
+| Read annotation | Tap or click a region to open its annotation in a card beside it |
 | Edit / delete | Authors can edit or delete their own annotations and images |
 | Browse | Home page listing recent images |
 
