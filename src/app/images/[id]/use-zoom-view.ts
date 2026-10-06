@@ -141,26 +141,37 @@ export function useZoomView({ size, layout, panel, onPanelEdge, gestures }: Opti
     [animateTo],
   );
 
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
+  const limits = useCallback(() => {
+    const { size, layout } = latest.current;
+    return layout ? zoomLimits(size, layout.area) : { min: 0, max: Infinity };
+  }, []);
 
-    const limits = () => {
-      const { size, layout } = latest.current;
-      return layout ? zoomLimits(size, layout.area) : { min: 0, max: Infinity };
-    };
-    const areaCentre = () => {
-      const a = latest.current.layout?.area;
-      return a ? { x: a.x + a.w / 2, y: a.y + a.h / 2 } : { x: innerWidth / 2, y: innerHeight / 2 };
-    };
-    const zoomBy = (factor: number, at: { x: number; y: number }, animate = false) => {
+  /** Zoom by a factor around a screen point, within the zoom limits. */
+  const zoomBy = useCallback(
+    (factor: number, at: { x: number; y: number }, animate = false) => {
       const view = store.get();
       const { min, max } = limits();
       const scale = Math.min(max, Math.max(min, view.scale * factor));
       const next = clamp(zoomAround(view, scale, at));
       if (animate) animateTo(next);
       else apply(next);
-    };
+    },
+    [store, limits, clamp, animateTo, apply],
+  );
+
+  /** One step in or out around the centre of the visible area: the + and − keys and buttons. */
+  const zoomStep = useCallback(
+    (direction: "in" | "out") => {
+      if (!latest.current.gestures) return;
+      zoomBy(direction === "in" ? KEY_ZOOM : 1 / KEY_ZOOM, areaCentre(latest.current.layout), true);
+    },
+    [zoomBy],
+  );
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
     const fit = () => {
       const { size, layout, panel } = latest.current;
       if (layout) animateTo(fitView(size, layout.area, layout.orientation, panel));
@@ -350,12 +361,12 @@ export function useZoomView({ size, layout, panel, onPanelEdge, gestures }: Opti
         e.preventDefault();
         if (!gestures) return;
         if (e.key === "0") fit();
-        else zoomBy(e.key === "-" || e.key === "_" ? 1 / KEY_ZOOM : KEY_ZOOM, areaCentre(), true);
+        else zoomStep(e.key === "-" || e.key === "_" ? "out" : "in");
         return;
       }
       if (!gestures || e.altKey || e.defaultPrevented || isTextField(document.activeElement)) return;
-      if (e.key === "+" || e.key === "=") zoomBy(KEY_ZOOM, areaCentre(), true);
-      else if (e.key === "-" || e.key === "_") zoomBy(1 / KEY_ZOOM, areaCentre(), true);
+      if (e.key === "+" || e.key === "=") zoomStep("in");
+      else if (e.key === "-" || e.key === "_") zoomStep("out");
       else if (e.key === "ArrowLeft") panBy(KEY_PAN, 0, true);
       else if (e.key === "ArrowRight") panBy(-KEY_PAN, 0, true);
       else if (e.key === "ArrowUp") panBy(0, KEY_PAN, true);
@@ -387,11 +398,11 @@ export function useZoomView({ size, layout, panel, onPanelEdge, gestures }: Opti
       document.removeEventListener("gesturechange", onGestureChange);
       document.removeEventListener("gestureend", preventDefault);
     };
-  }, [store, apply, clamp, animateTo, stopAnimation]);
+  }, [store, apply, clamp, animateTo, stopAnimation, limits, zoomBy, zoomStep]);
 
   useEffect(() => stopAnimation, [stopAnimation]);
 
-  return { rootRef, stageRef, store: store as ViewStore, zoomTo };
+  return { rootRef, stageRef, store: store as ViewStore, zoomTo, zoomStep };
 }
 
 function createStore() {
@@ -408,6 +419,11 @@ function createStore() {
       return () => void listeners.delete(listener);
     },
   };
+}
+
+function areaCentre(layout: ScreenLayout | null) {
+  const a = layout?.area;
+  return a ? { x: a.x + a.w / 2, y: a.y + a.h / 2 } : { x: innerWidth / 2, y: innerHeight / 2 };
 }
 
 const midpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });

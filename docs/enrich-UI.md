@@ -17,7 +17,7 @@ The aim is immersion: the experience should feel like looking closely at a paint
 | **Safe area** | The part of the viewport not covered by a phone's notch, camera cut-out, rounded corners or home indicator. On screens without these, it's the whole viewport. See Rule 7. |
 | **Short edges** | The two edges along the viewport's shorter dimension: top and bottom in portrait, left and right in landscape. |
 | **Fit size** | The zoom at which the whole image is visible (see Rule 1). |
-| **UI panel** | Everything that isn't the artwork or an annotation: site name, title, description, the Annotate button, sign-in, Upload, Edit details, Delete image, the annotation list, the hide-boxes toggle, the UI flip button and the Report link. |
+| **UI panel** | Everything that isn't the artwork or an annotation: site name, title, description, the Annotate button, sign-in, Upload, Edit details, Delete image, the annotation list, the hide-boxes toggle, the zoom buttons (mouse and trackpad only), the UI flip button and the Report link. |
 | **Box** | An annotation's region, drawn as an outline on the image. |
 | **Card** | An annotation's text, shown floating next to its box. Also the form for writing or editing an annotation. |
 | **Selected** | The annotation whose card is open. At most one at a time. |
@@ -76,6 +76,8 @@ This covers the image page (`/images/[id]`). The home page and upload page are u
 3.6. When the panel changes edge, by dragging or the flip button, Rule 1.2 applies again: an image smaller than the viewport moves to the opposite edge, keeping the spare space under the panel.
 
 3.7. The panel is **hidden while a card is open** (Rule 5.8), and comes back when it closes.
+
+3.8. On devices with a mouse or trackpad, the panel has **zoom in and zoom out buttons** next to the flip button. They zoom one step around the centre of the visible area, like `+` and `-`, and are disabled in annotate mode. They're a fallback for browsers that don't pass trackpad pinches to the page, such as some on Linux under X11. Touch screens don't show them: pinch works there.
 
 ### 4. Annotation boxes
 
