@@ -1,5 +1,5 @@
 import { DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { Pool } from "pg";
+import { defaults, Pool } from "pg";
 
 // The database and R2 bucket the dev server uses, from .env. The app's own modules for these are
 // "server-only", and the generated Prisma client is an ES module, which Playwright can't load from
@@ -10,6 +10,10 @@ function env(name: string): string {
   if (!value) throw new Error(`Missing environment variable ${name}. See .env.example.`);
   return value;
 }
+
+// The timestamp columns hold UTC without a time zone, as Prisma writes them. pg would otherwise send
+// a Date in local time, an hour out under BST, so a test annotation made "an hour ago" was dated now.
+defaults.parseInputDatesAsUTC = true;
 
 // One connection, for the same reason the tests run one at a time (playwright.config.ts).
 const pool = new Pool({ connectionString: env("DATABASE_URL"), max: 1 });
