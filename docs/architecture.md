@@ -82,7 +82,7 @@ Authors can edit or delete their own annotations, and owners their own images ([
 
 ## Deployment
 
-Vercel hosts the app, with Neon Postgres and a production R2 bucket ([ADR 0009](adr/0009-deploy-vercel-neon.md)). Migrations are applied by hand with `npm run prod:migrate`, not during the build. Seed content (`prisma/seed-data.ts`, loaded by `prisma/seed.ts`) is 12 public-domain paintings from Wikimedia Commons. They're stored under `images/seed/<slug>.jpg` and owned by an "A Thousand Words" user. Every image page has a "Report it" link that emails `REPORT_EMAIL`.
+Vercel hosts the app at https://a-thousand-words-pi.vercel.app/, with Neon Postgres and a production R2 bucket ([ADR 0009](adr/0009-deploy-vercel-neon.md)). Migrations are applied by hand with `npm run prod:migrate`, not during the build. Seed content (`prisma/seed-data.ts`, loaded by `prisma/seed.ts`) is 12 public-domain paintings from Wikimedia Commons. They're stored under `images/seed/<slug>.jpg` and owned by an "A Thousand Words" user. Every image page has a "Report it" link that emails `REPORT_EMAIL`.
 
 ## Known gaps
 
