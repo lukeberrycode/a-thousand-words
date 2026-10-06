@@ -11,8 +11,10 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:users": "tsx scripts/users.ts",
     "prod:migrate": "sh -c 'set -a && . ./.env.prod && set +a && prisma migrate deploy'",
-    "prod:seed": "sh -c 'set -a && . ./.env.prod && set +a && tsx prisma/seed.ts \"$@\"' --"
+    "prod:seed": "sh -c 'set -a && . ./.env.prod && set +a && tsx prisma/seed.ts \"$@\"' --",
+    "prod:users": "sh -c 'set -a && . ./.env.prod && set +a && tsx scripts/users.ts \"$@\"' --"
   },
   "dependencies": {
     "@annotorious/react": "^3.9.3",
@@ -21,13 +23,13 @@
     "@aws-sdk/s3-request-presigner": "^3.1144.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
-    "image-size": "^2.0.4",
     "next": "16.3.8",
     "next-auth": "5.0.0-beta.32",
     "pg": "^8.23.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

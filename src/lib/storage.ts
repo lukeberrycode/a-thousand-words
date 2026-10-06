@@ -57,11 +57,9 @@ export async function headObject(key: string) {
   }
 }
 
-/** The first `bytes` bytes of a stored object (or all of it, if smaller). */
-export async function readObjectStart(key: string, bytes: number) {
-  const res = await r2().send(
-    new GetObjectCommand({ Bucket: env("R2_BUCKET"), Key: key, Range: `bytes=0-${bytes - 1}` }),
-  );
+/** A stored object's bytes. Only for files already checked to be within the upload size limit. */
+export async function readObject(key: string) {
+  const res = await r2().send(new GetObjectCommand({ Bucket: env("R2_BUCKET"), Key: key }));
   return res.Body!.transformToByteArray();
 }
 

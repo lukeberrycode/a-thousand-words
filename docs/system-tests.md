@@ -94,7 +94,7 @@ Unless a test says otherwise:
   2. On GitHub, check the consent page, then click **Authorize**.
 - **Expected:**
   - GitHub asks you to authorise **A Thousand Words (dev)**, for read access to your profile and email address only.
-  - You come back to the home page signed in. The header shows **Upload**, your GitHub avatar, your name (hidden on narrow screens) and **Sign out**.
+  - You come back to the home page signed in. The header shows your GitHub avatar, your name (hidden on narrow screens) and **Sign out**. A brand-new account also shows **Awaiting approval** where **Upload** would be, until it's approved (SEC-03, SEC-04).
 - **Proves:** the full OAuth flow works end to end: client ID and secret, redirect URI, `state` and PKCE checks, and session creation.
 - **Automation:** Manual
 
@@ -104,7 +104,7 @@ Unless a test says otherwise:
 - **Steps:**
   1. Open Studio and check `User`, `Account` and `Session`.
 - **Expected:**
-  - `User`: one row for you, with your GitHub name, email and `image` (avatar URL). Any old "Demo user" row is unrelated.
+  - `User`: one row for you, with your GitHub name, email and `image` (avatar URL). `approvedAt` is empty for a brand-new account (it's pending). Any old "Demo user" row is unrelated.
   - `Account`: one row with `provider` = `github`, linked to your user.
   - `Session`: one row for your current sign-in.
 - **Proves:** the Prisma adapter stores users, linked accounts and database sessions as designed (ADR 0007).
@@ -162,11 +162,46 @@ Unless a test says otherwise:
 - **Automation:** Manual
 
 
+### UPL-03: Duplicate warning
+
+- **Needs:** signed in; a copy of an image already on the site, at a different size or format (e.g. a seed painting downloaded from Wikimedia at another width, or the same file re-saved as WebP)
+- **Steps:**
+  1. Upload it.
+  2. Click **Cancel**.
+  3. Upload it again, and click **Go to it**.
+- **Expected:**
+  - Step 1 shows "This looks like an image that's already here." (or "This exact image is already here." for the identical file), with the existing image's thumbnail, title and annotation count. Nothing new appears on the home page.
+  - Step 2 clears the warning, and the form can be used again.
+  - Step 3 opens the existing image's page.
+  - After steps 2 and 3, the uploaded file is gone from the R2 bucket, and no new `Image` row exists.
+- **Proves:** look-alike uploads are caught before they're saved, and backing out leaves nothing behind (ADR 0010).
+- **Automation:** Manual
+
+### UPL-04: Upload anyway
+
+- **Needs:** as UPL-03
+- **Steps:**
+  1. Upload the look-alike, and click **Upload anyway** on the warning.
+  2. Delete the new image afterwards (MAN-05).
+- **Expected:** step 1 opens the new image's page. In Studio, its row has `sha256` and `phash` filled in.
+- **Proves:** the warning never blocks a deliberate upload.
+- **Automation:** Manual
+
+### UPL-05: Different images aren't flagged
+
+- **Needs:** signed in; an image not on the site
+- **Steps:**
+  1. Upload it.
+- **Expected:** no warning. It saves and opens its page as in UPL-01.
+- **Proves:** the duplicate check doesn't get in the way of ordinary uploads.
+- **Automation:** Manual
+
+
 ## Access control
 
 ### SEC-01: Upload page asks signed-out visitors to sign in
 
-- **Needs:** signed out; a real GitHub account
+- **Needs:** signed out; a real GitHub account whose account here is approved
 - **Steps:**
   1. Go to http://localhost:3000/upload directly.
   2. Click **Sign in with GitHub** on the page, and complete sign-in.
@@ -190,6 +225,36 @@ Unless a test says otherwise:
 - **Proves:** the server actions check the session themselves rather than relying on the page. Server actions can be called by direct POST, so this is the check that actually protects uploads.
 - **Automation:** Manual
 
+### SEC-03: A pending account can browse but not contribute
+
+- **Needs:** signed in with an account whose `approvedAt` is empty: a new GitHub account, or your own with `approvedAt` cleared in Studio
+- **Steps:**
+  1. Look at the header.
+  2. Go to `/upload`.
+  3. Open any image page.
+- **Expected:**
+  - Step 1 shows **Awaiting approval** instead of **Upload**.
+  - Step 2 shows "Your account is waiting for approval. You can upload and annotate once it's approved." instead of the form.
+  - Step 3 shows the same message instead of the **Annotate** button. Existing annotations still show and can be read.
+- **Proves:** new accounts can't contribute until approved. Every upload, annotation and image action also returns that message to a pending account, so a direct POST is refused too.
+- **Automation:** Manual
+
+### SEC-04: Approve a pending account
+
+- **Needs:** a pending account, as in SEC-03
+- **Steps:**
+  1. Run `npm run db:users`.
+  2. Run `npm run db:users -- approve <github-login>`, using the login listed in step 1.
+  3. Reload any page in the browser where the pending account is signed in.
+  4. Run step 2 again, then `npm run db:users -- approve nobody-xyz` (a login that hasn't signed in).
+- **Expected:**
+  - Step 1 lists the account with its GitHub login, name, email, sign-up date and a link to its GitHub profile.
+  - Step 2 prints "Approved …".
+  - After step 3, the header shows **Upload**, and the upload form and **Annotate** button are back. No sign-out is needed.
+  - Step 4 prints "… was already approved …", then "No account found …" (exit code 1).
+- **Proves:** the approval script finds accounts by GitHub login and approves them, and approval takes effect on the next page load. `prod:users` runs the same script against production.
+- **Automation:** Manual
+
 
 ## Annotations
 
@@ -203,8 +268,8 @@ Unless a test says otherwise:
   4. Type some Markdown, e.g. `**Bold** and a [link](https://example.com)`, and click **Save**.
 - **Expected:**
   - After step 1, the button reads **Done annotating**, with a hint to drag a box.
-  - After step 2, an editor appears beside the image.
-  - After step 4, the editor closes and annotate mode ends. The new region is highlighted and selected, and the panel shows the formatted text and your name. The region sits where the box was when you clicked Save.
+  - After step 2, the view zooms so the box and an editor card sit side by side, and the UI panel hides.
+  - After step 4, the editor closes and you're still in annotate mode. The new region is open: drawn with a thick amber outline while the others recede, and its card shows the formatted text, your name, and **Edit** and **Delete**. The region sits where the box was when you clicked Save.
 - **Proves:** drawing, the pixels-to-fractions conversion, the server action and the page refresh work together.
 - **Automation:** Manual
 
@@ -213,10 +278,10 @@ Unless a test says otherwise:
 - **Needs:** just completed ANN-01; a second browser or a private window, signed out
 - **Steps:**
   1. Open the same image page signed out.
-  2. Click the region, or its entry in the list.
-  3. Resize the window, or use a phone-sized view.
+  2. Click the region, or its entry in the UI panel's annotation list.
+  3. Close the card, zoom in and out, and resize the window, or use a phone-sized view.
 - **Expected:**
-  - Step 1 shows the region. There's no **Annotate** button, but there is a **Sign in with GitHub to annotate** button.
+  - Step 1 shows the region. The UI panel has no **Annotate** button, but has a **Sign in with GitHub to annotate** button.
   - Step 2 shows the annotation's text and author.
   - In step 3, the region stays over the same part of the image at every size.
 - **Proves:** annotations are public, and fractional coordinates keep them aligned (ADR 0005).
@@ -269,30 +334,50 @@ Unless a test says otherwise:
 - **Steps:**
   1. Create an annotation (ANN-01), without reloading the page afterwards.
   2. Click **Annotate** again and drag a new box.
-  3. On a narrow window (where the editor sits below the image), draw another box.
+  3. On a phone, draw another box.
 - **Expected:**
-  - After step 1, while saving, the box stays in place and the editor shows **Saving…** until the new region appears. There's no moment where the page says "No annotations yet", and no empty editor afterwards.
-  - Step 2 draws a new box and opens the editor.
-  - In step 3, the page doesn't scroll away from the box when the editor opens.
+  - After step 1, while saving, the box stays in place and the editor shows **Saving…** until the new region appears. There's no empty editor afterwards.
+  - Step 2 draws a new box, closes the previous card and opens the editor beside the new box.
+  - In step 3, the view doesn't jump away from the box when the editor opens.
 - **Proves:** draft state is cleared after a save, the save hands over smoothly to the refreshed data, and focusing the editor doesn't move the page. Each was a bug found while testing milestone 4.
 - **Automation:** Manual
 
+
+### ANN-07: A click on nested boxes goes to the smaller one
+
+- **Needs:** The School of Athens (seeded): Raphael's small box overlaps the larger Ptolemy box at the far right
+- **Steps:**
+  1. Click inside the Ptolemy box, away from Raphael's box.
+  2. Click where Raphael's box overlaps the Ptolemy box.
+- **Expected:**
+  - Step 1 opens Ptolemy's annotation.
+  - Step 2 opens Raphael's, not Ptolemy's.
+- **Proves:** Annotorious gives a click to the smallest box under the pointer, so nested boxes stay reachable (ADR 0011). Checked on 2026-10-04 with Annotorious 3.9.3; re-run after upgrading Annotorious.
+- **Automation:** Manual
+
+### ANN-08: An overlapping box is refused, and you can add to the existing one instead
+
+- **Needs:** signed in and approved; an image with a box you haven't annotated
+- **Steps:**
+  1. Click **Annotate** and draw a box almost exactly over the existing one.
+  2. Resize the new box to be clearly larger than the existing one, then shrink it back over it.
+  3. Click **Add to that annotation**.
+  4. Write some text and click **Save**.
+  5. Click **Edit** on your new annotation, change the text and save.
+- **Expected:**
+  - Step 1: as soon as the box is drawn, the editor says "This box overlaps an existing one too much…", with **Add to that annotation** and **Adjust my box**, and **Save** is disabled.
+  - Step 2: the warning disappears while the box is larger, and comes back when it's shrunk back.
+  - Step 3: the new box goes, annotate mode ends, and the existing box's card opens with an "Add your annotation" form.
+  - Step 4: the card shows both annotations, oldest first. Yours has **Edit** and **Delete**, the other doesn't, and "+ Add your annotation" is gone. The list entry shows "+1".
+  - Step 5: only the text is editable (no box handles), because someone else drew the box.
+- **Proves:** the overlap rule is checked live in the browser, the user is steered to add to the existing box, and a box holds several annotations (ADR 0011). The server checks the rule too, so a direct POST can't get round it.
+- **Automation:** Manual
 
 ## Reading and managing
 
 ### MAN-01: Hover previews, click pins
 
-- **Needs:** an image with at least one annotation; a mouse
-- **Steps:**
-  1. Hover over a region.
-  2. Move the pointer off it.
-  3. Click a region, then hover over a different one, then move off.
-- **Expected:**
-  - Step 1 shows that annotation in the panel.
-  - Step 2 brings back the hint, "Hover over or tap a highlighted region…".
-  - In step 3, the hovered annotation shows while hovering, and the clicked one returns afterwards.
-- **Proves:** reading needs no clicks on desktop, and a pinned annotation stays pinned.
-- **Automation:** Manual
+**Retired** (2026-10-04): hovering no longer shows annotation text; reading needs an explicit click (ADR 0011). Replaced by MAN-08.
 
 ### MAN-02: Only your own content shows Edit and Delete
 
@@ -317,7 +402,7 @@ Unless a test says otherwise:
   - Step 1: the box gets handles, and the editor opens with the current text.
   - Step 2: the editor shows **Saving…**, then the card shows the new text and "· edited". The box stays where you left it, and old text never reappears.
   - Step 3: the box jumps back to its saved position.
-- **Proves:** region and text edits save together, and unsaved moves can be undone.
+- **Proves:** region and text edits save together, and unsaved moves can be undone. Only for a box you drew that holds only your annotations; see ANN-08 for the text-only case.
 - **Automation:** Manual
 
 ### MAN-04: Delete an annotation
@@ -328,8 +413,8 @@ Unless a test says otherwise:
   2. Click **Delete**, then the red **Delete**.
 - **Expected:**
   - Step 1 changes nothing.
-  - Step 2 removes the region and its list entry. In Studio, the row is gone.
-- **Proves:** deletion asks first and then removes the annotation everywhere.
+  - Step 2 removes the annotation. If it was the box's only annotation, the region and its list entry go too, and in Studio both the `Annotation` and its `Region` row are gone. If others remain, the box stays with theirs.
+- **Proves:** deletion asks first and then removes the annotation everywhere, and doesn't leave empty boxes.
 - **Automation:** Manual
 
 ### MAN-05: Edit and delete your own image
@@ -360,17 +445,69 @@ Unless a test says otherwise:
 
 ### MAN-07: Mobile annotate mode
 
-- **Needs:** signed in; a phone, or a narrow window (below 1024 px)
+- **Needs:** signed in and approved; a phone
 - **Steps:**
-  1. Outside annotate mode, swipe on the image.
-  2. Tap **Annotate** and drag on the image.
-  3. Edit an existing annotation of yours.
+  1. Outside annotate mode, drag and pinch on the image.
+  2. Tap **Annotate**, then drag and pinch on the image.
+  3. Edit an existing annotation of yours (one whose box you drew).
 - **Expected:**
-  - Step 1 scrolls the page.
-  - In step 2, dragging draws a box instead of scrolling, and the editor opens as a sheet at the bottom of the screen with the box still visible above it.
-  - In step 3, the editor also opens as a bottom sheet, and dragging moves the box.
-- **Proves:** touch drawing doesn't fight with scrolling, and the editor doesn't hide the box.
-- **Automation:** Manual. A real touch screen is still needed for steps 1 and 2: it was checked at narrow width with a mouse, not on a phone. Scheduled for milestone 6, on the deployed site, before the URL is shared publicly.
+  - Step 1 pans and zooms the image. The page itself never scrolls or zooms, and the UI panel and cards stay the same size.
+  - In step 2, dragging draws a box instead of panning, and pinching does nothing. The view zooms to the new box, with the editor card beside it.
+  - In step 3, dragging the box moves it instead of panning.
+- **Proves:** touch drawing doesn't fight with zooming and panning, and the editor doesn't hide the box.
+- **Automation:** Manual. Rewritten for the artwork-led image page (ADR 0012); not yet run on a real phone. The previous version passed on real phones on 2026-10-03 (PROD-05).
+
+
+### MAN-08: Click to read; the open box stands out
+
+- **Needs:** an image with at least three annotations; a mouse
+- **Steps:**
+  1. Hover over a region without clicking.
+  2. Click a region.
+  3. Click an empty part of the image.
+  4. Click a different region, or pick one from the UI panel's annotation list.
+- **Expected:**
+  - Step 1 opens nothing.
+  - Step 2 opens a card beside that box, and the view zooms so the box (with some space round it) and the card fill the screen. The UI panel hides. The box gets a thick amber outline and a light fill; the other boxes become thin and faint.
+  - Step 3 closes the card, leaves the view where it is, and brings the UI panel back.
+  - Step 4 opens the new box's card and zooms to it.
+- **Proves:** reading needs an explicit click, and it's always clear which box the text belongs to.
+- **Automation:** Manual. Step 3 changed with the artwork-led image page: clicking empty image used to leave the box open.
+
+### MAN-09: The editor stays above the on-screen keyboard
+
+- **Needs:** signed in and approved; a real phone (an iPhone and an Android phone if possible). Emulators and DevTools' device mode don't reproduce the keyboard.
+- **Steps:**
+  1. On an image page, in portrait, turn on **Annotate** and draw a box in the lower half of the image.
+  2. Tap the editor's text box, and type a few lines.
+  3. Tap **Cancel**, open one of your own annotations, and tap **Edit**, then the text box.
+  4. Close the keyboard (the keyboard's own close or done key).
+- **Expected:**
+  - In step 1, the editor card opens above the box.
+  - In steps 2 and 3, the view zooms again so the box and the card both sit above the keyboard, with the text box and **Save** visible. The card takes at most about 40% of the space above the keyboard, scrolling inside if needed.
+  - In step 4, the box stays where it is, and the extra space appears round it.
+- **Proves:** the view and cards use the visible area, not the full screen, on both iOS (visual viewport) and Android (`interactive-widget=resizes-content`).
+- **Automation:** Manual. Needs a real device. Rewritten for the artwork-led image page; not yet run. The previous version passed on Android on 2026-10-04.
+
+### MAN-10: Zoom, pan and the UI panel
+
+- **Needs:** an image page; a laptop with a mouse or trackpad, and a phone
+- **Steps:**
+  1. Open the page in a landscape window, then in portrait on the phone.
+  2. Zoom in with the mouse wheel, a trackpad pinch, Ctrl + `+`, the panel's **Zoom in** button, and on the phone a pinch and a double-tap. Zoom out the same ways as far as it goes.
+  3. Zoomed in, drag the image left (landscape) or up (portrait), then the other way. Then tap the panel's flip button.
+  4. Zoomed in, pan with a trackpad two-finger scroll and with the arrow keys.
+  5. Tap the boxes button, then **Annotate**.
+  6. On a phone with a notch or camera cut-out, in landscape, zoom in and pan to the image's edges.
+- **Expected:**
+  - Step 1: the whole image is visible at first. The panel is on the right in landscape and at the bottom in portrait, with the image at the opposite edge.
+  - Step 2: each zooms around the pointer, fingers or centre; the page itself never zooms, and the panel stays the same size. Zooming out stops when the whole image is visible. The zoom buttons show next to the flip button on the laptop, not on the phone, and are disabled in annotate mode.
+  - Step 3: dragging the image left puts the panel on the left (portrait: up puts it at the top), and the other way moves it back. The flip button swaps edges, and at the fit size the image moves to the opposite edge.
+  - Step 4: both pan, and move the panel like a drag.
+  - Step 5: the boxes disappear, then come back when annotate mode starts.
+  - Step 6: zoomed in, the image runs under the cut-out to the screen's edge, but panning stops with its edge clear of the cut-out. The panel and cards never go under it.
+- **Proves:** the app owns zoom and pan (ADR 0012), the panel keeps out of the way (Rule 3), and the safe area is respected (Rule 7).
+- **Automation:** Manual. Checked on 2026-10-06 in desktop Chrome (mouse wheel, drag, panel moves and placement, card placement in landscape and in a 400 × 820 portrait frame). Not yet on a phone or with a trackpad.
 
 
 ## Production
@@ -422,7 +559,7 @@ Run these on the deployed site before sharing its URL. "Production" means the Ve
 
 - **Needs:** an iPhone and an Android phone, if available
 - **Steps:**
-  1. Run MAN-07 (mobile annotate mode) on each phone.
+  1. Run MAN-07 (mobile annotate mode), MAN-09 (the on-screen keyboard) and MAN-10 (zoom, pan and the panel) on each phone.
   2. Read annotations by tapping regions (ANN-02).
 - **Expected:** as described in those tests. Drawing doesn't fight with scrolling, and the editor's bottom sheet keeps the box visible.
 - **Proves:** the site works on the touch screens most visitors will use.
@@ -443,3 +580,7 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | Milestone 4 (written with the code) | ANN-01 to ANN-06 |
 | Milestone 5 (written with the code) | MAN-01 to MAN-07 |
 | Milestone 6 (written with the code) | PROD-01 to PROD-05 |
+| User approval (written with the code) | SEC-03, SEC-04 |
+| Boxes and overlap, ADR 0011 (written with the code) | ANN-07, ANN-08, MAN-08 |
+| Artwork-led image page, ADR 0012 (written with the code) | MAN-10; MAN-07, MAN-08 and MAN-09 rewritten |
+| On-screen keyboard (written with the code) | MAN-09 |

@@ -10,8 +10,8 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { imageSize } from "image-size";
 import { PrismaClient } from "@/generated/prisma/client";
+import { fingerprint } from "@/lib/image-hash";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
 import { artworks } from "./seed-data";
 
@@ -19,7 +19,7 @@ import { artworks } from "./seed-data";
 const USER_AGENT = "a-thousand-words-seed/1.0 (https://github.com/lukeberrycode/a-thousand-words)";
 // A standard Commons thumbnail width: other widths are rounded up to the next step (3840).
 const WIDTH = 1920;
-const SEED_USER = { id: "seed-user", name: "A Thousand Words" };
+const SEED_USER = { id: "seed-user", name: "A Thousand Words", approvedAt: new Date() };
 
 function env(name: string) {
   const value = process.env[name];
@@ -57,10 +57,8 @@ async function main() {
 
       const bytes = await download(art.source);
       if (bytes.length > MAX_UPLOAD_BYTES) throw new Error(`${art.title} is over the upload size limit.`);
-      const { width, height, orientation } = imageSize(bytes);
-      if (!width || !height) throw new Error(`Couldn't read the size of ${art.title}.`);
-      // EXIF orientations 5–8 display rotated 90°, as in createImage.
-      const size = orientation && orientation >= 5 ? { width: height, height: width } : { width, height };
+      // Size and duplicate-detection hashes, exactly as createImage computes them.
+      const { width, height, sha256, phash } = await fingerprint(bytes);
 
       await r2.send(
         new PutObjectCommand({ Bucket: bucket, Key: storageKey, Body: bytes, ContentType: "image/jpeg" }),
@@ -71,19 +69,23 @@ async function main() {
           title: art.title,
           description: art.description,
           storageKey,
-          ...size,
-          annotations: {
-            // Pages list annotations oldest first; space the timestamps so they keep this order.
+          width,
+          height,
+          sha256,
+          phash,
+          regions: {
+            // Pages list boxes oldest first; space the timestamps so they keep this order.
+            // Each seed box holds one annotation.
             create: art.annotations.map((a, i) => ({
               authorId: owner.id,
               ...a.region,
-              bodyMarkdown: a.body,
               createdAt: new Date(Date.now() + i * 1000),
+              annotations: { create: { authorId: owner.id, bodyMarkdown: a.body } },
             })),
           },
         },
       });
-      console.log(`added ${art.title} (${size.width}×${size.height}, ${art.annotations.length} annotations)`);
+      console.log(`added ${art.title} (${width}×${height}, ${art.annotations.length} annotations)`);
       // Be gentle with Wikimedia.
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }

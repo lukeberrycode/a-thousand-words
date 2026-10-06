@@ -13,3 +13,6 @@ One short file per decision: the context, what was decided, and the consequences
 | [0007](0007-authjs-v5-beta.md) | Auth.js v5 (beta) for sign-in | Accepted |
 | [0008](0008-markdown-rendering.md) | Render annotation Markdown with react-markdown, without HTML or images | Accepted |
 | [0009](0009-deploy-vercel-neon.md) | Deploy on Vercel with Neon Postgres; migrate and seed from a workstation | Accepted |
+| [0010](0010-duplicate-detection.md) | Warn about duplicate uploads using a perceptual hash | Accepted |
+| [0011](0011-regions-and-overlap.md) | Boxes hold several annotations; refuse boxes that would hide each other | Accepted |
+| [0012](0012-app-owned-zoom.md) | The image page owns zoom, with a custom view around Annotorious | Accepted |

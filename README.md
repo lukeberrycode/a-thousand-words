@@ -2,11 +2,11 @@
 
 > A picture is worth a thousand words. Here's where you write them.
 
-Genius.com for images: upload an image, draw a region on it, and attach an annotation that explains what's there.
+Community annotation for images: upload an image, draw a region on it, and attach an annotation that explains what's there.
 
 **Live site:** https://a-thousand-words-pi.vercel.app/
 
-**Status:** milestone 5 (read and manage) done. Signed-in users annotate any image; everyone can read annotations by hovering or tapping a region; authors edit and delete their own annotations and images. Sign in with GitHub to upload and annotate. See [the one-pager](docs/one-pager.md) for scope and milestones.
+**Status:** milestone 6 (ship) done. Live at https://a-thousand-words-pi.vercel.app/, with 12 annotated public-domain paintings. Signed-in users upload and annotate any image; everyone can read annotations by hovering or tapping a region; authors edit and delete their own annotations and images; every image has a "Report it" link. Sign in with GitHub to upload and annotate. Next: automating the system tests (milestone 7). See [the one-pager](docs/one-pager.md) for scope and milestones.
 
 ## Stack
 
@@ -34,11 +34,13 @@ npm run dev                # http://localhost:3000
 | `npm run dev` | Start the dev server |
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
-| `npm run db:migrate` | Create and apply migrations (`prisma migrate dev`) |
+| `npm run db:migrate` | Create and apply migrations (`prisma migrate dev`). Restart `npm run dev` afterwards: it keeps one Prisma client across hot reloads, so it won't know about new columns until restarted. |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run db:seed` | Load the seed paintings into the database and R2 from `.env` (dry run unless `-- --yes`) |
+| `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
 | `npm run prod:migrate` | Apply migrations to production, using `.env.prod` |
 | `npm run prod:seed` | Seed production, using `.env.prod` (dry run unless `-- --yes`) |
+| `npm run prod:users` | List or approve accounts on production, using `.env.prod` |
 
 ## Deploying
 
@@ -49,8 +51,9 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
   - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL`: the production bucket and its token
   - `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`: the production OAuth app
   - `REPORT_EMAIL`: where "Report it" links send email
-- **Schema changes:** migrations don't run during the build. After merging a new migration, run `npm run prod:migrate`. It reads `.env.prod`, which is git-ignored and holds Neon's direct connection string plus the production R2 values.
-- **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
+- **New accounts:** a first GitHub sign-in creates a pending account that can browse but not upload or annotate. Approve it with `npm run prod:users -- approve <github-login>` (run `npm run prod:users` to see who's waiting).
+- **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` reads `.env.prod`, which is git-ignored and holds Neon's direct connection string plus the production R2 values.
+- **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07, MAN-09, MAN-10) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
 
 ## Project docs
 

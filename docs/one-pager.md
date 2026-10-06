@@ -4,7 +4,7 @@ Audience, prior art and the project name: [product background](product-backgroun
 
 ## Overview
 
-**A Thousand Words is Genius.com for images:** anyone can upload an image, draw a region on it, and attach an annotation that explains what's there.
+**A Thousand Words is community annotation for images:** anyone can upload an image, draw a region on it, and attach an annotation that explains what's there.
 
 Images are packed with meaning that viewers miss: references hidden in a painting, the joke behind a meme, the people in a historical photo, the design choices in a UI. Today that context is scattered across comment threads and blog posts, disconnected from the pixels it describes. A Thousand Words pins explanations directly to the part of the image they're about.
 
@@ -28,7 +28,7 @@ The MVP proves the core loop: upload an image, mark a region, explain it, and le
 | Image upload | JPEG, PNG, WebP up to 10 MB; title and short description |
 | Image page | Public URL per image; annotated regions shown as subtle highlights |
 | Create annotation | Draw a rectangle, write Markdown text, save |
-| Read annotation | Hover or tap a region to open its annotation in a side panel |
+| Read annotation | Tap or click a region to open its annotation in a card beside it |
 | Edit / delete | Authors can edit or delete their own annotations and images |
 | Browse | Home page listing recent images |
 
@@ -60,9 +60,13 @@ Each milestone is either a vertical slice that works end to end and could be dem
 3. **Accounts:** OAuth sign-in; uploads tied to a user.
 4. **Create annotations:** draw a box, write Markdown, save; regions render for all visitors.
 5. **Read and manage:** hover/tap side panel; edit and delete own content; mobile annotate mode.
-6. **Ship:** deploy, seed 10+ annotated images, write README and ADRs. Before sharing the URL publicly, test on real phones against the deployed site, including the touch checks in `docs/system-tests.md` (MAN-07).
+6. **Ship:** deploy, seed 10+ annotated images, warn about duplicate uploads, write README and ADRs. Before sharing the URL publicly, test on real phones against the deployed site, including the touch checks in `docs/system-tests.md` (MAN-07).
 7. **Automate system tests:** add a way to run the checks in [`docs/system-tests.md`](system-tests.md) automatically (tool choice recorded in an ADR). Each automated test refers to its test ID, and the list stays as the permanent reference. Tests that need a real third party, such as GitHub sign-in, may stay manual or use a test double.
 8. **User experience documentation:** describe every expected user experience and journey from the user's point of view: what they see, do and get back in the browser, including steps that depend on the full stack (sign-in, uploads, saving). Unlike the system tests, these docs are independent of the implementation and assume no access to the database, storage or dev tools. Testers use them to check what they actually see, and future agents use them to validate a refactor or full rebuild. Written after the demo ships, to avoid churn while features are still changing.
 9. **Human code review:** before the project moves beyond the demo phase, a human reviews all of the code. This is the final safeguard: no code is used in anger without human review, while the prototype can still be built quickly with reasonable safeguards at every stage. Only a human can mark this milestone done.
+   - **Trigger:** the demo phase ends when the first account that isn't the site owner's is approved (`prod:users approve`). From then on the site holds other people's content and gives them write access, so this review must be done **before** that approval.
+   - **Focus:** the security boundaries: sign-in and sessions (`src/auth.ts`, `src/lib/current-user.ts`), the approval and ownership checks in every server action, rendering of untrusted Markdown (ADR 0008), upload signing and the R2 token's scope, and the approval script.
+   - **Before sharing the URL widely,** even earlier: any sign-in, approved or not, stores that person's GitHub name, email and avatar. Add a short privacy note and a way to delete an account on request, or stop storing the email, which the app doesn't use.
+   - **Later gates** that need a fresh review: taking payments, adding repository collaborators, or letting users approve other users.
 
 **After the MVP**, in rough priority order: voting → reputation points → replies and threads → polygon regions → search and tags → verified creator annotations.

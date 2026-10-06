@@ -15,8 +15,11 @@ type Props = {
   annotationCount: number;
 };
 
-/** The image's title, byline and description, with edit and delete for its owner. */
-export function ImageHeader({ id, title, description, byline, mine, annotationCount }: Props) {
+/**
+ * The image's byline and description, with edit and delete for its owner, for the UI panel. The
+ * title is in the panel's header, but edited here.
+ */
+export function ImageDetails({ id, title, description, byline, mine, annotationCount }: Props) {
   const [mode, setMode] = useState<"view" | "edit" | "confirm-delete">("view");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -52,7 +55,7 @@ export function ImageHeader({ id, title, description, byline, mine, annotationCo
             () => setMode("view"),
           );
         }}
-        className="flex max-w-2xl flex-col gap-3"
+        className="flex flex-col gap-3"
       >
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">Title</span>
@@ -101,13 +104,12 @@ export function ImageHeader({ id, title, description, byline, mine, annotationCo
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-1 text-sm text-zinc-500">{byline}</p>
-      {description && <p className="mt-4 max-w-2xl leading-7 text-zinc-700 dark:text-zinc-300">{description}</p>}
+      <p className="text-sm text-zinc-500">{byline}</p>
+      {description && <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{description}</p>}
 
       {mine &&
         (mode === "confirm-delete" ? (
-          <div className="mt-3 flex max-w-2xl flex-wrap items-center gap-3 rounded-md border border-red-200 p-3 text-sm dark:border-red-900">
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-red-200 p-3 text-sm dark:border-red-900">
             <span>
               Delete this image
               {annotationCount > 0 &&
