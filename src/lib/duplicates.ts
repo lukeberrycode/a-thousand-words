@@ -21,7 +21,8 @@ export async function findSimilarImages(fp: Pick<ImageFingerprint, "sha256" | "p
     { id: string; title: string; storageKey: string; annotationCount: number; exact: boolean }[]
   >`
     SELECT i.id, i.title, i."storageKey",
-           (SELECT count(*) FROM "Annotation" a WHERE a."imageId" = i.id)::int AS "annotationCount",
+           (SELECT count(*) FROM "Annotation" a JOIN "Region" r ON r.id = a."regionId"
+             WHERE r."imageId" = i.id)::int AS "annotationCount",
            (i.sha256 = ${fp.sha256}) AS exact
     FROM "Image" i
     WHERE i.sha256 = ${fp.sha256}

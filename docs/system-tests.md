@@ -2,7 +2,7 @@
 
 Checks that exercise the whole running app (browser, Next.js server, Postgres, R2 and GitHub) and confirm it behaves as a user would expect. They were first written as manual steps in the setup and milestone guides. This file collects them in one place.
 
-**This list is permanent.** A test stays here after it's automated. Its **Automation** line then points to the automated test instead of saying "Manual". That way the list remains the reference for what the app must do, however each check is run. A later milestone adds the automation.
+**This list is permanent.** A test stays here after it's automated. Its **Automation** line then points to the automated test instead of saying "Manual". That way the list remains the reference for what the app must do, however each check is run. Milestone 7 added the automation ([ADR 0013](adr/0013-playwright-system-tests.md)).
 
 **System tests aren't user experience docs.** These tests assume an operator with access to both the development environment (terminal, Prisma Studio, the Cloudflare dashboard) and the browser, and they're tied to the current implementation: table names, commands, error messages. Milestone 8 adds separate user experience documentation. It describes what a user sees and does, independent of how the app is built, so it stays valid through a refactor or full rebuild.
 
@@ -21,6 +21,22 @@ Unless a test says otherwise:
 **Needs** lists anything beyond that: a real GitHub account, a second browser tab, and so on. It also shows what an automated version would have to provide or fake.
 
 
+## Running the automated tests
+
+```bash
+npx playwright install chromium   # once
+npm run test:system               # every automated test, about two minutes
+npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-01 to ANN-08
+```
+
+- **Setup:** as in Before you start: the local database running with migrations applied, and `.env` with working R2 values. The tests use the dev server on port 3000 if it's running, and start `npm run dev` if it isn't.
+- **Sign-in:** the tests don't use GitHub. Each signs in by creating a `Session` row for a test user and setting the session cookie, which is what a real sign-in leaves behind (ADR 0013). The OAuth flow itself stays a manual test.
+- **Data:** each test creates its own users (ids starting `e2e-`), images and annotations in the development database and R2 bucket, and deletes them afterwards. The seed paintings and your own content are never touched.
+- **One at a time:** the local database from `npx prisma dev` fails at random when several connections query it at once, so tests run serially.
+- **A failure** leaves a trace in `test-results/`. Open it with `npx playwright show-trace <path>/trace.zip` to step through the page as it was.
+- **Each test's name starts with its ID,** and its **Automation** line below says which file it's in and which steps, if any, stay manual.
+
+
 ## Environment
 
 ### ENV-01: Local database is reachable
@@ -30,7 +46,7 @@ Unless a test says otherwise:
   1. Run `npx prisma dev ls`.
 - **Expected:** the `a-thousand-words` server is listed as running. If it's `not_running`, `npx prisma dev start a-thousand-words` starts it.
 - **Proves:** the app and Prisma have a database to connect to.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/env.spec.ts`](../e2e/env.spec.ts) runs a query instead of `prisma dev ls`.
 
 ### ENV-02: Migrations are applied and the schema matches
 
@@ -39,19 +55,19 @@ Unless a test says otherwise:
   1. Run `npx prisma migrate status`.
   2. Run `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`.
 - **Expected:**
-  - Step 1 reports `Database schema is up to date!` and lists every folder in `prisma/migrations`.
+  - Step 1 reports `Database schema is up to date!`, and its count of migrations found matches the folders in `prisma/migrations`.
   - Step 2 prints `-- This is an empty migration.`
 - **Proves:** the database has exactly the tables and columns `schema.prisma` describes, so there's no drift between the migrations and the schema.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/env.spec.ts`](../e2e/env.spec.ts).
 
 ### ENV-03: Database tables exist
 
 - **Needs:** nothing extra
 - **Steps:**
   1. Open Studio.
-- **Expected:** the `User`, `Account`, `Session`, `VerificationToken`, `Image` and `Annotation` tables are listed.
+- **Expected:** the `User`, `Account`, `Session`, `VerificationToken`, `Image`, `Region` and `Annotation` tables are listed.
 - **Proves:** the migrations created every model.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/env.spec.ts`](../e2e/env.spec.ts) lists the tables with SQL instead of Studio.
 
 ### ENV-04: R2 bucket is publicly readable
 
@@ -62,7 +78,7 @@ Unless a test says otherwise:
   3. Delete the test file.
 - **Expected:** the image shows in step 2.
 - **Proves:** public read access is on and `R2_PUBLIC_URL` is correct, so image pages can show uploaded files.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/env.spec.ts`](../e2e/env.spec.ts) uploads the test file with the R2 API instead of the dashboard.
 
 ### ENV-05: Build and lint pass
 
@@ -72,7 +88,7 @@ Unless a test says otherwise:
   2. Run `npm run build`.
 - **Expected:** both finish without errors. The build type-checks the whole app, including the Auth.js adapter types.
 - **Proves:** the code compiles and type-checks, and passes the lint rules.
-- **Automation:** Manual
+- **Automation:** Manual: run the two commands before merging.
 
 
 ## Sign-in
@@ -84,7 +100,7 @@ Unless a test says otherwise:
   1. Open http://localhost:3000.
 - **Expected:** the header shows **Sign in with GitHub**. There's no Upload link.
 - **Proves:** signed-out visitors are offered sign-in, and aren't shown actions they can't use.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/auth.spec.ts`](../e2e/auth.spec.ts).
 
 ### AUTH-02: First sign-in with GitHub
 
@@ -96,7 +112,7 @@ Unless a test says otherwise:
   - GitHub asks you to authorise **A Thousand Words (dev)**, for read access to your profile and email address only.
   - You come back to the home page signed in. The header shows your GitHub avatar, your name (hidden on narrow screens) and **Sign out**. A brand-new account also shows **Awaiting approval** where **Upload** would be, until it's approved (SEC-03, SEC-04).
 - **Proves:** the full OAuth flow works end to end: client ID and secret, redirect URI, `state` and PKCE checks, and session creation.
-- **Automation:** Manual
+- **Automation:** Manual. Needs a real GitHub account.
 
 ### AUTH-03: Sign-in creates the right database rows
 
@@ -108,7 +124,7 @@ Unless a test says otherwise:
   - `Account`: one row with `provider` = `github`, linked to your user.
   - `Session`: one row for your current sign-in.
 - **Proves:** the Prisma adapter stores users, linked accounts and database sessions as designed (ADR 0007).
-- **Automation:** Manual
+- **Automation:** Manual. Needs a real GitHub sign-in.
 
 ### AUTH-04: Sign out, then sign in again
 
@@ -124,7 +140,7 @@ Unless a test says otherwise:
   - In step 3, GitHub normally doesn't ask for consent again.
   - After step 4, there's a new `Session` row, but still exactly **one** `User` and one `Account` for you.
 - **Proves:** signing out really ends the session on the server, and signing in again reuses the same user instead of creating a duplicate.
-- **Automation:** Manual
+- **Automation:** Partly automated: [`e2e/auth.spec.ts`](../e2e/auth.spec.ts) covers steps 1 and 2. Signing in again needs GitHub, so steps 3 and 4 are manual.
 
 ### AUTH-05: Sign in again after revoking the app on GitHub
 
@@ -136,7 +152,7 @@ Unless a test says otherwise:
   4. Check Studio.
 - **Expected:** GitHub asks for consent again. Afterwards, Studio still shows the **same** `User` row (same `id`) and no extra `Account`.
 - **Proves:** users are identified by their stable GitHub account ID (`providerAccountId`), not by the access token, so revoking and re-granting access doesn't split someone into two users.
-- **Automation:** Manual
+- **Automation:** Manual. Needs a real GitHub account.
 
 
 ## Upload
@@ -150,7 +166,7 @@ Unless a test says otherwise:
   3. Tick the rights checkbox and click **Upload**.
 - **Expected:** you land on the new image page, which shows the image, the title and **Uploaded by** followed by your GitHub name.
 - **Proves:** the signed upload URL, the direct browser-to-R2 upload (including the bucket's CORS rule), the server-side checks, the reading of image dimensions, and the creation of the `Image` row all work together.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/upload.spec.ts`](../e2e/upload.spec.ts), with UPL-02.
 
 ### UPL-02: Uploaded image belongs to the uploader
 
@@ -159,7 +175,7 @@ Unless a test says otherwise:
   1. In Studio, open `Image` and find the new row.
 - **Expected:** its `ownerId` is your user's `id`.
 - **Proves:** ownership comes from the session, not from anything the browser sends.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/upload.spec.ts`](../e2e/upload.spec.ts), with UPL-01.
 
 
 ### UPL-03: Duplicate warning
@@ -175,7 +191,7 @@ Unless a test says otherwise:
   - Step 3 opens the existing image's page.
   - After steps 2 and 3, the uploaded file is gone from the R2 bucket, and no new `Image` row exists.
 - **Proves:** look-alike uploads are caught before they're saved, and backing out leaves nothing behind (ADR 0010).
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/upload.spec.ts`](../e2e/upload.spec.ts), including the exact-copy message.
 
 ### UPL-04: Upload anyway
 
@@ -185,7 +201,7 @@ Unless a test says otherwise:
   2. Delete the new image afterwards (MAN-05).
 - **Expected:** step 1 opens the new image's page. In Studio, its row has `sha256` and `phash` filled in.
 - **Proves:** the warning never blocks a deliberate upload.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/upload.spec.ts`](../e2e/upload.spec.ts).
 
 ### UPL-05: Different images aren't flagged
 
@@ -194,7 +210,7 @@ Unless a test says otherwise:
   1. Upload it.
 - **Expected:** no warning. It saves and opens its page as in UPL-01.
 - **Proves:** the duplicate check doesn't get in the way of ordinary uploads.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/upload.spec.ts`](../e2e/upload.spec.ts).
 
 
 ## Access control
@@ -209,7 +225,7 @@ Unless a test says otherwise:
   - Step 1 shows "You need an account to upload images." and a **Sign in with GitHub** button, instead of the form.
   - After step 2, you're back on `/upload` (not the home page) with the form showing.
 - **Proves:** the page hides the form from signed-out visitors, and sign-in returns you to where you started.
-- **Automation:** Manual
+- **Automation:** Partly automated: [`e2e/access.spec.ts`](../e2e/access.spec.ts) covers step 1, and checks step 2 up to GitHub: the button goes to GitHub's authorize page, set to come back to `/upload`. Completing sign-in is manual.
 
 ### SEC-02: Upload actions reject requests that aren't signed in
 
@@ -223,7 +239,7 @@ Unless a test says otherwise:
   - Step 3 shows "Sign in to upload images."
   - In step 4, there's no new `Image` row. No file is uploaded to R2, because no signed URL was issued.
 - **Proves:** the server actions check the session themselves rather than relying on the page. Server actions can be called by direct POST, so this is the check that actually protects uploads.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/access.spec.ts`](../e2e/access.spec.ts).
 
 ### SEC-03: A pending account can browse but not contribute
 
@@ -237,7 +253,7 @@ Unless a test says otherwise:
   - Step 2 shows "Your account is waiting for approval. You can upload and annotate once it's approved." instead of the form.
   - Step 3 shows the same message instead of the **Annotate** button. Existing annotations still show and can be read.
 - **Proves:** new accounts can't contribute until approved. Every upload, annotation and image action also returns that message to a pending account, so a direct POST is refused too.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/access.spec.ts`](../e2e/access.spec.ts).
 
 ### SEC-04: Approve a pending account
 
@@ -253,7 +269,7 @@ Unless a test says otherwise:
   - After step 3, the header shows **Upload**, and the upload form and **Annotate** button are back. No sign-out is needed.
   - Step 4 prints "… was already approved …", then "No account found …" (exit code 1).
 - **Proves:** the approval script finds accounts by GitHub login and approves them, and approval takes effect on the next page load. `prod:users` runs the same script against production.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/access.spec.ts`](../e2e/access.spec.ts), approving the test account by email, as it has no GitHub login. Approving by GitHub login is manual.
 
 
 ## Annotations
@@ -271,7 +287,7 @@ Unless a test says otherwise:
   - After step 2, the view zooms so the box and an editor card sit side by side, and the UI panel hides.
   - After step 4, the editor closes and you're still in annotate mode. The new region is open: drawn with a thick amber outline while the others recede, and its card shows the formatted text, your name, and **Edit** and **Delete**. The region sits where the box was when you clicked Save.
 - **Proves:** drawing, the pixels-to-fractions conversion, the server action and the page refresh work together.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
 
 ### ANN-02: Annotations are visible to everyone and stay aligned
 
@@ -285,18 +301,18 @@ Unless a test says otherwise:
   - Step 2 shows the annotation's text and author.
   - In step 3, the region stays over the same part of the image at every size.
 - **Proves:** annotations are public, and fractional coordinates keep them aligned (ADR 0005).
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts), at 1280 × 800 and 400 × 820, zoomed in and out.
 
 ### ANN-03: Cancelling and leaving annotate mode discard the draft
 
 - **Needs:** signed in; an image page
 - **Steps:**
   1. Click **Annotate**, draw a box, then click **Cancel**.
-  2. Draw another box, then click **Done annotating**.
+  2. Draw another box, close its card with ✕ (the UI panel is hidden while the editor is open), then click **Done annotating**.
   3. Check Studio.
 - **Expected:** after each of steps 1 and 2, the box disappears. In step 3, no new `Annotation` row exists.
 - **Proves:** drafts only exist in the browser until saved.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
 
 ### ANN-04: Annotation text is rendered safely
 
@@ -311,10 +327,10 @@ Unless a test says otherwise:
   2. Select it, and inspect the panel with the browser's dev tools.
 - **Expected:**
   - The HTML shows as plain text.
-  - The `bad` link has an empty `href`, and no image loads.
+  - `bad` shows as plain text, not a link (its unsafe URL is dropped), and no image loads.
   - The `good` link opens in a new tab and has `rel="nofollow ugc noopener noreferrer"`.
 - **Proves:** untrusted annotation text can't run scripts, use unsafe links or load images (ADR 0008).
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
 
 ### ANN-05: The annotation action rejects requests that aren't signed in
 
@@ -326,7 +342,7 @@ Unless a test says otherwise:
   4. Check Studio.
 - **Expected:** step 3 shows "Sign in to annotate." In step 4, there's no new `Annotation` row.
 - **Proves:** the server action checks the session itself.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
 
 ### ANN-06: Annotate again straight after saving
 
@@ -340,7 +356,7 @@ Unless a test says otherwise:
   - Step 2 draws a new box, closes the previous card and opens the editor beside the new box.
   - In step 3, the view doesn't jump away from the box when the editor opens.
 - **Proves:** draft state is cleared after a save, the save hands over smoothly to the refreshed data, and focusing the editor doesn't move the page. Each was a bug found while testing milestone 4.
-- **Automation:** Manual
+- **Automation:** Partly automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts) covers steps 1 and 2. Step 3 needs a phone.
 
 
 ### ANN-07: A click on nested boxes goes to the smaller one
@@ -353,7 +369,7 @@ Unless a test says otherwise:
   - Step 1 opens Ptolemy's annotation.
   - Step 2 opens Raphael's, not Ptolemy's.
 - **Proves:** Annotorious gives a click to the smallest box under the pointer, so nested boxes stay reachable (ADR 0011). Checked on 2026-10-04 with Annotorious 3.9.3; re-run after upgrading Annotorious.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts), with two boxes nested the same way rather than the seed painting. Checked on 2026-10-04 with Annotorious 3.9.3; the automated test re-checks it after an upgrade.
 
 ### ANN-08: An overlapping box is refused, and you can add to the existing one instead
 
@@ -371,7 +387,7 @@ Unless a test says otherwise:
   - Step 4: the card shows both annotations, oldest first. Yours has **Edit** and **Delete**, the other doesn't, and "+ Add your annotation" is gone. The list entry shows "+1".
   - Step 5: only the text is editable (no box handles), because someone else drew the box.
 - **Proves:** the overlap rule is checked live in the browser, the user is steered to add to the existing box, and a box holds several annotations (ADR 0011). The server checks the rule too, so a direct POST can't get round it.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
 
 ## Reading and managing
 
@@ -389,7 +405,7 @@ Unless a test says otherwise:
   - Step 1: your annotation has **Edit** and **Delete**, and the other person's has neither.
   - Step 2: your image has **Edit details** and **Delete image**, and the other person's has neither.
 - **Proves:** the page only offers changes the user is allowed to make.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/manage.spec.ts`](../e2e/manage.spec.ts).
 
 ### MAN-03: Edit an annotation's box and text
 
@@ -403,7 +419,7 @@ Unless a test says otherwise:
   - Step 2: the editor shows **Saving…**, then the card shows the new text and "· edited". The box stays where you left it, and old text never reappears.
   - Step 3: the box jumps back to its saved position.
 - **Proves:** region and text edits save together, and unsaved moves can be undone. Only for a box you drew that holds only your annotations; see ANN-08 for the text-only case.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/manage.spec.ts`](../e2e/manage.spec.ts).
 
 ### MAN-04: Delete an annotation
 
@@ -415,7 +431,7 @@ Unless a test says otherwise:
   - Step 1 changes nothing.
   - Step 2 removes the annotation. If it was the box's only annotation, the region and its list entry go too, and in Studio both the `Annotation` and its `Region` row are gone. If others remain, the box stays with theirs.
 - **Proves:** deletion asks first and then removes the annotation everywhere, and doesn't leave empty boxes.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/manage.spec.ts`](../e2e/manage.spec.ts), both for a box's only annotation and for one on a box shared with someone else.
 
 ### MAN-05: Edit and delete your own image
 
@@ -429,7 +445,7 @@ Unless a test says otherwise:
   - Step 2's message counts the annotations and warns that other people's go too. Confirming takes you to the home page, where the image is no longer listed.
   - Step 3: the `Image` row and its `Annotation` rows are gone, and so is the file in R2.
 - **Proves:** owners control their images, and deleting one cleans up the database and storage.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/manage.spec.ts`](../e2e/manage.spec.ts).
 
 ### MAN-06: The server refuses changes to other people's content
 
@@ -441,7 +457,7 @@ Unless a test says otherwise:
   4. Change `authorId` back.
 - **Expected:** step 3 shows "That annotation doesn't exist, or isn't yours." and nothing changes.
 - **Proves:** the server actions check ownership themselves rather than trusting the page.
-- **Automation:** Manual
+- **Automation:** Automated: [`e2e/manage.spec.ts`](../e2e/manage.spec.ts).
 
 ### MAN-07: Mobile annotate mode
 
@@ -472,7 +488,7 @@ Unless a test says otherwise:
   - Step 3 closes the card, leaves the view where it is, and brings the UI panel back.
   - Step 4 opens the new box's card and zooms to it.
 - **Proves:** reading needs an explicit click, and it's always clear which box the text belongs to.
-- **Automation:** Manual. Step 3 changed with the artwork-led image page: clicking empty image used to leave the box open.
+- **Automation:** Automated: [`e2e/manage.spec.ts`](../e2e/manage.spec.ts). Step 3 changed with the artwork-led image page: clicking empty image used to leave the box open.
 
 ### MAN-09: The editor stays above the on-screen keyboard
 
@@ -507,7 +523,7 @@ Unless a test says otherwise:
   - Step 5: the boxes disappear, then come back when annotate mode starts.
   - Step 6: zoomed in, the image runs under the cut-out to the screen's edge, but panning stops with its edge clear of the cut-out. The panel and cards never go under it.
 - **Proves:** the app owns zoom and pan (ADR 0012), the panel keeps out of the way (Rule 3), and the safe area is respected (Rule 7).
-- **Automation:** Manual. Checked on 2026-10-06 in desktop Chrome (mouse wheel, drag, panel moves and placement, card placement in landscape and in a 400 × 820 portrait frame). Not yet on a phone or with a trackpad.
+- **Automation:** Partly automated: [`e2e/zoom.spec.ts`](../e2e/zoom.spec.ts) covers steps 1 to 5 in desktop Chrome with a mouse: the zoom buttons, mouse wheel and keys, dragging, the flip button, arrow keys, scrolling and the boxes button. The trackpad pinch, touch gestures and step 6 need a laptop trackpad and a phone. Checked by hand on 2026-10-06 in desktop Chrome; not yet on a phone or with a trackpad.
 
 
 ## Production
