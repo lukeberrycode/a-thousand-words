@@ -4,7 +4,7 @@
 
 Community annotation for images: upload an image, draw a region on it, and attach an annotation that explains what's there.
 
-**Status:** milestone 6 (ship) done. Live at https://a-thousand-words-pi.vercel.app/, with 12 annotated public-domain paintings. Signed-in users upload and annotate any image; everyone can read annotations by hovering or tapping a region; authors edit and delete their own annotations and images; every image has a "Report it" link. Sign in with GitHub to upload and annotate. Next: automating the system tests (milestone 7). See [the one-pager](docs/one-pager.md) for scope and milestones.
+**Status:** milestone 7 (automated system tests) done. Live at https://a-thousand-words-pi.vercel.app/, with 12 annotated public-domain paintings. Signed-in users upload and annotate any image; everyone can read annotations by hovering or tapping a region; authors edit and delete their own annotations and images; every image has a "Report it" link. Sign in with GitHub to upload and annotate. Most system tests now run automatically with Playwright (`npm run test:system`). Next: user experience documentation (milestone 8). See [the one-pager](docs/one-pager.md) for scope and milestones.
 
 ## Stack
 
@@ -32,6 +32,7 @@ npm run dev                # http://localhost:3000
 | `npm run dev` | Start the dev server |
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
+| `npm run test:system` | The automated system tests ([docs/system-tests.md](docs/system-tests.md#running-the-automated-tests)): Playwright against the dev server, local database and R2 bucket from `.env`. Run `npx playwright install chromium` once first. |
 | `npm run db:migrate` | Create and apply migrations (`prisma migrate dev`). Restart `npm run dev` afterwards: it keeps one Prisma client across hot reloads, so it won't know about new columns until restarted. |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run db:seed` | Load the seed paintings into the database and R2 from `.env` (dry run unless `-- --yes`) |

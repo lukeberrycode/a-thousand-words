@@ -12,6 +12,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:users": "tsx scripts/users.ts",
+    "test:system": "playwright test",
     "prod:migrate": "sh -c 'set -a && . ./.env.prod && set +a && prisma migrate deploy'",
     "prod:seed": "sh -c 'set -a && . ./.env.prod && set +a && tsx prisma/seed.ts \"$@\"' --",
     "prod:users": "sh -c 'set -a && . ./.env.prod && set +a && tsx scripts/users.ts \"$@\"' --"
@@ -32,6 +33,7 @@
     "sharp": "^0.35.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",

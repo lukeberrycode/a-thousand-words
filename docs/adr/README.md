@@ -16,3 +16,4 @@ One short file per decision: the context, what was decided, and the consequences
 | [0010](0010-duplicate-detection.md) | Warn about duplicate uploads using a perceptual hash | Accepted |
 | [0011](0011-regions-and-overlap.md) | Boxes hold several annotations; refuse boxes that would hide each other | Accepted |
 | [0012](0012-app-owned-zoom.md) | The image page owns zoom, with a custom view around Annotorious | Accepted |
+| [0013](0013-playwright-system-tests.md) | Automate the system tests with Playwright, signing in with a test session | Accepted |
