@@ -41,6 +41,8 @@ npm run dev                # http://localhost:3000
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
 | `npm run prod:migrate` | Apply migrations to production, using `.env.prod` |
 | `npm run prod:seed` | Seed production, using `.env.prod` (dry run unless `-- --yes`) |
+| `npm run preview:migrate` | Apply migrations to the preview database, using `.env.preview` |
+| `npm run preview:seed` | Seed the preview database, using `.env.preview` (dry run unless `-- --yes`) |
 | `npm run prod:users` | List or approve accounts on production, using `.env.prod` |
 
 ## Deploying
