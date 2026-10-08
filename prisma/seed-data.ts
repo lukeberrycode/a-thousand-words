@@ -431,4 +431,294 @@ export const artworks: SeedArtwork[] = [
       },
     ],
   },
+
+  // Paintings added for the home page collections. They start without annotations, as an open
+  // invitation to annotate; regions need placing against the actual file, so they come later.
+  ...unannotated([
+    // Northern Renaissance
+    {
+      slug: "ghent-altarpiece",
+      title: "The Ghent Altarpiece",
+      description:
+        "Hubert and Jan van Eyck, completed 1432. Oil on oak panels. St Bavo's Cathedral, Ghent. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Lamgods_open.jpg",
+    },
+    {
+      slug: "moneylender",
+      title: "The Moneylender and His Wife",
+      description:
+        "Quentin Matsys, 1514. Oil on panel. Musée du Louvre, Paris. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Quentin_Massys_001.jpg",
+    },
+    {
+      slug: "childrens-games",
+      title: "Children's Games",
+      description:
+        "Pieter Bruegel the Elder, 1560. Oil on oak panel. Kunsthistorisches Museum, Vienna. Public domain, via Wikimedia Commons.",
+      source:
+        "https://commons.wikimedia.org/wiki/File:Pieter_Bruegel_the_Elder_-_Children’s_Games_-_Google_Art_Project.jpg",
+    },
+    {
+      slug: "tower-of-babel",
+      title: "The Tower of Babel",
+      description:
+        "Pieter Bruegel the Elder, 1563. Oil on oak panel. Kunsthistorisches Museum, Vienna. Public domain, via Wikimedia Commons.",
+      source:
+        "https://commons.wikimedia.org/wiki/File:Pieter_Bruegel_the_Elder_-_The_Tower_of_Babel_(Vienna)_-_Google_Art_Project_-_edited.jpg",
+    },
+
+    // Italian Renaissance
+    {
+      slug: "primavera",
+      title: "Primavera",
+      description:
+        "Sandro Botticelli, late 1470s or early 1480s. Tempera on panel. Uffizi Gallery, Florence. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Botticelli-primavera.jpg",
+    },
+    {
+      slug: "last-supper",
+      title: "The Last Supper",
+      description:
+        "Leonardo da Vinci, about 1495–1498. Tempera and oil on plaster. Santa Maria delle Grazie, Milan. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Última_Cena_-_Da_Vinci_5.jpg",
+    },
+
+    // Baroque
+    {
+      slug: "calling-of-st-matthew",
+      title: "The Calling of Saint Matthew",
+      description:
+        "Caravaggio, 1599–1600. Oil on canvas. Contarelli Chapel, San Luigi dei Francesi, Rome. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:The_Calling_of_Saint_Matthew-Caravaggo_(1599-1600).jpg",
+    },
+    {
+      slug: "anatomy-lesson",
+      title: "The Anatomy Lesson of Dr Nicolaes Tulp",
+      description:
+        "Rembrandt, 1632. Oil on canvas. Mauritshuis, The Hague. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Rembrandt_-_The_Anatomy_Lesson_of_Dr_Nicolaes_Tulp.jpg",
+    },
+    {
+      slug: "surrender-of-breda",
+      title: "The Surrender of Breda",
+      description:
+        "Diego Velázquez, 1634–1635. Oil on canvas. Museo del Prado, Madrid. Public domain, via Wikimedia Commons.",
+      source:
+        "https://commons.wikimedia.org/wiki/File:Velázquez_-_de_Breda_o_Las_Lanzas_(Museo_del_Prado,_1634-35).jpg",
+    },
+
+    // Revolution and Empire
+    {
+      slug: "oath-of-the-horatii",
+      title: "Oath of the Horatii",
+      description:
+        "Jacques-Louis David, 1784. Oil on canvas. Musée du Louvre, Paris. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Jacques-Louis_David,_Le_Serment_des_Horaces.jpg",
+    },
+    {
+      slug: "death-of-marat",
+      title: "The Death of Marat",
+      description:
+        "Jacques-Louis David, 1793. Oil on canvas. Royal Museums of Fine Arts of Belgium, Brussels. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Death_of_Marat_by_David.jpg",
+    },
+    {
+      slug: "coronation-of-napoleon",
+      title: "The Coronation of Napoleon",
+      description:
+        "Jacques-Louis David, 1805–1807. Oil on canvas. Musée du Louvre, Paris. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Jacques-Louis_David,_The_Coronation_of_Napoleon_edit.jpg",
+    },
+    {
+      slug: "third-of-may",
+      title: "The Third of May 1808",
+      description:
+        "Francisco Goya, 1814. Oil on canvas. Museo del Prado, Madrid. Public domain, via Wikimedia Commons.",
+      source:
+        "https://commons.wikimedia.org/wiki/File:El_Tres_de_Mayo,_by_Francisco_de_Goya,_from_Prado_thin_black_margin.jpg",
+    },
+    {
+      slug: "raft-of-the-medusa",
+      title: "The Raft of the Medusa",
+      description:
+        "Théodore Géricault, 1818–1819. Oil on canvas. Musée du Louvre, Paris. Public domain, via Wikimedia Commons.",
+      source:
+        "https://commons.wikimedia.org/wiki/File:JEAN_LOUIS_THÉODORE_GÉRICAULT_-_La_Balsa_de_la_Medusa_(Museo_del_Louvre,_1818-19).jpg",
+    },
+    {
+      slug: "liberty-leading-the-people",
+      title: "Liberty Leading the People",
+      description:
+        "Eugène Delacroix, 1830. Oil on canvas. Musée du Louvre, Paris. Public domain, via Wikimedia Commons.",
+      source:
+        "https://commons.wikimedia.org/wiki/File:Eugène_Delacroix_-_Le_28_Juillet._La_Liberté_guidant_le_peuple.jpg",
+    },
+
+    // Battles
+    {
+      slug: "battle-of-san-romano",
+      title: "The Battle of San Romano",
+      description:
+        "Paolo Uccello, about 1438–1440. Egg tempera with walnut oil on poplar. National Gallery, London. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Uccello_Battle_of_San_Romano_London.jpg",
+    },
+    {
+      slug: "battle-of-issus",
+      title: "The Battle of Alexander at Issus",
+      description:
+        "Albrecht Altdorfer, 1529. Oil on panel. Alte Pinakothek, Munich. Public domain, via Wikimedia Commons.",
+      source:
+        "https://commons.wikimedia.org/wiki/File:Albrecht_Altdorfer_-_Schlacht_bei_Issus_(Alte_Pinakothek,_München)_-_Google_Art_Project.jpg",
+    },
+    {
+      slug: "scotland-forever",
+      title: "Scotland Forever!",
+      description:
+        "Elizabeth Thompson, Lady Butler, 1881. Oil on canvas. Leeds Art Gallery. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Lady_Butler_-_Scotland_Forever!.jpg",
+    },
+
+    // Modern life
+    {
+      slug: "derby-day",
+      title: "The Derby Day",
+      description:
+        "William Powell Frith, 1856–1858. Oil on canvas. Tate Britain, London. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:William_Powell_Frith_-_The_Derby_Day_-_Google_Art_Project.jpg",
+    },
+    {
+      slug: "moulin-de-la-galette",
+      title: "Bal du moulin de la Galette",
+      description:
+        "Pierre-Auguste Renoir, 1876. Oil on canvas. Musée d'Orsay, Paris. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Pierre-Auguste_Renoir,_Le_Moulin_de_la_Galette.jpg",
+    },
+    {
+      slug: "paris-street-rainy-day",
+      title: "Paris Street; Rainy Day",
+      description:
+        "Gustave Caillebotte, 1877. Oil on canvas. Art Institute of Chicago. Public domain, via Wikimedia Commons.",
+      source:
+        "https://commons.wikimedia.org/wiki/File:Gustave_Caillebotte_-_Paris_Street;_Rainy_Day_-_Google_Art_Project.jpg",
+    },
+    {
+      slug: "folies-bergere",
+      title: "A Bar at the Folies-Bergère",
+      description:
+        "Édouard Manet, 1882. Oil on canvas. The Courtauld Gallery, London. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Edouard_Manet,_A_Bar_at_the_Folies-Bergère.jpg",
+    },
+
+    // Japanese prints
+    {
+      slug: "red-fuji",
+      title: "Fine Wind, Clear Morning",
+      description:
+        "Katsushika Hokusai, about 1831. Colour woodblock print from the series Thirty-six Views of Mount Fuji. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Red_Fuji_southern_wind_clear_morning.jpg",
+    },
+    {
+      slug: "takiyasha",
+      title: "Takiyasha the Witch and the Skeleton Spectre",
+      description:
+        "Utagawa Kuniyoshi, about 1844. Colour woodblock print triptych. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Takiyasha_the_Witch_and_the_Skeleton_Spectre.jpg",
+    },
+    {
+      slug: "sudden-shower",
+      title: "Sudden Shower over Shin-Ōhashi Bridge and Atake",
+      description:
+        "Utagawa Hiroshige, 1857. Colour woodblock print from the series One Hundred Famous Views of Edo. Public domain, via Wikimedia Commons.",
+      source: "https://commons.wikimedia.org/wiki/File:Hiroshige_Atake_sudden_shower.jpg",
+    },
+  ]),
+];
+
+function unannotated(list: Omit<SeedArtwork, "annotations">[]): SeedArtwork[] {
+  return list.map((art) => ({ ...art, annotations: [] }));
+}
+
+export type SeedCollection = {
+  /** Stable key, so re-running the seed updates the collection rather than duplicating it. */
+  slug: string;
+  name: string;
+  blurb: string;
+  /** Artwork slugs, in the order they appear in the row. A painting can be in several collections. */
+  artworks: string[];
+};
+
+/** Home page rows, top to bottom (ADR 0014). */
+export const collections: SeedCollection[] = [
+  {
+    slug: "northern-renaissance",
+    name: "Northern Renaissance",
+    blurb: "Flanders and the Low Countries, where oil paint made every detail count.",
+    artworks: [
+      "ghent-altarpiece",
+      "arnolfini",
+      "garden",
+      "moneylender",
+      "ambassadors",
+      "proverbs",
+      "childrens-games",
+      "tower-of-babel",
+      "hunters",
+    ],
+  },
+  {
+    slug: "italian-renaissance",
+    name: "Italian Renaissance",
+    blurb: "Florence, Milan and Rome rediscover the ancient world.",
+    artworks: ["primavera", "venus", "last-supper", "school-of-athens"],
+  },
+  {
+    slug: "baroque",
+    name: "The Golden Age",
+    blurb: "Seventeenth-century Italy, Spain and the Dutch Republic.",
+    artworks: [
+      "calling-of-st-matthew",
+      "anatomy-lesson",
+      "surrender-of-breda",
+      "night-watch",
+      "meninas",
+      "art-of-painting",
+    ],
+  },
+  {
+    slug: "revolution-and-empire",
+    name: "Art of Revolution and Empire",
+    blurb: "France and Spain from the eve of the Revolution to the July Revolution of 1830.",
+    artworks: [
+      "oath-of-the-horatii",
+      "death-of-marat",
+      "coronation-of-napoleon",
+      "third-of-may",
+      "raft-of-the-medusa",
+      "liberty-leading-the-people",
+    ],
+  },
+  {
+    slug: "battles",
+    name: "Battle Paintings",
+    blurb: "Armies, sieges and charges, from the Renaissance to the Victorians.",
+    artworks: [
+      "battle-of-san-romano",
+      "battle-of-issus",
+      "surrender-of-breda",
+      "third-of-may",
+      "scotland-forever",
+    ],
+  },
+  {
+    slug: "modern-life",
+    name: "Modern Life",
+    blurb: "Crowds, cafés and boulevards in the second half of the 19th century.",
+    artworks: ["derby-day", "moulin-de-la-galette", "paris-street-rainy-day", "folies-bergere", "grande-jatte"],
+  },
+  {
+    slug: "japanese-prints",
+    name: "Japanese Woodblock Prints",
+    blurb: "Ukiyo-e, pictures of the floating world, from Edo-period Japan.",
+    artworks: ["great-wave", "red-fuji", "takiyasha", "sudden-shower"],
+  },
 ];

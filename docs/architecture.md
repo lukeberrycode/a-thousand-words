@@ -22,6 +22,8 @@ See `prisma/schema.prisma`.
 | Image | id, ownerId, title, description, storageKey, width, height, sha256, phash, createdAt |
 | Region | id, imageId, authorId, x, y, w, h (all 0–1), createdAt, updatedAt |
 | Annotation | id, regionId, authorId, bodyMarkdown, createdAt, updatedAt; at most one per user per region |
+| Collection | id, slug, name, blurb, sortOrder, createdAt; a themed row on the home page |
+| CollectionImage | collectionId, imageId, position; links collections and images many-to-many |
 
 A region is a box on the image, holding one or more annotations by any users ([ADR 0011](adr/0011-regions-and-overlap.md)). Regions are stored as **fractions of the image's width and height**, not pixels, so they stay aligned at any display size ([ADR 0005](adr/0005-fractional-region-coordinates.md)). Annotorious works in pixel coordinates of the natural image, so the client converts using the stored `width` and `height`.
 
@@ -63,7 +65,8 @@ layout.tsx  root: <html>, fonts, globals.css, viewport              server
 │
 ├─ (site)/layout.tsx  the site header, on every page but the image page
 │  ├─ /              (site)/page.tsx                                 server
-│  │    home: grid of recent images, linking to /images/[id]
+│  │    home: rows of recent images and of each collection (ADR 0014)
+│  │  └─ ImageRow  (site)/image-row.tsx                             client
 │  ├─ /upload        (site)/upload/page.tsx                          server
 │  │  │  signed out → SignInButton (user-menu.tsx)
 │  │  └─ UploadForm  (site)/upload/upload-form.tsx                   client
@@ -132,7 +135,7 @@ Authors can edit or delete their own annotations, and owners their own images ([
 
 ## Deployment
 
-Vercel hosts the app at https://a-thousand-words-pi.vercel.app/, with Neon Postgres and a production R2 bucket ([ADR 0009](adr/0009-deploy-vercel-neon.md)). Migrations are applied by hand with `npm run prod:migrate`, not during the build. Seed content (`prisma/seed-data.ts`, loaded by `prisma/seed.ts`) is 12 public-domain paintings from Wikimedia Commons. They're stored under `images/seed/<slug>.jpg` and owned by an "A Thousand Words" user. Every image page has a "Report it" link that emails `REPORT_EMAIL`.
+Vercel hosts the app at https://a-thousand-words-pi.vercel.app/, with Neon Postgres and a production R2 bucket ([ADR 0009](adr/0009-deploy-vercel-neon.md)). Migrations are applied by hand with `npm run prod:migrate`, not during the build. Seed content (`prisma/seed-data.ts`, loaded by `prisma/seed.ts`) is public-domain paintings from Wikimedia Commons, and the collections that group them on the home page ([ADR 0014](adr/0014-home-page-collections.md)). They're stored under `images/seed/<slug>.jpg` and owned by an "A Thousand Words" user. Every image page has a "Report it" link that emails `REPORT_EMAIL`.
 
 ## Known gaps
 

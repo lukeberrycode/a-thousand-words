@@ -83,9 +83,38 @@ model Image {
   phash       BigInt?
   createdAt   DateTime     @default(now())
   regions     Region[]
+  collections CollectionImage[]
 
   @@index([createdAt])
   @@index([sha256])
+}
+
+// A themed row on the home page, such as a period or movement (ADR 0014).
+// An image can belong to any number of collections.
+model Collection {
+  id        String            @id @default(cuid())
+  // Stable key used by the seed, so re-running it updates rather than duplicates.
+  slug      String            @unique
+  name      String
+  // One line shown under the row heading.
+  blurb     String?
+  // Rows appear on the home page in ascending order.
+  sortOrder Int               @default(0)
+  createdAt DateTime          @default(now())
+  images    CollectionImage[]
+}
+
+// Membership of an image in a collection, with its place in the row.
+model CollectionImage {
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  imageId      String
+  image        Image      @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  // Images appear in a row in ascending order.
+  position     Int        @default(0)
+
+  @@id([collectionId, imageId])
+  @@index([imageId])
 }
 
 // A box on an image. It holds one or more annotations, by any users (ADR 0011).
