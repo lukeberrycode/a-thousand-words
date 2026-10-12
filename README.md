@@ -50,7 +50,7 @@ npm run dev                # http://localhost:3000
 | `npm run dev` | Start the dev server |
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
-| `npm run typecheck` | TypeScript, without building |
+| `npm run typecheck` | TypeScript, without building (generates Next.js's route types first) |
 | `npm test` | The unit tests (Vitest, `src/**/*.test.ts`); `npm run test:watch` reruns them on change |
 | `npm run format` | Format the code with Prettier; `npm run format:check` only checks |
 | `npm run test:system` | The automated system tests ([docs/system-tests.md](docs/system-tests.md#running-the-automated-tests)): Playwright against the dev server, local database and R2 bucket from `.env`. Run `npx playwright install chromium` once first. |
