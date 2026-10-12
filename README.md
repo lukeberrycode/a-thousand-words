@@ -8,6 +8,22 @@ Community annotation for images: upload an image, draw a region on it, and attac
 
 **Status:** milestone 7 (automated system tests) done. Live at https://a-thousand-words-pi.vercel.app/, with 12 annotated public-domain paintings. Signed-in users upload and annotate any image; everyone can read annotations by hovering or tapping a region; authors edit and delete their own annotations and images; every image has a "Report it" link. Sign in with GitHub to upload and annotate. Most system tests now run automatically with Playwright (`npm run test:system`). Next: user experience documentation (milestone 8). See [the one-pager](docs/one-pager.md) for scope and milestones.
 
+## Why I built this
+
+I'm a senior software engineer with seventeen years' experience, most of it shipping front ends in regulated markets. I started this project on 1 October 2026 with four aims, and I'll keep this section updated as they progress.
+
+1. **Build with AI under engineering control.** Find out how far an AI agent (Claude Code) can go when it works from written specs, a roadmap and tests.
+2. **Use technologies I hadn't yet used in production:** Next.js, React, Prisma and PostgreSQL.
+3. **Show my work in public**, to help me find my next role.
+4. **Ship a product I want to exist.** If only one aim succeeds, I'd like it to be this one.
+
+### Progress (October 2026)
+
+1. **AI-assisted development.** Claude Code (Opus 5.5) wrote most of the code. It works from a [one-pager](docs/one-pager.md), [decision records](docs/adr/README.md) and [system tests](docs/system-tests.md); I set the scope and make the decisions. It went from idea to a deployed alpha within a week. No code is used in anger without a full human review ([milestone 9](docs/one-pager.md#milestones)). Next: more autonomy, safely. That means a checked-in permission envelope, hooks that stop the agent finishing on a failing build, CI on every pull request, custom skills and subagents for repeated workflows, and parallel agents in git worktrees.
+2. **Technologies.** I've learned Next.js (App Router) and React, and designed and migrated a relational schema with Prisma on Postgres. Some of it builds directly on my production work: Cloudflare R2 speaks the S3 API, through the same AWS SDK I used with S3. Vercel's push-to-deploy fills the role that GitLab, ArgoCD and Helm filled at my last job.
+3. **Finding work.** No new role yet. I'm still looking, so if you're hiring, [get in touch on LinkedIn](https://www.linkedin.com/in/luke-berry-software-engineer).
+4. **The product.** It's live with 12 annotated paintings, and early feedback has been good. I'll keep improving it release by release.
+
 ## Stack
 
 Next.js (App Router, TypeScript) · Tailwind CSS · Postgres + Prisma · Cloudflare R2 · Annotorious · Auth.js
