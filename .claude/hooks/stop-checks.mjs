@@ -8,11 +8,13 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const input = JSON.parse(await new Promise((resolve) => {
-  let data = "";
-  process.stdin.on("data", (chunk) => (data += chunk));
-  process.stdin.on("end", () => resolve(data));
-}));
+const input = JSON.parse(
+  await new Promise((resolve) => {
+    let data = "";
+    process.stdin.on("data", (chunk) => (data += chunk));
+    process.stdin.on("end", () => resolve(data));
+  }),
+);
 
 // The checkout Claude is working in: the main working tree or a git worktree. When Claude is
 // already continuing because of this hook (stop_hook_active), it checks again: Claude Code ends the
@@ -27,7 +29,9 @@ const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8"
 
 // The state of the code: the commit, uncommitted changes and new files, outside docs.
 const paths = [".", ":(exclude)docs", ":(exclude)*.md"];
-const hash = createHash("sha256").update(git("rev-parse", "HEAD")).update(git("diff", "HEAD", "--", ...paths));
+const hash = createHash("sha256")
+  .update(git("rev-parse", "HEAD"))
+  .update(git("diff", "HEAD", "--", ...paths));
 for (const file of git("ls-files", "--others", "--exclude-standard", "-z", "--", ...paths).split("\0")) {
   if (file) hash.update(file).update(readFileSync(join(root, file)));
 }

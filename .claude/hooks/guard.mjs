@@ -5,11 +5,13 @@
 import { execFileSync } from "node:child_process";
 import { basename } from "node:path";
 
-const input = JSON.parse(await new Promise((resolve) => {
-  let data = "";
-  process.stdin.on("data", (chunk) => (data += chunk));
-  process.stdin.on("end", () => resolve(data));
-}));
+const input = JSON.parse(
+  await new Promise((resolve) => {
+    let data = "";
+    process.stdin.on("data", (chunk) => (data += chunk));
+    process.stdin.on("end", () => resolve(data));
+  }),
+);
 
 function block(reason) {
   process.stderr.write(`${reason}\n`);

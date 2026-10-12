@@ -45,11 +45,17 @@
     "ask": ["Bash(dangerouslyDisableSandbox:true)"],
     "deny": [
       "Read(.env)",
-      "Read(.env.*)",
-      "Read(!.env.example)",
+      "Read(.env.prod)",
+      "Read(.env.local)",
+      "Read(.env.development)",
+      "Read(.env.production)",
+      "Read(.env.test)",
       "Edit(.env)",
-      "Edit(.env.*)",
-      "Edit(!.env.example)",
+      "Edit(.env.prod)",
+      "Edit(.env.local)",
+      "Edit(.env.development)",
+      "Edit(.env.production)",
+      "Edit(.env.test)",
       "Bash(npm run prod*)",
       "Bash(*.env.prod*)",
       "Bash(gh pr merge *)",
@@ -70,19 +76,35 @@
     "PreToolUse": [
       {
         "matcher": "Edit|Write|NotebookEdit|Bash",
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.mjs\"", "timeout": 10 }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.mjs\"",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/format.mjs\"", "timeout": 30 }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/format.mjs\"",
+            "timeout": 30
+          }
+        ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-checks.mjs\"", "timeout": 600 }
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-checks.mjs\"",
+            "timeout": 600
+          }
         ]
       }
     ]
@@ -99,13 +121,23 @@
       "npm run db:seed *",
       "npm run db:users *",
       "npx --no-install prisma dev *",
-      "npx --no-install playwright test *"
+      "npx --no-install playwright test *",
+      "npm run build",
+      "gh pr *",
+      "gh run *",
+      "gh api *",
+      "gh repo view *"
     ],
     "network": {
       "allowedDomains": ["registry.npmjs.org", "github.com", "api.github.com", "*.githubusercontent.com"]
     },
     "credentials": {
-      "files": [{ "path": "./.env.prod", "mode": "deny" }]
+      "files": [
+        {
+          "path": "./.env.prod",
+          "mode": "deny"
+        }
+      ]
     }
   }
 }
