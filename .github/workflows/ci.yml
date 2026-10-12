@@ -1,0 +1,47 @@
+# Checks every pull request and every push to main (ADR 0014). The `main` ruleset requires the
+# "checks" job to pass before a pull request can merge. The system tests and Lighthouse need a
+# database and storage, so they don't run here yet (docs/discovery/risks.md, R12).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Not a real database: `prisma generate` and `next build` only need the variable to exist.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Format
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+      # Blocks on critical advisories only: the high ones open today are inside Prisma's own
+      # dependencies, with no fix available (ADR 0014). The full report stays in the log.
+      - name: Audit dependencies
+        run: |
+          npm audit --omit=dev || true
+          npm audit --omit=dev --audit-level=critical

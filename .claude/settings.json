@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm test)",
+      "Bash(npm run test)",
+      "Bash(npm run test:system)",
+      "Bash(npm run test:system *)",
+      "Bash(npm run test:perf)",
+      "Bash(npm run format)",
+      "Bash(npm run format:check)",
+      "Bash(npm run build)",
+      "Bash(npm run dev)",
+      "Bash(npm run db:migrate)",
+      "Bash(npm run db:migrate *)",
+      "Bash(npx --no-install prettier *)",
+      "Bash(npx --no-install vitest *)",
+      "Bash(npx --no-install eslint *)",
+      "Bash(npx --no-install tsc *)",
+      "Bash(npx --no-install playwright test *)",
+      "Bash(npx --no-install prisma dev *)",
+      "Bash(npx --no-install prisma generate)",
+      "Bash(npx --no-install prisma validate)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(git checkout -b *)",
+      "Bash(git restore *)",
+      "Bash(git stash *)",
+      "Bash(git worktree *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git push *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr list *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh run watch *)"
+    ],
+    "ask": ["Bash(dangerouslyDisableSandbox:true)"],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(!.env.example)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(!.env.example)",
+      "Bash(npm run prod*)",
+      "Bash(*.env.prod*)",
+      "Bash(gh pr merge *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f)",
+      "Bash(git push * -f *)",
+      "Bash(git push origin main)",
+      "Bash(git push * main)",
+      "Bash(git push * HEAD:main)",
+      "Bash(git push * main:main)",
+      "Bash(git reset --hard *)",
+      "Bash(rm -rf *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit|Bash",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.mjs\"", "timeout": 10 }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/format.mjs\"", "timeout": 30 }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-checks.mjs\"", "timeout": 600 }
+        ]
+      }
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "excludedCommands": [
+      "npm run test:system",
+      "npm run test:system *",
+      "npm run test:perf",
+      "npm run dev",
+      "npm run db:migrate",
+      "npm run db:migrate *",
+      "npm run db:seed *",
+      "npm run db:users *",
+      "npx --no-install prisma dev *",
+      "npx --no-install playwright test *"
+    ],
+    "network": {
+      "allowedDomains": ["registry.npmjs.org", "github.com", "api.github.com", "*.githubusercontent.com"]
+    },
+    "credentials": {
+      "files": [{ "path": "./.env.prod", "mode": "deny" }]
+    }
+  }
+}
