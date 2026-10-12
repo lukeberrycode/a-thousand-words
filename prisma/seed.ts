@@ -60,9 +60,7 @@ async function main() {
       // Size and duplicate-detection hashes, exactly as createImage computes them.
       const { width, height, sha256, phash } = await fingerprint(bytes);
 
-      await r2.send(
-        new PutObjectCommand({ Bucket: bucket, Key: storageKey, Body: bytes, ContentType: "image/jpeg" }),
-      );
+      await r2.send(new PutObjectCommand({ Bucket: bucket, Key: storageKey, Body: bytes, ContentType: "image/jpeg" }));
       await db.image.create({
         data: {
           ownerId: owner.id,

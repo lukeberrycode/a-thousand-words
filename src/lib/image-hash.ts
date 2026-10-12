@@ -32,7 +32,10 @@ export async function fingerprint(bytes: Uint8Array): Promise<ImageFingerprint> 
   // rotate() with no arguments applies the EXIF orientation, so a sideways phone photo and its
   // upright copy hash alike, and width/height match what browsers display.
   const image = sharp(bytes, { failOn: "error" }).rotate();
-  const { width, height } = await image.clone().metadata().then((m) => orientedSize(m));
+  const { width, height } = await image
+    .clone()
+    .metadata()
+    .then((m) => orientedSize(m));
 
   // dHash: shrink to 9×8 greyscale and record, for each row, whether each pixel is brighter
   // than its right-hand neighbour. 8 rows × 8 comparisons = 64 bits.
@@ -68,5 +71,7 @@ export function hashDistance(a: bigint, b: bigint) {
 function orientedSize(m: Metadata) {
   if (!m.width || !m.height) throw new Error("Couldn't read the image's size.");
   // EXIF orientations 5–8 are rotated 90°: browsers display them with width and height swapped.
-  return m.orientation && m.orientation >= 5 ? { width: m.height, height: m.width } : { width: m.width, height: m.height };
+  return m.orientation && m.orientation >= 5
+    ? { width: m.height, height: m.width }
+    : { width: m.width, height: m.height };
 }

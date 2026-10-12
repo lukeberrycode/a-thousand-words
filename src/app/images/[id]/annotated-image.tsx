@@ -618,7 +618,14 @@ function FloatingCard({
   const { area, orientation, keyboard } = layout;
   const max = cardMaxSize(area, orientation);
   const place = measured
-    ? placeCard(regionOnScreen(region, size, view), measured, area, orientation, cardSide(region, orientation), keyboard)
+    ? placeCard(
+        regionOnScreen(region, size, view),
+        measured,
+        area,
+        orientation,
+        cardSide(region, orientation),
+        keyboard,
+      )
     : null;
 
   return (
@@ -647,7 +654,9 @@ function FloatingCard({
           <path d="M6 6l12 12M18 6 6 18" />
         </svg>
       </button>
-      <div className="flex min-h-0 touch-pan-y flex-col gap-3 overflow-y-auto overscroll-contain p-4 pr-10">{children}</div>
+      <div className="flex min-h-0 touch-pan-y flex-col gap-3 overflow-y-auto overscroll-contain p-4 pr-10">
+        {children}
+      </div>
     </div>
   );
 }
@@ -655,7 +664,10 @@ function FloatingCard({
 /** Shown while a new box overlaps an existing one too much (ADR 0011). */
 function ClashNotice({ onAdd, onAdjust }: { onAdd: () => void; onAdjust: () => void }) {
   return (
-    <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950">
+    <div
+      role="alert"
+      className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950"
+    >
       <p>
         This box overlaps an existing one too much: one of them would be hard to click. Add to that annotation instead,
         or adjust your box.
@@ -871,5 +883,10 @@ function formatDate(iso: string) {
 /** First line of an annotation as plain-ish text, for the list and box labels. */
 function summary(body: string) {
   const firstLine = body.split("\n").find((line) => line.trim()) ?? "";
-  return firstLine.replace(/[#*_`>\[\]]/g, "").replace(/\(https?:[^)]*\)/g, "").trim() || "Annotation";
+  return (
+    firstLine
+      .replace(/[#*_`>\[\]]/g, "")
+      .replace(/\(https?:[^)]*\)/g, "")
+      .trim() || "Annotation"
+  );
 }

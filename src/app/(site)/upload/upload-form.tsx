@@ -186,7 +186,10 @@ function DuplicateWarning({
 }) {
   const exact = duplicates.some((d) => d.exact);
   return (
-    <div role="alert" className="flex flex-col gap-4 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
+    <div
+      role="alert"
+      className="flex flex-col gap-4 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950"
+    >
       <div>
         <p className="font-medium">
           {exact ? "This exact image is already here." : "This looks like an image that's already here."}
