@@ -83,7 +83,7 @@ The project is set up for an AI coding agent to work on it safely ([ADR 0014](do
 - `CLAUDE.md`: the agent's rules, commands and definition of done.
 - `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, push to `main`), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.
 - `.claude/hooks/`: block edits to secrets and pushes to `main`, format each edited file, and stop the agent finishing a task while lint, typecheck or unit tests fail.
-- `.github/workflows/ci.yml`: format check, lint, typecheck, unit tests, build and dependency audit on every pull request. `main` only accepts pull requests that pass.
+- `.github/workflows/ci.yml`: format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
 
 ## Project docs
 
