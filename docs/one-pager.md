@@ -1,6 +1,6 @@
 # A Thousand Words: One-Pager & MVP Scope
 
-Audience, prior art and the project name: [product background](product-background.md).
+Audience, prior art and the project name: [product background](product-background.md). What could go wrong: [risks](discovery/risks.md).
 
 ## Overview
 

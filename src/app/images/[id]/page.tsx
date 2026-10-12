@@ -75,7 +75,9 @@ export default async function ImagePage({ params }: PageProps<"/images/[id]">) {
         canAnnotate={!!user?.approved}
         signInPrompt={
           user ? (
-            user.approved ? null : <p className="text-sm text-zinc-500">{PENDING_APPROVAL}</p>
+            user.approved ? null : (
+              <p className="text-sm text-zinc-500">{PENDING_APPROVAL}</p>
+            )
           ) : (
             <SignInButton redirectTo={`/images/${image.id}`} label="Sign in with GitHub to annotate" />
           )

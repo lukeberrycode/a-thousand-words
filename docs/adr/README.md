@@ -17,3 +17,5 @@ One short file per decision: the context, what was decided, and the consequences
 | [0011](0011-regions-and-overlap.md) | Boxes hold several annotations; refuse boxes that would hide each other | Accepted |
 | [0012](0012-app-owned-zoom.md) | The image page owns zoom, with a custom view around Annotorious | Accepted |
 | [0013](0013-playwright-system-tests.md) | Automate the system tests with Playwright, signing in with a test session | Accepted |
+| [0014](0014-agent-guardrails-and-ci.md) | Guard the coding agent with permissions, hooks and a sandbox; check every pull request in CI | Accepted |
+| [0015](0015-unit-tests-formatting-performance.md) | Unit tests with Vitest, formatting with Prettier, performance checks with Lighthouse CI | Accepted |
