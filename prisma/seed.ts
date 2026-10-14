@@ -1,10 +1,12 @@
 // Seeds the demo content in prisma/seed-data.ts: downloads each painting from Wikimedia Commons,
-// uploads it to R2, and creates its Image and Annotation rows.
+// uploads it to R2, and creates its Image and Annotation rows. Then it creates or updates the home
+// page collections and their memberships (ADR 0014).
 //
 //   npm run db:seed -- --yes
 //
 // Uses DATABASE_URL and the R2_* values from the environment (.env locally). Safe to re-run:
-// paintings already seeded (same R2 key) are skipped. Run it against production deliberately,
+// paintings already seeded (same R2 key) are skipped, a painting whose Commons file can't be found
+// is skipped with a warning, and each collection's membership is replaced with the one listed. Run it against production deliberately,
 // with production values in the environment; see the deploy guide.
 
 import "dotenv/config";
@@ -13,7 +15,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { PrismaClient } from "@/generated/prisma/client";
 import { fingerprint } from "@/lib/image-hash";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
-import { artworks } from "./seed-data";
+import { artworks, collections } from "./seed-data";
 
 // Wikimedia asks API clients to identify themselves.
 const USER_AGENT = "a-thousand-words-seed/1.0 (https://github.com/lukeberrycode/a-thousand-words)";
@@ -33,6 +35,8 @@ async function main() {
   console.log(`Database: ${new URL(databaseUrl).host}`);
   console.log(`R2 bucket: ${bucket}`);
   console.log(`Paintings: ${artworks.length}`);
+  console.log(`Collections: ${collections.length}`);
+  checkCollections();
   if (!process.argv.includes("--yes")) {
     console.log("\nDry run. Check the database and bucket above, then re-run with --yes to seed.");
     return;
@@ -48,14 +52,20 @@ async function main() {
   try {
     const owner = await db.user.upsert({ where: { id: SEED_USER.id }, update: {}, create: SEED_USER });
 
+    const notFound: string[] = [];
     for (const art of artworks) {
-      const storageKey = `images/seed/${art.slug}.jpg`;
+      const storageKey = storageKeyFor(art.slug);
       if (await db.image.findUnique({ where: { storageKey }, select: { id: true } })) {
         console.log(`skip  ${art.title} (already seeded)`);
         continue;
       }
 
       const bytes = await download(art.source);
+      if (!bytes) {
+        console.warn(`WARN  ${art.title}: file not found on Wikimedia Commons (${art.source}). Skipped.`);
+        notFound.push(art.title);
+        continue;
+      }
       if (bytes.length > MAX_UPLOAD_BYTES) throw new Error(`${art.title} is over the upload size limit.`);
       // Size and duplicate-detection hashes, exactly as createImage computes them.
       const { width, height, sha256, phash } = await fingerprint(bytes);
@@ -89,12 +99,62 @@ async function main() {
       // Be gentle with Wikimedia.
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
+
+    await seedCollections(db);
+    if (notFound.length > 0) {
+      console.warn(`\n${notFound.length} painting(s) skipped; fix their source in prisma/seed-data.ts:`);
+      for (const title of notFound) console.warn(`  - ${title}`);
+    }
   } finally {
     await db.$disconnect();
   }
 }
 
-/** Downloads a Commons file at WIDTH pixels wide, via the API's thumbnail URL. */
+function storageKeyFor(slug: string) {
+  return `images/seed/${slug}.jpg`;
+}
+
+/** Fails early if a collection lists a painting that isn't in the seed data. */
+function checkCollections() {
+  const slugs = new Set(artworks.map((art) => art.slug));
+  for (const collection of collections) {
+    const unknown = collection.artworks.filter((slug) => !slugs.has(slug));
+    if (unknown.length > 0) throw new Error(`Collection ${collection.slug} lists unknown paintings: ${unknown}`);
+  }
+}
+
+/**
+ * Creates or updates each collection, and replaces its membership with the paintings listed, in
+ * order. Paintings that weren't seeded (for example, not found on Commons) are left out.
+ */
+async function seedCollections(db: PrismaClient) {
+  for (const [sortOrder, { slug, name, blurb, artworks: members }] of collections.entries()) {
+    const images = await db.image.findMany({
+      where: { storageKey: { in: members.map(storageKeyFor) } },
+      select: { id: true, storageKey: true },
+    });
+    const idByKey = new Map(images.map((image) => [image.storageKey, image.id]));
+    const imageIds = members.map((m) => idByKey.get(storageKeyFor(m))).filter((id) => id !== undefined);
+
+    await db.$transaction(async (tx) => {
+      const collection = await tx.collection.upsert({
+        where: { slug },
+        update: { name, blurb, sortOrder },
+        create: { slug, name, blurb, sortOrder },
+      });
+      await tx.collectionImage.deleteMany({ where: { collectionId: collection.id } });
+      await tx.collectionImage.createMany({
+        data: imageIds.map((imageId, position) => ({ collectionId: collection.id, imageId, position })),
+      });
+    });
+    console.log(`collection ${name} (${imageIds.length} of ${members.length} paintings)`);
+  }
+}
+
+/**
+ * Downloads a Commons file at WIDTH pixels wide, via the API's thumbnail URL. Returns null if
+ * Commons has no file by that name.
+ */
 async function download(sourcePage: string) {
   const file = decodeURIComponent(new URL(sourcePage).pathname.replace(/^\/wiki\//, ""));
   const api = new URL("https://commons.wikimedia.org/w/api.php");
@@ -106,10 +166,12 @@ async function download(sourcePage: string) {
     iiprop: "url",
     iiurlwidth: String(WIDTH),
     titles: file,
+    // Follow file redirects, so a renamed Commons file still resolves.
+    redirects: "1",
   }).toString();
   const info = await (await fetch(api, { headers: { "User-Agent": USER_AGENT } })).json();
   const url: string | undefined = info.query?.pages?.[0]?.imageinfo?.[0]?.thumburl;
-  if (!url) throw new Error(`Couldn't find ${file} on Wikimedia Commons.`);
+  if (!url) return null;
   const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
   if (!res.ok) throw new Error(`Downloading ${file} failed: ${res.status}`);
   return Buffer.from(await res.arrayBuffer());

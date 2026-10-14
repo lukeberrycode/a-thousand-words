@@ -537,7 +537,7 @@ Run these on the deployed site before sharing its URL. "Production" means the Ve
   1. Open the home page.
   2. Open three seeded paintings, and click several regions on each.
 - **Expected:**
-  - Step 1 shows the 12 paintings with thumbnails.
+  - Step 1 shows a **Recently added** row, then a row for each collection in `prisma/seed-data.ts`, each with its blurb and thumbnails. Rows swipe sideways on a phone; on a wider screen, arrow buttons appear on hover and page through the row.
   - In step 2, each region sits over what its annotation describes, and the text renders formatted, with "By A Thousand Words".
 - **Proves:** production has the database, the R2 bucket and its public URL wired up, and the seed placed regions correctly.
 - **Automation:** Manual

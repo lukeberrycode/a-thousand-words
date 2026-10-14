@@ -39,7 +39,7 @@ npm install                # also generates the Prisma client
 cp .env.example .env       # then set DATABASE_URL, the R2_* values and the AUTH_* values
 npx prisma dev             # optional: starts a local Postgres and prints its URL
 npm run db:migrate         # apply the schema
-npm run db:seed -- --yes   # optional: 12 annotated public-domain paintings
+npm run db:seed -- --yes   # optional: public-domain paintings and home page collections
 npm run dev                # http://localhost:3000
 ```
 
@@ -57,6 +57,8 @@ npm run dev                # http://localhost:3000
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
 | `npm run prod:migrate` | Apply migrations to production, using `.env.prod` |
 | `npm run prod:seed` | Seed production, using `.env.prod` (dry run unless `-- --yes`) |
+| `npm run preview:migrate` | Apply migrations to the preview database, using `.env.preview` |
+| `npm run preview:seed` | Seed the preview database, using `.env.preview` (dry run unless `-- --yes`) |
 | `npm run prod:users` | List or approve accounts on production, using `.env.prod` |
 
 ## Deploying

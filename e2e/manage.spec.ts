@@ -155,7 +155,7 @@ test("MAN-05: Edit and delete your own image", async ({ page, world }) => {
   ).toBeVisible();
   await view.panel.getByRole("button", { name: "Delete image" }).click();
   await expect(page).toHaveURL("/");
-  await expect(page.getByRole("heading", { name: "Recent images" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recently added" })).toBeVisible();
   await expect(page.getByRole("link", { name: title })).toHaveCount(0);
 
   // Step 3.
