@@ -450,8 +450,7 @@ export const artworks: SeedArtwork[] = [
     {
       slug: "moneylender",
       title: "The Moneylender and His Wife",
-      description:
-        "Quentin Matsys, 1514. Oil on panel. Musée du Louvre, Paris. Public domain, via Wikimedia Commons.",
+      description: "Quentin Matsys, 1514. Oil on panel. Musée du Louvre, Paris. Public domain, via Wikimedia Commons.",
       source: "https://commons.wikimedia.org/wiki/File:Quentin_Massys_001.jpg",
     },
     {
@@ -498,8 +497,7 @@ export const artworks: SeedArtwork[] = [
     {
       slug: "anatomy-lesson",
       title: "The Anatomy Lesson of Dr Nicolaes Tulp",
-      description:
-        "Rembrandt, 1632. Oil on canvas. Mauritshuis, The Hague. Public domain, via Wikimedia Commons.",
+      description: "Rembrandt, 1632. Oil on canvas. Mauritshuis, The Hague. Public domain, via Wikimedia Commons.",
       source: "https://commons.wikimedia.org/wiki/File:Rembrandt_-_The_Anatomy_Lesson_of_Dr_Nicolaes_Tulp.jpg",
     },
     {
@@ -705,13 +703,7 @@ export const collections: SeedCollection[] = [
     slug: "battles",
     name: "Battle Paintings",
     blurb: "Armies, sieges and charges, from the Renaissance to the Victorians.",
-    artworks: [
-      "battle-of-san-romano",
-      "battle-of-issus",
-      "surrender-of-breda",
-      "third-of-may",
-      "scotland-forever",
-    ],
+    artworks: ["battle-of-san-romano", "battle-of-issus", "surrender-of-breda", "third-of-may", "scotland-forever"],
   },
   {
     slug: "modern-life",
