@@ -2,7 +2,7 @@
 
 ## Overview
 
-A single Next.js (App Router, TypeScript) app serves pages and handles writes through server actions and route handlers. Postgres stores users, images and annotations via Prisma. Auth.js handles GitHub sign-in, with sessions stored in Postgres ([ADR 0007](adr/0007-authjs-v5-beta.md)). Image files live in Cloudflare R2 and are served from its public URL. Annotorious draws and renders regions in the browser.
+A single Next.js (App Router, TypeScript) app serves pages and handles writes through server actions and route handlers. A small, read-only GraphQL API at `/api/graphql` exposes the same public data to other clients ([ADR 0015](adr/0015-graphql-api.md)). Postgres stores users, images and annotations via Prisma. Auth.js handles GitHub sign-in, with sessions stored in Postgres ([ADR 0007](adr/0007-authjs-v5-beta.md)). Image files live in Cloudflare R2 and are served from its public URL. Annotorious draws and renders regions in the browser.
 
 ```
 Browser ── Next.js app ──┬── Postgres (Prisma)
@@ -52,6 +52,7 @@ prisma/               Schema and migrations
 src/app/              Routes (App Router); see "Routes and views" below
 src/auth.ts           Auth.js config (GitHub provider, Prisma adapter)
 src/lib/              Shared code: db client, storage, current user, validation, regions, duplicate check
+src/lib/graphql/      The GraphQL API's schema, resolvers, query limits and server (ADR 0015)
 src/generated/prisma  Generated Prisma Client (gitignored)
 ```
 
@@ -92,8 +93,11 @@ layout.tsx  root: <html>, fonts, globals.css, viewport              server
 │              createAnnotation, addAnnotation, updateAnnotation,
 │              deleteAnnotation, updateImage, deleteImage
 │
-└─ /api/auth/*       api/auth/[...nextauth]/route.ts → src/auth.ts
-      GitHub sign-in and sign-out; no view of its own
+├─ /api/auth/*       api/auth/[...nextauth]/route.ts → src/auth.ts
+│     GitHub sign-in and sign-out; no view of its own
+│
+└─ /api/graphql      api/graphql/route.ts → src/lib/graphql/server.ts
+      read-only GraphQL API (ADR 0015); GraphiQL in development
 ```
 
 **Server** components run only on the server: they query the database and send rendered output, not code. **Client** components (files starting with `"use client"`) are also sent to the browser as JavaScript, which makes them interactive. Server actions are called from client components but run on the server.
@@ -132,6 +136,15 @@ Authors can edit or delete their own annotations, and owners their own images ([
 - **Deleting an image** deletes the row, and with it every annotation on the image, including other people's, through `onDelete: Cascade`. Then it deletes the file from R2. If that fails, the error is logged and the file is left behind; see Known gaps.
 - **Mobile annotate mode:** the whole image page has `touch-action: none` and the app owns zoom ([ADR 0012](adr/0012-app-owned-zoom.md)). While a box can be drawn or moved, dragging edits the box instead of panning. When the on-screen keyboard opens over a card, the view zooms again within the space left above it.
 - **On-screen keyboard and safe area:** browsers don't report the keyboard, so `useScreenLayout` (`src/lib/use-screen-layout.ts`) compares the visual viewport with the layout viewport, and reads the safe area from `env(safe-area-inset-*)` (the image page sets `viewport-fit=cover`). The view, the UI panel and cards use the resulting visible area. On iOS, the keyboard only shrinks the visual viewport; on Android, the root layout's `interactiveWidget: "resizes-content"` shrinks the layout viewport. Pinch-zoom also shrinks the visual viewport, but the image page owns zoom, so the browser's stays at 1.
+
+## GraphQL API
+
+`/api/graphql` answers GraphQL queries with GraphQL Yoga ([ADR 0015](adr/0015-graphql-api.md)). It's read-only and needs no sign-in: writes stay in the server actions, with their checks.
+
+- **Schema** (`src/lib/graphql/schema.ts`): `image(id)`, `images(first, after)` (cursor pagination, newest first, at most 50 a page) and `collections`. An `Author` is only a name; nothing private is in the schema.
+- **Resolvers** read Prisma with its fluent API (`findUnique(...).regions()`), which Prisma batches, so nested lists cost one query per level, not one per row.
+- **Limits** (`src/lib/graphql/limits.ts`): at most 8 levels deep and 200 fields, aliases included, checked before the query runs. Production also turns off introspection and GraphiQL.
+- **Tests:** `npm test` runs the schema against an in-memory stand-in for Prisma (`src/lib/graphql/graphql.test.ts`).
 
 ## Deployment
 
