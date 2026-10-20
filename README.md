@@ -74,6 +74,7 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
   - `REPORT_EMAIL`: where "Report it" links send email
 - **New accounts:** a first GitHub sign-in creates a pending account that can browse but not upload or annotate. Approve it with `npm run prod:users -- approve <github-login>` (run `npm run prod:users` to see who's waiting).
 - **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` reads `.env.prod`, which is git-ignored and holds Neon's direct connection string plus the production R2 values.
+- **Orphaned uploads:** a small AWS stack in [`infra/`](infra/README.md) deletes R2 files with no `Image` row once a day ([ADR 0017](docs/adr/0017-orphan-cleanup-on-aws.md)). It deploys from `main` through GitHub Actions after a one-time setup.
 - **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07, MAN-09, MAN-10) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
 
 ## Project docs
@@ -83,3 +84,4 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
 - [Architecture](docs/architecture.md)
 - [Architecture Decision Records](docs/adr/README.md)
 - [System tests](docs/system-tests.md): checks of the running app, with how each is run (manual or automated)
+- [Orphan cleanup on AWS](infra/README.md): the CDK stack, its one-time setup and its cost

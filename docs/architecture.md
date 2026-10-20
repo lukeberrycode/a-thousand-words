@@ -53,6 +53,8 @@ src/app/              Routes (App Router); see "Routes and views" below
 src/auth.ts           Auth.js config (GitHub provider, Prisma adapter)
 src/lib/              Shared code: db client, storage, current user, validation, regions, duplicate check
 src/generated/prisma  Generated Prisma Client (gitignored)
+infra/                AWS CDK stack for the nightly orphan cleanup; its own package
+.github/workflows/    GitHub Actions, including the infra checks and deploy
 ```
 
 ## Routes and views
@@ -129,7 +131,7 @@ Authors can edit or delete their own annotations, and owners their own images ([
 - The page tells the browser which annotations and which image are the signed-in user's (a `mine` flag), so it can show Edit and Delete. That's only for display. Each server action checks again, with ownership in the write's `where` (for example `{ id, authorId }`), so checking and writing happen in one query.
 - **Edit annotation** opens the editor with the text. If you drew the box and it holds only your annotations, the box also becomes movable and resizable, and Save sends the new region too, checked against the overlap rule. Cancel puts the box back.
 - **Delete annotation** and **Delete image** ask for confirmation inside the page, not with a browser dialog. Deleting a box's last annotation deletes the box too.
-- **Deleting an image** deletes the row, and with it every annotation on the image, including other people's, through `onDelete: Cascade`. Then it deletes the file from R2. If that fails, the error is logged and the file is left behind; see Known gaps.
+- **Deleting an image** deletes the row, and with it every annotation on the image, including other people's, through `onDelete: Cascade`. Then it deletes the file from R2. If that fails, the error is logged and the file is left behind, for the nightly orphan cleanup (below) to delete.
 - **Mobile annotate mode:** the whole image page has `touch-action: none` and the app owns zoom ([ADR 0012](adr/0012-app-owned-zoom.md)). While a box can be drawn or moved, dragging edits the box instead of panning. When the on-screen keyboard opens over a card, the view zooms again within the space left above it.
 - **On-screen keyboard and safe area:** browsers don't report the keyboard, so `useScreenLayout` (`src/lib/use-screen-layout.ts`) compares the visual viewport with the layout viewport, and reads the safe area from `env(safe-area-inset-*)` (the image page sets `viewport-fit=cover`). The view, the UI panel and cards use the resulting visible area. On iOS, the keyboard only shrinks the visual viewport; on Android, the root layout's `interactiveWidget: "resizes-content"` shrinks the layout viewport. Pinch-zoom also shrinks the visual viewport, but the image page owns zoom, so the browser's stays at 1.
 
@@ -137,8 +139,24 @@ Authors can edit or delete their own annotations, and owners their own images ([
 
 Vercel hosts the app at https://a-thousand-words-pi.vercel.app/, with Neon Postgres and a production R2 bucket ([ADR 0009](adr/0009-deploy-vercel-neon.md)). Migrations are applied by hand with `npm run prod:migrate`, not during the build. Seed content (`prisma/seed-data.ts`, loaded by `prisma/seed.ts`) is public-domain paintings from Wikimedia Commons, and the collections that group them on the home page ([ADR 0014](adr/0014-home-page-collections.md)). They're stored under `images/seed/<slug>.jpg` and owned by an "A Thousand Words" user. Every image page has a "Report it" link that emails `REPORT_EMAIL`.
 
+## Orphan cleanup (AWS)
+
+An upload abandoned between steps 3 and 4 of the upload flow, or an R2 delete that fails after an image is deleted, leaves an orphaned object in R2: a file no `Image` row points at. A small AWS stack, defined with the CDK in `infra/`, deletes them ([ADR 0017](adr/0017-orphan-cleanup-on-aws.md)). The app's hosting doesn't change; AWS only runs this job.
+
+```
+EventBridge Scheduler (daily) ── Lambda ──┬── R2: list images/, delete orphans
+                                          ├── Neon: which keys have an Image row?
+                                          └── Secrets Manager: R2 and database credentials
+CloudWatch: logs (30 days), alarm on errors → SNS email · AWS Budgets: $5/month
+```
+
+- Each night the function lists every object under `images/`, looks up their keys in `Image.storageKey`, and deletes those with no row that are **more than 24 hours old**, so an upload still in progress (for example, at the duplicate warning) is never touched.
+- It starts in **dry run**, logging what it would delete, and refuses to delete more than 100 objects in one run.
+- GitHub Actions (`.github/workflows/infra.yml`) tests and synthesises the stack on pull requests that touch `infra/`, and deploys it from `main` with GitHub OIDC, so no AWS keys are stored in GitHub.
+
+Setup, settings and cost: [infra/README.md](../infra/README.md).
+
 ## Known gaps
 
-- An upload abandoned between steps 3 and 4, or an R2 delete that fails after an image is deleted, leaves an orphaned object in R2. A periodic cleanup of keys with no `Image` row would fix both.
 - The home grid loads full-size images as thumbnails; resized variants would cut bandwidth.
 - The image page zooms the full-size original up to 4× native pixels; tiled images would cut bandwidth on large paintings (ADR 0012).

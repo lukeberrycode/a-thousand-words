@@ -18,3 +18,4 @@ One short file per decision: the context, what was decided, and the consequences
 | [0012](0012-app-owned-zoom.md) | The image page owns zoom, with a custom view around Annotorious | Accepted |
 | [0013](0013-playwright-system-tests.md) | Automate the system tests with Playwright, signing in with a test session | Accepted |
 | [0014](0014-home-page-collections.md) | Home page rows of themed collections | Accepted |
+| [0017](0017-orphan-cleanup-on-aws.md) | Clean up orphaned uploads with a small AWS CDK stack | Accepted |
