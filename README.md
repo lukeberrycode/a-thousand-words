@@ -19,7 +19,7 @@ I'm a senior software engineer with seventeen years' experience, most of it ship
 
 ### Progress (October 2026)
 
-1. **AI-assisted development.** Claude Code (Opus 5.5) wrote most of the code. It works from a [one-pager](docs/one-pager.md), [decision records](docs/adr/README.md) and [system tests](docs/system-tests.md); I set the scope and make the decisions. It went from idea to a deployed alpha within a week. No code is used in anger without a full human review ([milestone 9](docs/one-pager.md#milestones)). The agent now works inside a checked-in permission envelope and a sandbox, hooks stop it finishing a task while checks fail, and CI checks every pull request ([ADR 0014](docs/adr/0014-agent-guardrails-and-ci.md)). Next: custom skills and subagents for repeated workflows, and parallel agents in git worktrees.
+1. **AI-assisted development.** Claude Code (Opus 5.5) wrote most of the code. It works from a [one-pager](docs/one-pager.md), [decision records](docs/adr/README.md) and [system tests](docs/system-tests.md); I set the scope and make the decisions. It went from idea to a deployed alpha within a week. No code is used in anger without a full human review ([milestone 9](docs/one-pager.md#milestones)). The agent now works inside a checked-in permission envelope and a sandbox, hooks stop it finishing a task while checks fail, and CI checks every pull request ([ADR 0015](docs/adr/0015-agent-guardrails-and-ci.md)). Next: custom skills and subagents for repeated workflows, and parallel agents in git worktrees.
 2. **Technologies.** I've learned Next.js (App Router) and React, and designed and migrated a relational schema with Prisma on Postgres. Some of it builds directly on my production work: Cloudflare R2 speaks the S3 API, through the same AWS SDK I used with S3. Vercel's push-to-deploy fills the role that GitLab, ArgoCD and Helm filled at my last job.
 3. **Finding work.** No new role yet. I'm still looking, so if you're hiring, [get in touch on LinkedIn](https://www.linkedin.com/in/luke-berry-software-engineer).
 4. **The product.** It's live with 12 annotated paintings, and early feedback has been good. I'll keep improving it release by release.
@@ -39,7 +39,7 @@ npm install                # also generates the Prisma client
 cp .env.example .env       # then set DATABASE_URL, the R2_* values and the AUTH_* values
 npx prisma dev             # optional: starts a local Postgres and prints its URL
 npm run db:migrate         # apply the schema
-npm run db:seed -- --yes   # optional: 12 annotated public-domain paintings
+npm run db:seed -- --yes   # optional: public-domain paintings and home page collections
 npm run dev                # http://localhost:3000
 ```
 
@@ -61,7 +61,11 @@ npm run dev                # http://localhost:3000
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
 | `npm run prod:migrate` | Apply migrations to production, using `.env.prod` |
 | `npm run prod:seed` | Seed production, using `.env.prod` (dry run unless `-- --yes`) |
+| `npm run preview:migrate` | Apply migrations to the preview database, using `.env.preview` |
+| `npm run preview:seed` | Seed the preview database, using `.env.preview` (dry run unless `-- --yes`) |
 | `npm run prod:users` | List or approve accounts on production, using `.env.prod` |
+
+After pulling a change to `prisma/schema.prisma`, run `npx prisma generate` (or `npm install`) before any of the `db:*`, `prod:*` or `preview:*` scripts. The generated client in `src/generated/prisma` is git-ignored and isn't rebuilt when you pull, so a script run with the old one fails on the new models (for example, `Cannot read properties of undefined (reading 'upsert')`). Vercel regenerates it on every deploy.
 
 ## Deploying
 
@@ -78,7 +82,7 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
 
 ## Working with Claude Code
 
-The project is set up for an AI coding agent to work on it safely ([ADR 0014](docs/adr/0014-agent-guardrails-and-ci.md)):
+The project is set up for an AI coding agent to work on it safely ([ADR 0015](docs/adr/0015-agent-guardrails-and-ci.md)):
 
 - `CLAUDE.md`: the agent's rules, commands and definition of done.
 - `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, push to `main`), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.

@@ -1,4 +1,4 @@
-# Checks every pull request and every push to main (ADR 0014). The `main` ruleset requires the
+# Checks every pull request and every push to main (ADR 0015). The `main` ruleset requires the
 # "checks" job to pass before a pull request can merge. The system tests and Lighthouse need a
 # database and storage, so they don't run here yet (docs/discovery/risks.md, R12).
 name: CI
@@ -40,7 +40,7 @@ jobs:
       - name: Build
         run: npm run build
       # Blocks on critical advisories only: the high ones open today are inside Prisma's own
-      # dependencies, with no fix available (ADR 0014). The full report stays in the log.
+      # dependencies, with no fix available (ADR 0015). The full report stays in the log.
       - name: Audit dependencies
         run: |
           npm audit --omit=dev || true

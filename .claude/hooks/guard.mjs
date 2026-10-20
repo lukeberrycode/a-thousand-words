@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// PreToolUse hook: a second line behind the deny rules in .claude/settings.json (ADR 0014).
+// PreToolUse hook: a second line behind the deny rules in .claude/settings.json (ADR 0015).
 // Blocks edits to env files and the lock file, and pushes to main, which a deny rule can't fully
 // catch (a bare `git push` while on main). Exit 2 blocks the call and shows the reason to Claude.
 import { execFileSync } from "node:child_process";

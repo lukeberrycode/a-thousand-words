@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Stop hook: Claude can't finish a turn with failing checks (ADR 0014, the definition of done in
+// Stop hook: Claude can't finish a turn with failing checks (ADR 0015, the definition of done in
 // CLAUDE.md). Runs lint, typecheck and unit tests when the code has changed since they last passed,
 // and sends failures back to Claude. The system tests are too slow for every turn; CLAUDE.md says
 // when to run them.

@@ -1,4 +1,4 @@
-# 15. Unit tests with Vitest, formatting with Prettier, performance checks with Lighthouse CI
+# 16. Unit tests with Vitest, formatting with Prettier, performance checks with Lighthouse CI
 
 Date: 2026-10-12 · Status: Accepted
 
@@ -14,7 +14,7 @@ Testing was all system tests (ADR 0013): thorough, but two minutes per run and d
 
 ## Consequences
 
-- Lint, typecheck and unit tests take about 10 seconds together, so the `Stop` hook and CI can run them on every change (ADR 0014).
+- Lint, typecheck and unit tests take about 10 seconds together, so the `Stop` hook and CI can run them on every change (ADR 0015).
 - Unit tests cover pure functions only. Server actions, the database and the browser stay with the system tests.
 - Lighthouse needs a running database, so it runs locally and not in CI yet. Its first report gives a baseline to improve on. The image page, the heaviest one, isn't measured yet, because its URL needs an image id.
 - Running Lighthouse needs Chrome; Playwright's Chromium works (`CHROME_PATH`, see the README).
