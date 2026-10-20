@@ -12,6 +12,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:users": "tsx scripts/users.ts",
+    "test": "vitest run",
     "test:system": "playwright test",
     "prod:migrate": "sh -c 'set -a && . ./.env.prod && set +a && prisma migrate deploy'",
     "prod:seed": "sh -c 'set -a && . ./.env.prod && set +a && tsx prisma/seed.ts \"$@\"' --",
@@ -26,6 +27,8 @@
     "@aws-sdk/s3-request-presigner": "^3.1144.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "graphql": "16.14.2",
+    "graphql-yoga": "5.24.1",
     "next": "16.3.8",
     "next-auth": "5.0.0-beta.32",
     "pg": "^8.23.1",
@@ -47,6 +50,7 @@
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "4.1.11"
   }
 }
