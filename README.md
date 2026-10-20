@@ -61,6 +61,8 @@ npm run dev                # http://localhost:3000
 | `npm run preview:seed` | Seed the preview database, using `.env.preview` (dry run unless `-- --yes`) |
 | `npm run prod:users` | List or approve accounts on production, using `.env.prod` |
 
+After pulling a change to `prisma/schema.prisma`, run `npx prisma generate` (or `npm install`) before any of the `db:*`, `prod:*` or `preview:*` scripts. The generated client in `src/generated/prisma` is git-ignored and isn't rebuilt when you pull, so a script run with the old one fails on the new models (for example, `Cannot read properties of undefined (reading 'upsert')`). Vercel regenerates it on every deploy.
+
 ## Deploying
 
 The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Postgres and a production R2 bucket ([ADR 0009](docs/adr/0009-deploy-vercel-neon.md)). Pushing to `main` deploys.
