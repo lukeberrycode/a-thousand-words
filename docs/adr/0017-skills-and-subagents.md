@@ -1,4 +1,4 @@
-# 16. Skills for repeated work, and subagents with narrow permissions
+# 17. Skills for repeated work, and subagents with narrow permissions
 
 Date: 2026-10-12 · Status: Accepted
 
@@ -12,7 +12,7 @@ Reviews and tests were done by the same agent that wrote the code, in the same c
 
 - **Skills** in `.claude/skills/`:
   - `write-adr`: the steps and template for an ADR. Claude may load it on its own whenever a decision is made.
-  - `release`: the release order. Only the owner can start it (`/release <PR>`, `disable-model-invocation`), because it ends in production. Claude checks each step and the owner runs `prod:migrate` and merges, as ADR 0014 requires.
+  - `release`: the release order. Only the owner can start it (`/release <PR>`, `disable-model-invocation`), because it ends in production. Claude checks each step and the owner runs `prod:migrate` and merges, as ADR 0015 requires.
 - **Subagents** in `.claude/agents/`, each with a fresh context:
   - `code-reviewer`: reads the branch against `CLAUDE.md`, the ADRs and a security checklist for server actions, and reports findings by severity. It can't edit, and Bash runs only git commands that read.
   - `test-writer`: writes unit tests and system tests, and updates `docs/system-tests.md`. It can't edit application code, so a failing test stays failing until the main agent fixes the code.

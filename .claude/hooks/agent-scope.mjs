@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// PreToolUse hook for the subagents in .claude/agents (ADR 0016): keeps each one to its job, which a
+// PreToolUse hook for the subagents in .claude/agents (ADR 0017): keeps each one to its job, which a
 // tool list can't do on its own. Usage: node agent-scope.mjs <code-reviewer|test-writer>.
 // - code-reviewer: no edits; Bash only for git commands that read.
 // - test-writer: edits only test files; Bash only for the test, lint and typecheck commands.
