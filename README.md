@@ -78,8 +78,39 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
   - `REPORT_EMAIL`: where "Report it" links send email
 - **New accounts:** a first GitHub sign-in creates a pending account that can browse but not upload or annotate. Approve it with `npm run prod:users -- approve <github-login>` (run `npm run prod:users` to see who's waiting).
 - **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` uses Neon's direct connection string, from KeePassXC (below).
-- **Production and preview settings for the `prod:*` and `preview:*` scripts** come from KeePassXC, not from files in the project ([ADR 0019](docs/adr/0019-prod-secrets-from-keepassxc.md)). Set `KEEPASS_DB` to your `.kdbx` file in your shell profile (and `KEEPASS_KEY_FILE` if the database uses one). Create the entries `a-thousand-words-prod` and `a-thousand-words-preview`, each with one `KEY="value"` line per variable in its Notes: `DATABASE_URL` (Neon's direct connection string, with `sslmode=verify-full`) and the five `R2_*` values. Each run asks for the database's password, so run these scripts in your own terminal.
+- **Production and preview settings for the `prod:*` and `preview:*` scripts** come from KeePassXC, not from files in the project ([ADR 0019](docs/adr/0019-prod-secrets-from-keepassxc.md)). See [KeePassXC entries](#keepassxc-entries) below. Each run asks for the database's password, so run these scripts in your own terminal.
 - **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07, MAN-09, MAN-10) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
+
+### KeePassXC entries
+
+`scripts/with-keepass-env.sh` reads two entries from your KeePassXC database: `a-thousand-words-prod` for the `prod:*` scripts and `a-thousand-words-preview` for the `preview:*` ones.
+
+**Settings,** in your shell profile (for example `~/.bashrc`):
+
+```bash
+export KEEPASS_DB="$HOME/path/to/your.kdbx"   # required
+export KEEPASS_GROUP="Projects"                # only if the entries are in a group; a path like Work/Projects works too
+export KEEPASS_KEY_FILE="$HOME/path/to/keyfile" # only if the database uses a key file
+```
+
+The script finds an entry by its path from the root of the database. If the entries are in a group and `KEEPASS_GROUP` isn't set, it fails with "Could not find entry with path".
+
+**Each entry's Notes field** holds one line per variable. The title must match exactly. The Password field and any custom attributes aren't read.
+
+```
+# Production: Neon's direct connection string, and the production bucket
+DATABASE_URL="postgresql://neondb_owner:<password>@<host>.neon.tech/neondb?sslmode=verify-full&channel_binding=require"
+R2_ACCOUNT_ID="<account id>"
+R2_ACCESS_KEY_ID="<access key id>"
+R2_SECRET_ACCESS_KEY="<secret access key>"
+R2_BUCKET="a-thousand-words-prod"
+R2_PUBLIC_URL="https://pub-<id>.r2.dev"
+```
+
+- `DATABASE_URL` is required: the script stops without it. Use Neon's **direct** string (not the `-pooler` one), with `sslmode=verify-full`. The preview entry uses the preview branch's direct string.
+- `prod:seed` and `preview:seed` also need `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`, A missing `R2_BUCKET` stops even the dry run; the other three are only read when the seed runs with `--yes`. `R2_PUBLIC_URL` isn't used by these scripts; keep it there so the entry holds the whole of production's storage settings.
+- **Format:** `KEY=value`, `KEY="value"` or `KEY='value'`, with no spaces around `=`. Lines starting with `#`, and blank lines, are skipped. Windows line endings are fine.
+- **Not supported:** an `export ` prefix, a comment after a value on the same line (it becomes part of the value), escapes inside quotes, and values over more than one line.
 
 ## Working with Claude Code
 

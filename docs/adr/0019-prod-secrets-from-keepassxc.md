@@ -16,7 +16,7 @@ The owner keeps every secret in KeePassXC already. Options considered:
 
 - Each environment's settings live in one KeePassXC entry: `a-thousand-words-prod` and `a-thousand-words-preview`. The entry's Notes hold one `KEY="value"` line per variable, the same format as the old files.
 - `scripts/with-keepass-env.sh <entry> <command>` reads the entry's Notes with `keepassxc-cli` (from the KeePassXC Flatpak if the CLI isn't installed), exports each line, and runs the command. One master-password prompt per run; a key file is used too if `KEEPASS_KEY_FILE` is set. It parses the lines rather than running them with `eval`, and its errors give line numbers, never values.
-- The database's path comes from `KEEPASS_DB`, set in the owner's shell profile. It isn't a secret.
+- The database's path comes from `KEEPASS_DB`, set in the owner's shell profile. It isn't a secret. `KEEPASS_GROUP` names the group the entries are in, if they aren't at the root. The README's "KeePassXC entries" section gives the exact format.
 - `.env.prod` and `.env.preview` are deleted. The script warns if either is still there. The deny rules and sandbox settings that name them stay, in case one comes back.
 
 ## Consequences

@@ -2,8 +2,9 @@
 # Runs a command with settings from a KeePassXC entry (ADR 0019), so no production or preview secret
 # is kept in a file in the project. Used by the prod:* and preview:* scripts in package.json:
 #   sh scripts/with-keepass-env.sh <entry> <command> [args...]
-# The entry's Notes hold one KEY="value" line per variable, as .env.prod did. KeePassXC asks for the
-# database's password once; a key file is used too if KEEPASS_KEY_FILE is set.
+# The entry's Notes hold one KEY="value" line per variable; the format is in the README ("KeePassXC
+# entries"). KeePassXC asks for the database's password once; a key file is used too if
+# KEEPASS_KEY_FILE is set. If the entries are in a group, KEEPASS_GROUP is its path, e.g. Projects.
 set -eu
 
 : "${KEEPASS_DB:?Set KEEPASS_DB to the path of your KeePassXC database (.kdbx).}"
@@ -13,6 +14,12 @@ if [ $# -lt 2 ]; then
 fi
 entry=$1
 shift
+group=${KEEPASS_GROUP:-}
+group=${group#/}
+group=${group%/}
+if [ -n "$group" ]; then
+  entry="$group/$entry"
+fi
 
 for old in .env.prod .env.preview; do
   if [ -f "$old" ]; then
