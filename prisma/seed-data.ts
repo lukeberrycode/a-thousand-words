@@ -631,7 +631,8 @@ export const artworks: SeedArtwork[] = [
       title: "Sudden Shower over Shin-Ōhashi Bridge and Atake",
       description:
         "Utagawa Hiroshige, 1857. Colour woodblock print from the series One Hundred Famous Views of Edo. Public domain, via Wikimedia Commons.",
-      source: "https://commons.wikimedia.org/wiki/File:Hiroshige,_Sudden_shower_over_Shin-Ōhashi_bridge_and_Atake,_1857.jpg",
+      source:
+        "https://commons.wikimedia.org/wiki/File:Hiroshige,_Sudden_shower_over_Shin-Ōhashi_bridge_and_Atake,_1857.jpg",
     },
   ]),
 ];
