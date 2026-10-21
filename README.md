@@ -38,6 +38,7 @@ Requires Node 20+ and a Postgres database.
 npm install                # also generates the Prisma client
 cp .env.example .env       # then set DATABASE_URL, the R2_* values and the AUTH_* values
 npx prisma dev             # optional: starts a local Postgres and prints its URL
+                           # with it, also set SHADOW_DATABASE_URL (see .env.example)
 npm run db:migrate         # apply the schema
 npm run db:seed -- --yes   # optional: public-domain paintings and home page collections
 npm run dev                # http://localhost:3000
