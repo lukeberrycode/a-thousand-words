@@ -31,10 +31,12 @@ export class World {
   async user({ name = "Tester", approved = true }: { name?: string; approved?: boolean } = {}): Promise<TestUser> {
     const id = `${TEST_USER_PREFIX}${randomUUID()}`;
     const user = { id, name: `${name} ${id.slice(-6)}`, email: `${id}@example.test` };
-    await sql(
-      `INSERT INTO "User" (id, name, email, "approvedAt", "updatedAt") VALUES ($1, $2, $3, $4, now())`,
-      [id, user.name, user.email, approved ? new Date() : null],
-    );
+    await sql(`INSERT INTO "User" (id, name, email, "approvedAt", "updatedAt") VALUES ($1, $2, $3, $4, now())`, [
+      id,
+      user.name,
+      user.email,
+      approved ? new Date() : null,
+    ]);
     this.userIds.push(id);
     return user;
   }
@@ -62,7 +64,13 @@ export class World {
     const fp = await fingerprint(file.buffer);
     const storageKey = `images/${randomUUID()}.png`;
     await putObject(storageKey, file.buffer, file.mimeType);
-    const image = { id: newId(), title: `${title} ${storageKey.slice(7, 13)}`, storageKey, width: fp.width, height: fp.height };
+    const image = {
+      id: newId(),
+      title: `${title} ${storageKey.slice(7, 13)}`,
+      storageKey,
+      width: fp.width,
+      height: fp.height,
+    };
     await sql(
       `INSERT INTO "Image" (id, "ownerId", title, description, "storageKey", width, height, sha256, phash)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,

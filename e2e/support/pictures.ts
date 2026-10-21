@@ -13,7 +13,11 @@ export const newSeed = () => randomInt(2 ** 31);
 
 export async function picture(
   seed: number,
-  { width = 1200, height = 800, format = "png" }: { width?: number; height?: number; format?: "png" | "jpeg" | "webp" } = {},
+  {
+    width = 1200,
+    height = 800,
+    format = "png",
+  }: { width?: number; height?: number; format?: "png" | "jpeg" | "webp" } = {},
 ): Promise<Picture> {
   const cols = 9;
   const rows = 8;

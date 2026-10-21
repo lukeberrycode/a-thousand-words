@@ -119,7 +119,10 @@ test("ANN-03: Cancelling and leaving annotate mode discard the draft", async ({ 
   await view.closeCard();
   await expect(view.draft).toHaveCount(0);
   await view.panel.getByRole("button", { name: "Done annotating" }).click();
-  await expect(view.panel.getByRole("button", { name: "Annotate", exact: true })).toHaveAttribute("aria-pressed", "false");
+  await expect(view.panel.getByRole("button", { name: "Annotate", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
   await expect(view.draft).toHaveCount(0);
   await expect(view.shapes).toHaveCount(0);
 
