@@ -89,7 +89,12 @@ export function ImageDetails({ id, title, description, byline, mine, annotationC
           >
             {isPending ? "Saving…" : "Save"}
           </button>
-          <button type="button" onClick={() => setMode("view")} disabled={isPending} className="text-sm hover:underline">
+          <button
+            type="button"
+            onClick={() => setMode("view")}
+            disabled={isPending}
+            className="text-sm hover:underline"
+          >
             Cancel
           </button>
         </div>

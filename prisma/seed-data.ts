@@ -86,7 +86,8 @@ export const artworks: SeedArtwork[] = [
     title: "The Ambassadors",
     description:
       "Hans Holbein the Younger, 1533. Oil on oak. National Gallery, London. Public domain, via Wikimedia Commons.",
-    source: "https://commons.wikimedia.org/wiki/File:Hans_Holbein_the_Younger_-_The_Ambassadors_-_Google_Art_Project.jpg",
+    source:
+      "https://commons.wikimedia.org/wiki/File:Hans_Holbein_the_Younger_-_The_Ambassadors_-_Google_Art_Project.jpg",
     annotations: [
       {
         region: { x: 0.21, y: 0.76, w: 0.51, h: 0.23 },
@@ -123,7 +124,8 @@ export const artworks: SeedArtwork[] = [
     title: "Netherlandish Proverbs",
     description:
       "Pieter Bruegel the Elder, 1559. Oil on oak panel. Gemäldegalerie, Berlin. More than a hundred proverbs acted out in one village. Public domain, via Wikimedia Commons.",
-    source: "https://commons.wikimedia.org/wiki/File:Pieter_Brueghel_the_Elder_-_The_Dutch_Proverbs_-_Google_Art_Project.jpg",
+    source:
+      "https://commons.wikimedia.org/wiki/File:Pieter_Brueghel_the_Elder_-_The_Dutch_Proverbs_-_Google_Art_Project.jpg",
     annotations: [
       {
         region: { x: 0.035, y: 0.375, w: 0.06, h: 0.075 },
@@ -160,7 +162,8 @@ export const artworks: SeedArtwork[] = [
     title: "Hunters in the Snow",
     description:
       "Pieter Bruegel the Elder, 1565. Oil on oak panel. Kunsthistorisches Museum, Vienna. One of a series of paintings of the seasons. Public domain, via Wikimedia Commons.",
-    source: "https://commons.wikimedia.org/wiki/File:Pieter_Bruegel_the_Elder_-_Hunters_in_the_Snow_(Winter)_-_Google_Art_Project.jpg",
+    source:
+      "https://commons.wikimedia.org/wiki/File:Pieter_Bruegel_the_Elder_-_Hunters_in_the_Snow_(Winter)_-_Google_Art_Project.jpg",
     annotations: [
       {
         region: { x: 0.24, y: 0.55, w: 0.18, h: 0.36 },
@@ -191,9 +194,9 @@ export const artworks: SeedArtwork[] = [
   {
     slug: "meninas",
     title: "Las Meninas",
-    description:
-      "Diego Velázquez, 1656. Oil on canvas. Museo del Prado, Madrid. Public domain, via Wikimedia Commons.",
-    source: "https://commons.wikimedia.org/wiki/File:Las_Meninas,_by_Diego_Vel%C3%A1zquez,_from_Prado_in_Google_Earth.jpg",
+    description: "Diego Velázquez, 1656. Oil on canvas. Museo del Prado, Madrid. Public domain, via Wikimedia Commons.",
+    source:
+      "https://commons.wikimedia.org/wiki/File:Las_Meninas,_by_Diego_Vel%C3%A1zquez,_from_Prado_in_Google_Earth.jpg",
     annotations: [
       {
         region: { x: 0.17, y: 0.5, w: 0.14, h: 0.2 },
@@ -296,7 +299,8 @@ export const artworks: SeedArtwork[] = [
     title: "The Birth of Venus",
     description:
       "Sandro Botticelli, about 1484–1486. Tempera on canvas. Uffizi Gallery, Florence. Public domain, via Wikimedia Commons.",
-    source: "https://commons.wikimedia.org/wiki/File:Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg",
+    source:
+      "https://commons.wikimedia.org/wiki/File:Sandro_Botticelli_-_La_nascita_di_Venere_-_Google_Art_Project_-_edited.jpg",
     annotations: [
       {
         region: { x: 0.45, y: 0.08, w: 0.17, h: 0.78 },
@@ -446,8 +450,7 @@ export const artworks: SeedArtwork[] = [
     {
       slug: "moneylender",
       title: "The Moneylender and His Wife",
-      description:
-        "Quentin Matsys, 1514. Oil on panel. Musée du Louvre, Paris. Public domain, via Wikimedia Commons.",
+      description: "Quentin Matsys, 1514. Oil on panel. Musée du Louvre, Paris. Public domain, via Wikimedia Commons.",
       source: "https://commons.wikimedia.org/wiki/File:Quentin_Massys_001.jpg",
     },
     {
@@ -494,8 +497,7 @@ export const artworks: SeedArtwork[] = [
     {
       slug: "anatomy-lesson",
       title: "The Anatomy Lesson of Dr Nicolaes Tulp",
-      description:
-        "Rembrandt, 1632. Oil on canvas. Mauritshuis, The Hague. Public domain, via Wikimedia Commons.",
+      description: "Rembrandt, 1632. Oil on canvas. Mauritshuis, The Hague. Public domain, via Wikimedia Commons.",
       source: "https://commons.wikimedia.org/wiki/File:Rembrandt_-_The_Anatomy_Lesson_of_Dr_Nicolaes_Tulp.jpg",
     },
     {
@@ -701,13 +703,7 @@ export const collections: SeedCollection[] = [
     slug: "battles",
     name: "Battle Paintings",
     blurb: "Armies, sieges and charges, from the Renaissance to the Victorians.",
-    artworks: [
-      "battle-of-san-romano",
-      "battle-of-issus",
-      "surrender-of-breda",
-      "third-of-may",
-      "scotland-forever",
-    ],
+    artworks: ["battle-of-san-romano", "battle-of-issus", "surrender-of-breda", "third-of-may", "scotland-forever"],
   },
   {
     slug: "modern-life",

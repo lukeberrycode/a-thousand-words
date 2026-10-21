@@ -19,7 +19,7 @@ I'm a senior software engineer with seventeen years' experience, most of it ship
 
 ### Progress (October 2026)
 
-1. **AI-assisted development.** Claude Code (Opus 5.5) wrote most of the code. It works from a [one-pager](docs/one-pager.md), [decision records](docs/adr/README.md) and [system tests](docs/system-tests.md); I set the scope and make the decisions. It went from idea to a deployed alpha within a week. No code is used in anger without a full human review ([milestone 9](docs/one-pager.md#milestones)). Next: more autonomy, safely. That means a checked-in permission envelope, hooks that stop the agent finishing on a failing build, CI on every pull request, custom skills and subagents for repeated workflows, and parallel agents in git worktrees.
+1. **AI-assisted development.** Claude Code (Opus 5.5) wrote most of the code. It works from a [one-pager](docs/one-pager.md), [decision records](docs/adr/README.md) and [system tests](docs/system-tests.md); I set the scope and make the decisions. It went from idea to a deployed alpha within a week. No code is used in anger without a full human review ([milestone 9](docs/one-pager.md#milestones)). The agent now works inside a checked-in permission envelope and a sandbox, hooks stop it finishing a task while checks fail, and CI checks every pull request ([ADR 0015](docs/adr/0015-agent-guardrails-and-ci.md)). Next: custom skills and subagents for repeated workflows, and parallel agents in git worktrees.
 2. **Technologies.** I've learned Next.js (App Router) and React, and designed and migrated a relational schema with Prisma on Postgres. Some of it builds directly on my production work: Cloudflare R2 speaks the S3 API, through the same AWS SDK I used with S3. Vercel's push-to-deploy fills the role that GitLab, ArgoCD and Helm filled at my last job.
 3. **Finding work.** No new role yet. I'm still looking, so if you're hiring, [get in touch on LinkedIn](https://www.linkedin.com/in/luke-berry-software-engineer).
 4. **The product.** It's live with 12 annotated paintings, and early feedback has been good. I'll keep improving it release by release.
@@ -50,7 +50,11 @@ npm run dev                # http://localhost:3000
 | `npm run dev` | Start the dev server |
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
+| `npm run typecheck` | TypeScript, without building (generates Next.js's route types first) |
+| `npm test` | The unit tests (Vitest, `src/**/*.test.ts`); `npm run test:watch` reruns them on change |
+| `npm run format` | Format the code with Prettier; `npm run format:check` only checks |
 | `npm run test:system` | The automated system tests ([docs/system-tests.md](docs/system-tests.md#running-the-automated-tests)): Playwright against the dev server, local database and R2 bucket from `.env`. Run `npx playwright install chromium` once first. |
+| `npm run test:perf` | Lighthouse CI against a production build of the home page (`npm run build` first, with the local database running). Warns below the performance budgets. Set `CHROME_PATH` to a Chrome or Chromium binary, e.g. Playwright's under `~/.cache/ms-playwright/`. |
 | `npm run db:migrate` | Create and apply migrations (`prisma migrate dev`). Restart `npm run dev` afterwards: it keeps one Prisma client across hot reloads, so it won't know about new columns until restarted. |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run db:seed` | Load the seed paintings into the database and R2 from `.env` (dry run unless `-- --yes`) |
@@ -76,10 +80,20 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
 - **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` reads `.env.prod`, which is git-ignored and holds Neon's direct connection string plus the production R2 values.
 - **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07, MAN-09, MAN-10) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
 
+## Working with Claude Code
+
+The project is set up for an AI coding agent to work on it safely ([ADR 0015](docs/adr/0015-agent-guardrails-and-ci.md)):
+
+- `CLAUDE.md`: the agent's rules, commands and definition of done.
+- `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, push to `main`), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.
+- `.claude/hooks/`: block edits to secrets and pushes to `main`, format each edited file, and stop the agent finishing a task while lint, typecheck or unit tests fail.
+- `.github/workflows/ci.yml`: format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
+
 ## Project docs
 
 - [One-pager & MVP scope](docs/one-pager.md)
 - [Product background](docs/product-background.md): audience, prior art and the name
+- [Risks](docs/discovery/risks.md): what could go wrong, and how each risk was handled
 - [Architecture](docs/architecture.md)
 - [Architecture Decision Records](docs/adr/README.md)
 - [System tests](docs/system-tests.md): checks of the running app, with how each is run (manual or automated)

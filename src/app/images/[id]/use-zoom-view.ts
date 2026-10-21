@@ -426,7 +426,10 @@ function areaCentre(layout: ScreenLayout | null) {
   return a ? { x: a.x + a.w / 2, y: a.y + a.h / 2 } : { x: innerWidth / 2, y: innerHeight / 2 };
 }
 
-const midpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+const midpoint = (a: { x: number; y: number }, b: { x: number; y: number }) => ({
+  x: (a.x + b.x) / 2,
+  y: (a.y + b.y) / 2,
+});
 
 const preventDefault = (e: Event) => e.preventDefault();
 

@@ -73,9 +73,10 @@ test("MAN-03: Edit an annotation's box and text", async ({ page, world }) => {
   );
   expectRegion(moved, { x: saved.x - saved.w / 3, y: saved.y - saved.h / 3, w: saved.w, h: saved.h }, 0.01);
   expectRegion(await view.shapeRegion(regionId), moved, 0.003);
-  const [annotation] = await sql<{ bodyMarkdown: string }>(`SELECT "bodyMarkdown" FROM "Annotation" WHERE "regionId" = $1`, [
-    regionId,
-  ]);
+  const [annotation] = await sql<{ bodyMarkdown: string }>(
+    `SELECT "bodyMarkdown" FROM "Annotation" WHERE "regionId" = $1`,
+    [regionId],
+  );
   expect(annotation.bodyMarkdown).toBe("New text");
 
   // Step 3: an unsaved move is undone by Cancel.
@@ -181,9 +182,10 @@ test("MAN-06: The server refuses changes to other people's content", async ({ pa
   await view.card.getByRole("button", { name: "Save" }).click();
 
   await expect(view.card.getByRole("alert")).toHaveText("That annotation doesn't exist, or isn't yours.");
-  const [annotation] = await sql<{ bodyMarkdown: string }>(`SELECT "bodyMarkdown" FROM "Annotation" WHERE "regionId" = $1`, [
-    regionId,
-  ]);
+  const [annotation] = await sql<{ bodyMarkdown: string }>(
+    `SELECT "bodyMarkdown" FROM "Annotation" WHERE "regionId" = $1`,
+    [regionId],
+  );
   expect(annotation.bodyMarkdown).toBe("Mine for now");
 });
 

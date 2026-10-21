@@ -20,10 +20,7 @@ const SIGNED_OUT = "Sign in to upload images.";
 const KEY_PATTERN = /^images\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
 
 /** Step 1: validate the file's type and size, and hand back a signed URL to upload it to. */
-export async function requestUpload(
-  contentType: string,
-  size: number,
-): Promise<Result<{ key: string; url: string }>> {
+export async function requestUpload(contentType: string, size: number): Promise<Result<{ key: string; url: string }>> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: SIGNED_OUT };
   if (!user.approved) return { ok: false, error: PENDING_APPROVAL };

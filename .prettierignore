@@ -1,0 +1,15 @@
+/src/generated/
+package-lock.json
+*.md
+docs/wireframes/
+public/
+
+# Dotfiles, apart from the ones the project owns. Also skips the placeholders that Claude Code's
+# sandbox puts over protected paths.
+/.*
+!/.claude/
+/.claude/*
+!/.claude/hooks/
+!/.claude/settings.json
+!/.github/
+!/.prettierrc.json

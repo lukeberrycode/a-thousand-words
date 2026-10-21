@@ -39,6 +39,8 @@ A region is a box on the image, holding one or more annotations by any users ([A
 
 ## Key risks
 
+The technical risks below shaped the design. All the project's risks, with how each was handled, are in the [risks register](discovery/risks.md).
+
 - **Region alignment on resize and zoom:** fractional coordinates plus an overlay over the rendered image. Milestone 1 proves this.
 - **Mobile interaction:** dragging a box conflicts with panning, so drawing only happens in an explicit "annotate mode", where zoom and pan are off.
 - **Overlapping regions:** smaller regions render on top so they stay clickable.

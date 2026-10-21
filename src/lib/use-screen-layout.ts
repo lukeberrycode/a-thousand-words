@@ -84,8 +84,7 @@ export function useScreenLayout(): ScreenLayout | null {
       const keyboard = typing && ((unzoomed && visibleBottom < H - 40) || H < tallestHere - 80);
 
       setLayout((prev) => {
-        const orientation =
-          prev && prev.screen.w === W ? prev.orientation : orientationOf({ w: W, h: H });
+        const orientation = prev && prev.screen.w === W ? prev.orientation : orientationOf({ w: W, h: H });
         const next = { screen: { w: W, h: H }, area, orientation, keyboard };
         return prev && sameLayout(prev, next) ? prev : next;
       });
