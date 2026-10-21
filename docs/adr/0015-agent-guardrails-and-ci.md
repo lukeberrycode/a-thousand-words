@@ -1,4 +1,4 @@
-# 14. Guard the coding agent with permissions, hooks and a sandbox, and check every pull request in CI
+# 15. Guard the coding agent with permissions, hooks and a sandbox, and check every pull request in CI
 
 Date: 2026-10-12 · Status: Accepted
 

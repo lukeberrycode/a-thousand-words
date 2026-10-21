@@ -1,4 +1,4 @@
-# Weekly pull requests for outdated dependencies and GitHub Actions (ADR 0014). Each one runs
+# Weekly pull requests for outdated dependencies and GitHub Actions (ADR 0015). Each one runs
 # through CI like any other pull request. next-auth is pinned to an exact beta (ADR 0007), so it's
 # upgraded by hand after reading the changelog.
 version: 2

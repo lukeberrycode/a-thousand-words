@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// PostToolUse hook: format each file Claude edits with Prettier (ADR 0014). Files Prettier doesn't
+// PostToolUse hook: format each file Claude edits with Prettier (ADR 0015). Files Prettier doesn't
 // handle, or that .prettierignore lists, are skipped. Never blocks: a formatting failure is shown
 // to Claude, and lint and typecheck catch real problems at the end of the turn.
 import { execFileSync } from "node:child_process";
