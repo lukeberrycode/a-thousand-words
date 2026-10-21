@@ -19,7 +19,7 @@ I'm a senior software engineer with seventeen years' experience, most of it ship
 
 ### Progress (October 2026)
 
-1. **AI-assisted development.** Claude Code (Opus 5.5) wrote most of the code. It works from a [one-pager](docs/one-pager.md), [decision records](docs/adr/README.md) and [system tests](docs/system-tests.md); I set the scope and make the decisions. It went from idea to a deployed alpha within a week. No code is used in anger without a full human review ([milestone 9](docs/one-pager.md#milestones)). The agent now works inside a checked-in permission envelope and a sandbox, hooks stop it finishing a task while checks fail, and CI checks every pull request ([ADR 0015](docs/adr/0015-agent-guardrails-and-ci.md)). Next: custom skills and subagents for repeated workflows, and parallel agents in git worktrees.
+1. **AI-assisted development.** Claude Code (Opus 5.5) wrote most of the code. It works from a [one-pager](docs/one-pager.md), [decision records](docs/adr/README.md) and [system tests](docs/system-tests.md); I set the scope and make the decisions. It went from idea to a deployed alpha within a week. No code is used in anger without a full human review ([milestone 9](docs/one-pager.md#milestones)). The agent now works inside a checked-in permission envelope and a sandbox, hooks stop it finishing a task while checks fail, and CI checks every pull request ([ADR 0014](docs/adr/0014-agent-guardrails-and-ci.md)). Repeated work has skills (writing ADRs, releasing), and two subagents with narrow permissions review code and write tests ([ADR 0016](docs/adr/0016-skills-and-subagents.md)). Next: parallel agents in git worktrees.
 2. **Technologies.** I've learned Next.js (App Router) and React, and designed and migrated a relational schema with Prisma on Postgres. Some of it builds directly on my production work: Cloudflare R2 speaks the S3 API, through the same AWS SDK I used with S3. Vercel's push-to-deploy fills the role that GitLab, ArgoCD and Helm filled at my last job.
 3. **Finding work.** No new role yet. I'm still looking, so if you're hiring, [get in touch on LinkedIn](https://www.linkedin.com/in/luke-berry-software-engineer).
 4. **The product.** It's live with 12 annotated paintings, and early feedback has been good. I'll keep improving it release by release.
@@ -87,6 +87,8 @@ The project is set up for an AI coding agent to work on it safely ([ADR 0015](do
 - `CLAUDE.md`: the agent's rules, commands and definition of done.
 - `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, push to `main`), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.
 - `.claude/hooks/`: block edits to secrets and pushes to `main`, format each edited file, and stop the agent finishing a task while lint, typecheck or unit tests fail.
+- `.claude/skills/`: `write-adr` records a decision in the house format; `/release <PR>` takes a pull request to production in the right order (migrate, merge, deploy, production checks), with the owner running the production steps ([ADR 0016](docs/adr/0016-skills-and-subagents.md)).
+- `.claude/agents/`: a `code-reviewer` that can only read, and a `test-writer` that can only edit test files. A hook enforces both.
 - `.github/workflows/ci.yml`: format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
 
 ## Project docs
