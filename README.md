@@ -59,11 +59,11 @@ npm run dev                # http://localhost:3000
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run db:seed` | Load the seed paintings into the database and R2 from `.env` (dry run unless `-- --yes`) |
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
-| `npm run prod:migrate` | Apply migrations to production, using `.env.prod` |
-| `npm run prod:seed` | Seed production, using `.env.prod` (dry run unless `-- --yes`) |
-| `npm run preview:migrate` | Apply migrations to the preview database, using `.env.preview` |
-| `npm run preview:seed` | Seed the preview database, using `.env.preview` (dry run unless `-- --yes`) |
-| `npm run prod:users` | List or approve accounts on production, using `.env.prod` |
+| `npm run prod:migrate` | Apply migrations to production, with settings from KeePassXC (see [Deploying](#deploying)) |
+| `npm run prod:seed` | Seed production, with settings from KeePassXC (dry run unless `-- --yes`) |
+| `npm run preview:migrate` | Apply migrations to the preview database, with settings from KeePassXC |
+| `npm run preview:seed` | Seed the preview database, with settings from KeePassXC (dry run unless `-- --yes`) |
+| `npm run prod:users` | List or approve accounts on production, with settings from KeePassXC |
 
 After pulling a change to `prisma/schema.prisma`, run `npx prisma generate` (or `npm install`) before any of the `db:*`, `prod:*` or `preview:*` scripts. The generated client in `src/generated/prisma` is git-ignored and isn't rebuilt when you pull, so a script run with the old one fails on the new models (for example, `Cannot read properties of undefined (reading 'upsert')`). Vercel regenerates it on every deploy.
 
@@ -77,7 +77,8 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
   - `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`: the production OAuth app
   - `REPORT_EMAIL`: where "Report it" links send email
 - **New accounts:** a first GitHub sign-in creates a pending account that can browse but not upload or annotate. Approve it with `npm run prod:users -- approve <github-login>` (run `npm run prod:users` to see who's waiting).
-- **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` reads `.env.prod`, which is git-ignored and holds Neon's direct connection string plus the production R2 values.
+- **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` uses Neon's direct connection string, from KeePassXC (below).
+- **Production and preview settings for the `prod:*` and `preview:*` scripts** come from KeePassXC, not from files in the project ([ADR 0019](docs/adr/0019-prod-secrets-from-keepassxc.md)). Set `KEEPASS_DB` to your `.kdbx` file in your shell profile (and `KEEPASS_KEY_FILE` if the database uses one). Create the entries `a-thousand-words-prod` and `a-thousand-words-preview`, each with one `KEY="value"` line per variable in its Notes: `DATABASE_URL` (Neon's direct connection string, with `sslmode=verify-full`) and the five `R2_*` values. Each run asks for the database's password, so run these scripts in your own terminal.
 - **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07, MAN-09, MAN-10) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
 
 ## Working with Claude Code
