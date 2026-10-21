@@ -2,7 +2,7 @@
   "name": "a-thousand-words-infra",
   "version": "0.1.0",
   "private": true,
-  "description": "AWS CDK stack that deletes orphaned R2 uploads (docs/adr/0017)",
+  "description": "AWS CDK stack that deletes orphaned R2 uploads (docs/adr/0018)",
   "type": "commonjs",
   "scripts": {
     "typecheck": "tsc --noEmit",

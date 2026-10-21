@@ -1,4 +1,4 @@
-// Daily cleanup of orphaned uploads in R2 (docs/adr/0017). Lists every object under the key
+// Daily cleanup of orphaned uploads in R2 (docs/adr/0018). Lists every object under the key
 // prefix, asks Postgres which keys have an Image row, and deletes the rest once they're over a day
 // old. In dry-run mode it only logs what it would delete.
 
@@ -45,9 +45,7 @@ let config: Config | undefined;
 
 async function loadConfig(): Promise<Config> {
   if (config) return config;
-  const res = await new SecretsManagerClient({}).send(
-    new GetSecretValueCommand({ SecretId: env("SECRET_ARN") }),
-  );
+  const res = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: env("SECRET_ARN") }));
   let parsed: Partial<Config>;
   try {
     parsed = JSON.parse(res.SecretString ?? "");

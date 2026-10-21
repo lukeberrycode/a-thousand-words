@@ -68,7 +68,10 @@ export class ImagePage {
       for (let x = left; x + size.w <= right; x += 20) {
         const clear = obstacles.every(
           (o) =>
-            x + size.w + margin < o.x || x > o.x + o.width + margin || y + size.h + margin < o.y || y > o.y + o.height + margin,
+            x + size.w + margin < o.x ||
+            x > o.x + o.width + margin ||
+            y + size.h + margin < o.y ||
+            y > o.y + o.height + margin,
         );
         if (clear) return { x, y, width: size.w, height: size.h };
       }

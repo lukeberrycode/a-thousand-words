@@ -39,6 +39,8 @@ A region is a box on the image, holding one or more annotations by any users ([A
 
 ## Key risks
 
+The technical risks below shaped the design. All the project's risks, with how each was handled, are in the [risks register](discovery/risks.md).
+
 - **Region alignment on resize and zoom:** fractional coordinates plus an overlay over the rendered image. Milestone 1 proves this.
 - **Mobile interaction:** dragging a box conflicts with panning, so drawing only happens in an explicit "annotate mode", where zoom and pan are off.
 - **Overlapping regions:** smaller regions render on top so they stay clickable.
@@ -141,7 +143,7 @@ Vercel hosts the app at https://a-thousand-words-pi.vercel.app/, with Neon Postg
 
 ## Orphan cleanup (AWS)
 
-An upload abandoned between steps 3 and 4 of the upload flow, or an R2 delete that fails after an image is deleted, leaves an orphaned object in R2: a file no `Image` row points at. A small AWS stack, defined with the CDK in `infra/`, deletes them ([ADR 0017](adr/0017-orphan-cleanup-on-aws.md)). The app's hosting doesn't change; AWS only runs this job.
+An upload abandoned between steps 3 and 4 of the upload flow, or an R2 delete that fails after an image is deleted, leaves an orphaned object in R2: a file no `Image` row points at. A small AWS stack, defined with the CDK in `infra/`, deletes them ([ADR 0018](adr/0018-orphan-cleanup-on-aws.md)). The app's hosting doesn't change; AWS only runs this job.
 
 ```
 EventBridge Scheduler (daily) ── Lambda ──┬── R2: list images/, delete orphans

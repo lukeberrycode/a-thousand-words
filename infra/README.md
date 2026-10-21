@@ -1,6 +1,6 @@
 # infra: orphaned upload cleanup on AWS
 
-A small AWS CDK app that deletes orphaned objects from the production R2 bucket once a day: files that no `Image` row points at. They come from uploads abandoned before `createImage` ran, and from R2 deletes that failed after an image was deleted (see "Known gaps" in [docs/architecture.md](../docs/architecture.md)). Why it runs on AWS rather than as a Vercel cron: [ADR 0017](../docs/adr/0017-orphan-cleanup-on-aws.md).
+A small AWS CDK app that deletes orphaned objects from the production R2 bucket once a day: files that no `Image` row points at. They come from uploads abandoned before `createImage` ran, and from R2 deletes that failed after an image was deleted (see "Known gaps" in [docs/architecture.md](../docs/architecture.md)). Why it runs on AWS rather than as a Vercel cron: [ADR 0018](../docs/adr/0018-orphan-cleanup-on-aws.md).
 
 The app itself is unchanged: it still runs on Vercel, with Neon Postgres and Cloudflare R2. AWS only runs this job.
 
@@ -94,7 +94,7 @@ Done once, from a workstation signed in to the AWS account as an administrator (
      "R2_ACCESS_KEY_ID": "…",
      "R2_SECRET_ACCESS_KEY": "…",
      "R2_BUCKET": "…",
-     "DATABASE_URL": "postgresql://…?sslmode=require"
+     "DATABASE_URL": "postgresql://…?sslmode=verify-full"
    }
    ```
 

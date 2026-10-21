@@ -37,9 +37,7 @@ describe("OrphanCleanupStack", () => {
     const statements = Object.values(template.findResources("AWS::IAM::Policy")).flatMap(
       (p) => p.Properties.PolicyDocument.Statement as Statement[],
     );
-    const secretStatements = statements.filter((s) =>
-      [s.Action].flat().some((a) => a.startsWith("secretsmanager:")),
-    );
+    const secretStatements = statements.filter((s) => [s.Action].flat().some((a) => a.startsWith("secretsmanager:")));
     expect(secretStatements).toHaveLength(1);
     expect([secretStatements[0].Action].flat()).toContain("secretsmanager:GetSecretValue");
     expect(secretStatements[0].Resource).toEqual({ Ref: secretId });
@@ -80,9 +78,7 @@ describe("OrphanCleanupStack", () => {
 
 describe("GithubDeployRoleStack", () => {
   it("trusts only the repository's main branch, and only to assume the CDK roles", () => {
-    const t = Template.fromStack(
-      new GithubDeployRoleStack(new App(), "Deploy", { githubRepo: "owner/repo" }),
-    );
+    const t = Template.fromStack(new GithubDeployRoleStack(new App(), "Deploy", { githubRepo: "owner/repo" }));
     t.resourceCountIs("AWS::IAM::OIDCProvider", 1);
     t.hasResourceProperties("AWS::IAM::Role", {
       AssumeRolePolicyDocument: {

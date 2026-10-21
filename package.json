@@ -7,12 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "next typegen && tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:users": "tsx scripts/users.ts",
     "test:system": "playwright test",
+    "test:perf": "lhci autorun",
     "prod:migrate": "sh -c 'set -a && . ./.env.prod && set +a && prisma migrate deploy'",
     "prod:seed": "sh -c 'set -a && . ./.env.prod && set +a && tsx prisma/seed.ts \"$@\"' --",
     "prod:users": "sh -c 'set -a && . ./.env.prod && set +a && tsx scripts/users.ts \"$@\"' --",
@@ -35,6 +41,7 @@
     "sharp": "^0.35.5"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -44,9 +51,11 @@
     "dotenv": "^18.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
+    "prettier": "^3.9.10",
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }

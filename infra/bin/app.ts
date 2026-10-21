@@ -12,7 +12,7 @@ function context(name: string): string | undefined {
 }
 
 new OrphanCleanupStack(app, "AThousandWordsOrphanCleanup", {
-  description: "a-thousand-words: daily cleanup of orphaned R2 uploads (docs/adr/0017)",
+  description: "a-thousand-words: daily cleanup of orphaned R2 uploads (docs/adr/0018)",
   dryRun: context("dryRun") !== "false",
   maxDeletes: Number(context("maxDeletes") ?? 100),
   budgetUsd: Number(context("budgetUsd") ?? 5),

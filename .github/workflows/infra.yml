@@ -1,4 +1,4 @@
-# Checks and deploys the AWS stack in infra/ (ADR 0017). Pull requests that touch it get a
+# Checks and deploys the AWS stack in infra/ (ADR 0018). Pull requests that touch it get a
 # typecheck, the tests and `cdk synth`, with no AWS credentials. Pushes to main, and manual runs
 # on main, deploy it, using GitHub's OIDC token to assume a role in AWS: no AWS keys are stored
 # in GitHub. The deploy is skipped until the AWS_DEPLOY_ROLE_ARN repository variable is set

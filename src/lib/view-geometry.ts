@@ -160,13 +160,7 @@ function paddedBox(region: Region, size: ImageSize): Rect {
  * Auto-zoom (Rule 5.6): the view that shows the box, with padding, beside its card, filling the
  * area. If they can't sit side by side even at the fit size, it's the fit size (Rule 5.7).
  */
-export function zoomToRegion(
-  region: Region,
-  size: ImageSize,
-  area: Rect,
-  orientation: Orientation,
-  panel: Edge,
-): View {
+export function zoomToRegion(region: Region, size: ImageSize, area: Rect, orientation: Orientation, panel: Edge): View {
   const side = cardSide(region, orientation);
   const card = cardMaxSize(area, orientation);
   // The part of the area left for the box once the card's space is set aside.
@@ -189,7 +183,11 @@ export function zoomToRegion(
   const scale = room.w > 0 && room.h > 0 ? Math.min(room.w / box.w, room.h / box.h) : 0;
   if (scale < min) return fitView(size, area, orientation, panel);
   const s = Math.min(scale, max);
-  const view = { scale: s, x: room.x + room.w / 2 - (box.x + box.w / 2) * s, y: room.y + room.h / 2 - (box.y + box.h / 2) * s };
+  const view = {
+    scale: s,
+    x: room.x + room.w / 2 - (box.x + box.w / 2) * s,
+    y: room.y + room.h / 2 - (box.y + box.h / 2) * s,
+  };
   return clampView(view, size, area, orientation, panel);
 }
 
@@ -227,6 +225,10 @@ export function placeCard(
     else a = Math.max(aBox, aStart) + CARD_GAP;
   }
   a = clamp(a, lo, hi);
-  const b = clamp(bBox + bBoxLen / 2 - bCard / 2, bStart + CARD_GAP, Math.max(bStart + CARD_GAP, bStart + bLen - CARD_GAP - bCard));
+  const b = clamp(
+    bBox + bBoxLen / 2 - bCard / 2,
+    bStart + CARD_GAP,
+    Math.max(bStart + CARD_GAP, bStart + bLen - CARD_GAP - bCard),
+  );
   return portrait ? { x: b, y: a, overlap } : { x: a, y: b, overlap };
 }

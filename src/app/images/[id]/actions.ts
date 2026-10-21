@@ -123,7 +123,10 @@ export async function updateAnnotation(input: { id: string; region?: Region; bod
     const { region } = annotation;
     const others = await db.annotation.count({ where: { regionId: region.id, authorId: { not: user.id } } });
     if (region.authorId !== user.id || others > 0) {
-      return { ok: false, error: "Only the person who drew this box can move it, while it holds only their annotations." };
+      return {
+        ok: false,
+        error: "Only the person who drew this box can move it, while it holds only their annotations.",
+      };
     }
     const clashWith = await clashFor(region.imageId, box, region.id);
     if (clashWith) return { ok: false, error: OVERLAPS, clashWith };

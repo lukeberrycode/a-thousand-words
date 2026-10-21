@@ -23,9 +23,7 @@ export function findOrphans(
   return objects
     .filter(
       (o) =>
-        !knownKeys.has(o.key) &&
-        o.lastModified !== undefined &&
-        now.getTime() - o.lastModified.getTime() > minAgeMs,
+        !knownKeys.has(o.key) && o.lastModified !== undefined && now.getTime() - o.lastModified.getTime() > minAgeMs,
     )
     .map((o) => o.key);
 }

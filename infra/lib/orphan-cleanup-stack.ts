@@ -25,7 +25,7 @@ export interface OrphanCleanupStackProps extends StackProps {
 }
 
 /**
- * A daily Lambda that deletes R2 objects with no Image row (docs/adr/0017). The app itself stays
+ * A daily Lambda that deletes R2 objects with no Image row (docs/adr/0018). The app itself stays
  * on Vercel, Neon and R2; AWS only runs this job.
  */
 export class OrphanCleanupStack extends Stack {

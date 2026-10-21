@@ -1,4 +1,4 @@
-# 17. Clean up orphaned uploads with a small AWS CDK stack
+# 18. Clean up orphaned uploads with a small AWS CDK stack
 
 Date: 2026-10-20 · Status: Accepted
 
