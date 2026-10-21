@@ -562,7 +562,7 @@ export const artworks: SeedArtwork[] = [
       title: "The Battle of San Romano",
       description:
         "Paolo Uccello, about 1438–1440. Egg tempera with walnut oil on poplar. National Gallery, London. Public domain, via Wikimedia Commons.",
-      source: "https://commons.wikimedia.org/wiki/File:Uccello_Battle_of_San_Romano_London.jpg",
+      source: "https://commons.wikimedia.org/wiki/File:San_Romano_Battle_(Paolo_Uccello,_London)_01.jpg",
     },
     {
       slug: "battle-of-issus",
@@ -577,7 +577,7 @@ export const artworks: SeedArtwork[] = [
       title: "Scotland Forever!",
       description:
         "Elizabeth Thompson, Lady Butler, 1881. Oil on canvas. Leeds Art Gallery. Public domain, via Wikimedia Commons.",
-      source: "https://commons.wikimedia.org/wiki/File:Lady_Butler_-_Scotland_Forever!.jpg",
+      source: "https://commons.wikimedia.org/wiki/File:Scotland_Forever!.jpg",
     },
 
     // Modern life
@@ -631,7 +631,8 @@ export const artworks: SeedArtwork[] = [
       title: "Sudden Shower over Shin-Ōhashi Bridge and Atake",
       description:
         "Utagawa Hiroshige, 1857. Colour woodblock print from the series One Hundred Famous Views of Edo. Public domain, via Wikimedia Commons.",
-      source: "https://commons.wikimedia.org/wiki/File:Hiroshige_Atake_sudden_shower.jpg",
+      source:
+        "https://commons.wikimedia.org/wiki/File:Hiroshige,_Sudden_shower_over_Shin-Ōhashi_bridge_and_Atake,_1857.jpg",
     },
   ]),
 ];
