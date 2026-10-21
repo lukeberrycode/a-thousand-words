@@ -21,7 +21,7 @@ Model in use: Claude Opus 5.5 (October 2026). When the model changes, ask what i
 
 ## Rules
 
-- **Decisions get an ADR.** Any choice of library, service, data shape or approach that someone might later ask "why?" about: a new file in `docs/adr/` with the next number, *Date · Status*, then *Context*, *Decision* and *Consequences*, plus a row in `docs/adr/README.md`. Supersede old ADRs; don't delete them.
+- **Decisions get an ADR.** Any choice of library, service, data shape or approach that someone might later ask "why?" about. Use the `write-adr` skill. Supersede old ADRs; don't delete them.
 - **Never touch production.** Don't read `.env` or `.env.prod`, and don't run `npm run prod:*`. If a change needs a production migration, say so in the PR description: `npm run prod:migrate` runs **before** the merge.
 - **Branches and PRs.** Work on a branch, one PR per milestone or change. The owner merges and pushes to `main`.
 - **Only run installed tools.** Use `npm run <script>` or `npx --no-install <tool>`. A bare `npx <name>` downloads and runs any package with that name.
@@ -35,4 +35,6 @@ A task isn't finished until all of these hold. The `Stop` hook checks the first 
 - **New or changed logic:** pure functions have unit tests next to them. A change users can see has a system test, or its entry in `docs/system-tests.md` says why it's manual. Run `npm run test:system` for changes to the image page, uploads, sign-in or server actions.
 - **Schema change:** a migration from `npm run db:migrate`, and the PR says to run `prod:migrate` before merging.
 - **Docs:** the README, `docs/architecture.md` and the one-pager still describe what the code does. New decisions have an ADR; new risks go in `docs/discovery/risks.md`.
-- **PR:** CI passes. The description lists anything the owner must do (migrations, settings, manual tests).
+- **Tests are written by the `test-writer` subagent** when a change needs more than a test or two, so tests come from the behaviour asked for, not from the code just written.
+- **PR:** the `code-reviewer` subagent has reviewed the branch, and its blockers are fixed. CI passes. The description lists anything the owner must do (migrations, settings, manual tests).
+- **Release:** the owner runs `/release <PR number>`. Don't merge.

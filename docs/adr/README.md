@@ -20,3 +20,4 @@ One short file per decision: the context, what was decided, and the consequences
 | [0014](0014-home-page-collections.md) | Home page rows of themed collections | Accepted |
 | [0015](0015-agent-guardrails-and-ci.md) | Guard the coding agent with permissions, hooks and a sandbox; check every pull request in CI | Accepted |
 | [0016](0016-unit-tests-formatting-performance.md) | Unit tests with Vitest, formatting with Prettier, performance checks with Lighthouse CI | Accepted |
+| [0017](0017-skills-and-subagents.md) | Skills for repeated work, and subagents with narrow permissions | Accepted |
