@@ -95,17 +95,23 @@ async function startMock() {
       () => false,
     );
   if (await up()) return () => {};
+  // In its own process group: npx and tsx each start a child, and killing the group stops them all.
   const child = spawn(
     "npx",
     ["--no-install", "tsx", "scripts/r2-mock.ts", "--port", String(r2Port), "--dir", ".r2-mock"],
-    {
-      stdio: "ignore",
-    },
+    { stdio: "ignore", detached: true },
   );
+  const stop = () => {
+    try {
+      process.kill(-child.pid!, "SIGTERM");
+    } catch {
+      // Already stopped.
+    }
+  };
   for (let i = 0; i < 100 && !(await up()); i++) await new Promise((resolve) => setTimeout(resolve, 100));
   if (!(await up())) {
-    child.kill();
+    stop();
     fail(`The R2 mock didn't start on port ${r2Port}.`);
   }
-  return () => void child.kill();
+  return stop;
 }

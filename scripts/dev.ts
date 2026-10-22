@@ -16,19 +16,31 @@ const children: ChildProcess[] = [];
 
 if (usesLocalR2(process.env)) {
   const r2Port = String(localR2Port(process.env.R2_ENDPOINT!));
-  children.push(spawn("tsx", ["scripts/r2-mock.ts", "--port", r2Port, "--dir", ".r2-mock"], { stdio: "inherit" }));
+  // In its own process group, because tsx starts a child of its own: stop() signals the whole group.
+  children.push(
+    spawn("tsx", ["scripts/r2-mock.ts", "--port", r2Port, "--dir", ".r2-mock"], { stdio: "inherit", detached: true }),
+  );
 }
 
 const next = spawn("next", ["dev", "--port", String(port), ...process.argv.slice(2)], { stdio: "inherit" });
 children.push(next);
 
+function stop(child: ChildProcess, signal: NodeJS.Signals) {
+  try {
+    if (child.spawnargs.includes("scripts/r2-mock.ts")) process.kill(-child.pid!, signal);
+    else child.kill(signal);
+  } catch {
+    // Already stopped.
+  }
+}
+
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => children.forEach((child) => child.kill(signal)));
+  process.on(signal, () => children.forEach((child) => stop(child, signal)));
 }
 // If either one stops, stop the other: a dev server without its storage only half works.
 for (const child of children) {
   child.on("exit", (code, signal) => {
-    for (const other of children) if (other !== child) other.kill("SIGTERM");
+    for (const other of children) if (other !== child) stop(other, "SIGTERM");
     process.exit(code ?? (signal ? 1 : 0));
   });
 }
