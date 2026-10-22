@@ -145,10 +145,10 @@ Authors can edit or delete their own annotations, and owners their own images ([
 
 `/api/graphql` answers GraphQL queries with GraphQL Yoga ([ADR 0020](adr/0020-graphql-api.md)). It's read-only and needs no sign-in: writes stay in the server actions, with their checks.
 
-- **Schema** (`src/lib/graphql/schema.ts`): `image(id)`, `images(first, after)` (cursor pagination, newest first, at most 50 a page) and `collections`. An `Author` is only a name; nothing private is in the schema.
+- **Schema** (`src/lib/graphql/schema.ts`): `image(id)`, `images(first, after)` (newest first, at most 50 a page, with an opaque cursor that still works after its image is deleted) and `collections`. An `Author` is only a name, and only for images and annotations, as on the site; a region doesn't say who drew it. Nothing private is in the schema.
 - **Resolvers** read Prisma with its fluent API (`findUnique(...).regions()`), which Prisma batches, so nested lists cost one query per level, not one per row.
-- **Limits** (`src/lib/graphql/limits.ts`): at most 8 levels deep and 200 fields, aliases included, checked before the query runs. Production also turns off introspection and GraphiQL.
-- **Tests:** `npm test` runs the schema against an in-memory stand-in for Prisma (`src/lib/graphql/graphql.test.ts`).
+- **Limits** (`src/lib/graphql/limits.ts`): at most 8 levels deep, 200 fields (aliases and `__typename` included, counting each fragment as if written out where it's used) and 3 top-level fields, checked before the query runs. Each fragment is measured once, so checking costs about the size of the query. Production also turns off introspection and GraphiQL. CORS allows any origin, without credentials.
+- **Tests:** `npm test` runs the schema against an in-memory stand-in for Prisma (`src/lib/graphql/graphql.test.ts`). The system tests API-01 to API-03 (`e2e/api.spec.ts`) query the running app and its database.
 
 ## Deployment
 

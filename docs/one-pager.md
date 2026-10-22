@@ -69,4 +69,6 @@ Each milestone is either a vertical slice that works end to end and could be dem
    - **Before sharing the URL widely,** even earlier: any sign-in, approved or not, stores that person's GitHub name, email and avatar. Add a short privacy note and a way to delete an account on request, or stop storing the email, which the app doesn't use.
    - **Later gates** that need a fresh review: taking payments, adding repository collaborators, or letting users approve other users.
 
+**Alongside the MVP:** a small, read-only GraphQL API at `/api/graphql`, to demonstrate GraphQL ([ADR 0020](adr/0020-graphql-api.md)). It returns only what the site already shows; writes stay in the server actions.
+
 **After the MVP**, in rough priority order: voting → reputation points → replies and threads → polygon regions → search and tags → verified creator annotations.

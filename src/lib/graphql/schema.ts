@@ -16,7 +16,7 @@ const typeDefs = /* GraphQL */ `
     image(id: ID!): Image
     """
     Every image, newest first. first is 1 to ${PAGE_MAX}; pass the last page's endCursor as
-    after to get the next page.
+    after to get the next page. A cursor still works if its image has since been deleted.
     """
     images(first: Int = 20, after: String): ImagePage!
     "Themed rows on the home page, in their set order."
@@ -48,8 +48,6 @@ const typeDefs = /* GraphQL */ `
     h: Float!
     createdAt: String!
     updatedAt: String!
-    "Who drew the box."
-    author: Author!
     "Oldest first."
     annotations: [Annotation!]!
   }
@@ -118,6 +116,21 @@ type Dated = { createdAt: Date; updatedAt?: Date };
 
 const authorSelect = { select: { name: true } } as const;
 
+// A page cursor is the last image's position in the order: its createdAt and id, base64url-encoded.
+// Clients should treat it as opaque.
+function encodeCursor(image: { createdAt: Date; id: string }) {
+  return Buffer.from(`${image.createdAt.toISOString()}|${image.id}`).toString("base64url");
+}
+
+function decodeCursor(cursor: string) {
+  const [time, id, ...rest] = Buffer.from(cursor, "base64url").toString().split("|");
+  const createdAt = new Date(time ?? "");
+  if (!id || rest.length > 0 || Number.isNaN(createdAt.getTime())) {
+    throw new GraphQLError("after isn't a cursor from this API.", { extensions: { code: "BAD_USER_INPUT" } });
+  }
+  return { createdAt, id };
+}
+
 // Nested fields use Prisma's fluent API (`findUnique(...).regions()`). Prisma batches findUnique
 // calls made in the same tick into one query, so a page of 50 images costs one regions query,
 // not 50: its answer to GraphQL's N+1 problem, without adding DataLoader.
@@ -129,15 +142,20 @@ const resolvers = {
       if (!Number.isInteger(first) || first < 1 || first > PAGE_MAX) {
         throw new GraphQLError(`first must be between 1 and ${PAGE_MAX}.`, { extensions: { code: "BAD_USER_INPUT" } });
       }
-      // The cursor is the last image's id; ties on createdAt are broken by id, so pages never overlap.
+      // Ordered by createdAt, with ties broken by id, so pages never overlap. The next page starts
+      // after the last image's position, not at its row, so deleting that image doesn't end paging.
+      const from = after == null ? null : decodeCursor(after);
       const rows = await db.image.findMany({
+        where: from
+          ? { OR: [{ createdAt: { lt: from.createdAt } }, { createdAt: from.createdAt, id: { lt: from.id } }] }
+          : {},
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: first + 1,
-        ...(after ? { cursor: { id: after }, skip: 1 } : {}),
         select: imageSelect,
       });
       const nodes = rows.slice(0, first);
-      return { nodes, pageInfo: { endCursor: nodes.at(-1)?.id ?? null, hasNextPage: rows.length > first } };
+      const last = nodes.at(-1);
+      return { nodes, pageInfo: { endCursor: last ? encodeCursor(last) : null, hasNextPage: rows.length > first } };
     },
 
     collections: () =>
@@ -154,18 +172,17 @@ const resolvers = {
     regions: (image: HasId) =>
       db.image
         .findUnique({ where: { id: image.id } })
-        .regions({ orderBy: { createdAt: "asc" } })
+        .regions({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] })
         .then((r) => r ?? []),
   },
 
   Region: {
     createdAt: (region: Dated) => region.createdAt.toISOString(),
     updatedAt: (region: Dated) => region.updatedAt!.toISOString(),
-    author: (region: HasId) => db.region.findUnique({ where: { id: region.id } }).author(authorSelect),
     annotations: (region: HasId) =>
       db.region
         .findUnique({ where: { id: region.id } })
-        .annotations({ orderBy: { createdAt: "asc" } })
+        .annotations({ orderBy: [{ createdAt: "asc" }, { id: "asc" }] })
         .then((a) => a ?? []),
   },
 

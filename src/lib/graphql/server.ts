@@ -18,6 +18,9 @@ export function createGraphQLServer({ production = process.env.NODE_ENV === "pro
     // repository), but turning both off in production is Yoga's guidance and costs nothing here.
     graphiql: !production,
     landingPage: false,
+    // Any site may read the API, but never with the visitor's cookies. Yoga's default echoes the
+    // caller's origin and allows credentials, which would matter if a resolver ever read the session.
+    cors: { origin: "*", credentials: false },
     plugins: [validationRules(production ? [queryLimits(), NoSchemaIntrospectionCustomRule] : [queryLimits()])],
     fetchAPI: { Response },
   });
