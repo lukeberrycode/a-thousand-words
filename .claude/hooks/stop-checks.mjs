@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Stop hook: Claude can't finish a turn with failing checks (ADR 0015, the definition of done in
-// CLAUDE.md). Runs lint, typecheck and unit tests when the code has changed since they last passed,
-// and sends failures back to Claude. The system tests are too slow for every turn; CLAUDE.md says
+// CLAUDE.md). Runs lint, typecheck and unit tests when the code has changed since they last passed.
+// In a worktree, failures go back to Claude, which can't finish until they pass. In the main
+// checkout, where the owner is at hand, they're shown once for each state of the code, without
+// holding the turn open (ADR 0021). The system tests are too slow for every turn; CLAUDE.md says
 // when to run them.
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -38,10 +40,16 @@ for (const file of git("ls-files", "--others", "--exclude-standard", "-z", "--",
 }
 const state = hash.digest("hex");
 
-const stateDir = join(git("rev-parse", "--absolute-git-dir").trim(), "claude-hooks");
+const [gitDir, commonDir] = git("rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir")
+  .trim()
+  .split("\n");
+const inWorktree = gitDir !== commonDir;
+const stateDir = join(gitDir, "claude-hooks");
 const stateFile = join(stateDir, "checks-passed");
+const warnedFile = join(stateDir, "checks-warned");
+const seen = (file) => existsSync(file) && readFileSync(file, "utf8") === state;
 if (!existsSync(join(root, "node_modules"))) process.exit(0);
-if (existsSync(stateFile) && readFileSync(stateFile, "utf8") === state) process.exit(0);
+if (seen(stateFile) || (!inWorktree && seen(warnedFile))) process.exit(0);
 
 const failures = [];
 for (const script of ["lint", "typecheck", "test"]) {
@@ -52,9 +60,15 @@ for (const script of ["lint", "typecheck", "test"]) {
   }
 }
 
-if (failures.length > 0) {
-  process.stderr.write(`The definition of done in CLAUDE.md isn't met yet.\n\n${failures.join("\n\n")}\n`);
+mkdirSync(stateDir, { recursive: true });
+if (failures.length === 0) {
+  writeFileSync(stateFile, state);
+  process.exit(0);
+}
+const report = `The definition of done in CLAUDE.md isn't met yet.\n\n${failures.join("\n\n")}\n`;
+if (inWorktree) {
+  process.stderr.write(report);
   process.exit(2);
 }
-mkdirSync(stateDir, { recursive: true });
-writeFileSync(stateFile, state);
+writeFileSync(warnedFile, state);
+process.stdout.write(JSON.stringify({ systemMessage: report }));

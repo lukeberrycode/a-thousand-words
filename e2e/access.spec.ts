@@ -7,7 +7,7 @@ import { expect, test } from "./support/world";
 
 const PENDING = "Your account is waiting for approval. You can upload and annotate once it's approved.";
 
-test("SEC-01: Upload page asks signed-out visitors to sign in", async ({ page }) => {
+test("SEC-01: Upload page asks signed-out visitors to sign in", async ({ page, baseURL }) => {
   await page.goto("/upload");
   const main = page.getByRole("main");
   await expect(main.getByText("You need an account to upload images.")).toBeVisible();
@@ -19,12 +19,10 @@ test("SEC-01: Upload page asks signed-out visitors to sign in", async ({ page })
   const toGitHub = page.waitForRequest((req) => req.url().startsWith("https://github.com/login/oauth/authorize"));
   await main.getByRole("button", { name: "Sign in with GitHub" }).click();
   const request = await toGitHub;
-  expect(new URL(request.url()).searchParams.get("redirect_uri")).toBe(
-    "http://localhost:3000/api/auth/callback/github",
-  );
+  expect(new URL(request.url()).searchParams.get("redirect_uri")).toBe(`${baseURL}/api/auth/callback/github`);
   const cookies = await page.context().cookies();
   const callback = cookies.find((c) => c.name === "authjs.callback-url");
-  expect(decodeURIComponent(callback?.value ?? "")).toBe("http://localhost:3000/upload");
+  expect(decodeURIComponent(callback?.value ?? "")).toBe(`${baseURL}/upload`);
 });
 
 test("SEC-02: Upload actions reject requests that aren't signed in", async ({ page, world }) => {

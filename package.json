@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx scripts/dev.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -17,6 +17,9 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:users": "tsx scripts/users.ts",
+    "worktree:setup": "tsx scripts/worktree.ts setup",
+    "worktree:teardown": "tsx scripts/worktree.ts teardown",
+    "check:branch": "tsx scripts/check-branch.ts",
     "test:system": "playwright test",
     "test:perf": "lhci autorun",
     "prod:migrate": "sh scripts/with-keepass-env.sh a-thousand-words-prod prisma migrate deploy",

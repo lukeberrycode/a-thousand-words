@@ -18,9 +18,11 @@ One short file per decision: the context, what was decided, and the consequences
 | [0012](0012-app-owned-zoom.md) | The image page owns zoom, with a custom view around Annotorious | Accepted |
 | [0013](0013-playwright-system-tests.md) | Automate the system tests with Playwright, signing in with a test session | Accepted |
 | [0014](0014-home-page-collections.md) | Home page rows of themed collections | Accepted |
-| [0015](0015-agent-guardrails-and-ci.md) | Guard the coding agent with permissions, hooks and a sandbox; check every pull request in CI | Accepted |
+| [0015](0015-agent-guardrails-and-ci.md) | Guard the coding agent with permissions, hooks and a sandbox; check every pull request in CI | Amended by 0021 |
 | [0016](0016-unit-tests-formatting-performance.md) | Unit tests with Vitest, formatting with Prettier, performance checks with Lighthouse CI | Accepted |
 | [0017](0017-skills-and-subagents.md) | Skills for repeated work, and subagents with narrow permissions | Accepted |
 | [0018](0018-orphan-cleanup-on-aws.md) | Clean up orphaned uploads with a small AWS CDK stack | Accepted |
 | [0019](0019-prod-secrets-from-keepassxc.md) | Read production and preview secrets from KeePassXC, not from files in the project | Accepted |
+| [0020](0020-worktree-database-and-port.md) | Give each git worktree its own local database and dev server port | Accepted |
+| [0021](0021-agent-rules-by-checkout.md) | Branches carry out a plan or ADR already on main; agents in worktrees get the strict rules | Accepted |
 | [0022](0022-no-links-in-annotations.md) | Annotations can't contain links | Accepted |

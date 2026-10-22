@@ -29,7 +29,8 @@ npm run test:system               # every automated test, about two minutes
 npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-01 to ANN-08
 ```
 
-- **Setup:** as in Before you start: the local database running with migrations applied, and `.env` with working R2 values. The tests use the dev server on port 3000 if it's running, and start `npm run dev` if it isn't.
+- **Setup:** as in Before you start: the local database running with migrations applied, and `.env` with working R2 values. The tests use the checkout's dev server if it's running, and start `npm run dev` if it isn't. That's port 3000 in the main checkout.
+- **In a git worktree:** run `npm run worktree:setup` first. The tests then use the worktree's own database and port, so several worktrees can run them at once ([ADR 0020](adr/0020-worktree-database-and-port.md)). SEC-01 checks the GitHub callback for the worktree's port, which GitHub itself would refuse: manual sign-in checks stay in the main checkout.
 - **Sign-in:** the tests don't use GitHub. Each signs in by creating a `Session` row for a test user and setting the session cookie, which is what a real sign-in leaves behind (ADR 0013). The OAuth flow itself stays a manual test.
 - **Data:** each test creates its own users (ids starting `e2e-`), images and annotations in the development database and R2 bucket, and deletes them afterwards. The seed paintings and your own content are never touched.
 - **One at a time:** the local database from `npx prisma dev` fails at random when several connections query it at once, so tests run serially.
