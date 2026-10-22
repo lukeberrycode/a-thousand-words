@@ -26,3 +26,4 @@ One short file per decision: the context, what was decided, and the consequences
 | [0020](0020-worktree-database-and-port.md) | Give each git worktree its own local database and dev server port | Accepted |
 | [0021](0021-agent-rules-by-checkout.md) | Branches carry out a plan or ADR already on main; agents in worktrees get the strict rules | Accepted |
 | [0022](0022-no-links-in-annotations.md) | Annotations can't contain links | Accepted |
+| [0023](0023-graphql-api.md) | A small, read-only GraphQL API with GraphQL Yoga | Accepted |
