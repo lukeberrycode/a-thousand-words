@@ -69,4 +69,11 @@ Each milestone is either a vertical slice that works end to end and could be dem
    - **Before sharing the URL widely,** even earlier: any sign-in, approved or not, stores that person's GitHub name, email and avatar. Add a short privacy note and a way to delete an account on request, or stop storing the email, which the app doesn't use.
    - **Later gates** that need a fresh review: taking payments, adding repository collaborators, or letting users approve other users.
 
+### Planned: content at scale
+
+Claude can add paintings, annotations and collections far faster than early users will, so the site can be well stocked before they arrive. These milestones are drafts; each gets its ADRs when work starts. Either can come before or after milestone 9, but the content runner writes next to users' content, so its guards belong in that review.
+
+10. **Content migrations:** replace the one-off seed with numbered content files, each applied once per database and recorded, like schema migrations. A run adds and corrects the site's own content and skips anything that would touch users' images, boxes or annotations. A project skill writes the files; the owner reviews each batch on the preview site before it reaches production. [Plan](plans/content-migrations.md).
+11. **Serve content paintings from Wikimedia Commons:** load them from Commons at standard widths instead of from R2, so home rows use small versions. A second AWS CDK stack checks Commons daily: it pins a painting with a new version to the version its boxes were placed on, for the owner to check, and handles a deleted one. [Plan](plans/commons-hosted-images.md).
+
 **After the MVP**, in rough priority order: voting → reputation points → replies and threads → polygon regions → search and tags → verified creator annotations.
