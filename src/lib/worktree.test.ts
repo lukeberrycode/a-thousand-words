@@ -7,6 +7,7 @@ import {
   devPort,
   withDatabaseUrl,
   withEnvValues,
+  withoutEnvValues,
   worktreeName,
   type PortKind,
 } from "./worktree";
@@ -184,5 +185,12 @@ describe("withEnvValues", () => {
 
   it("doesn't touch a variable whose name only starts the same", () => {
     expect(withEnvValues("R2_BUCKET_OLD=1\n", { R2_BUCKET: "b" })).toBe('R2_BUCKET_OLD=1\nR2_BUCKET="b"\n');
+  });
+});
+
+describe("withoutEnvValues", () => {
+  it("removes only the named lines", () => {
+    const env = '# R2\nR2_ENDPOINT="http://localhost:21000"\nR2_BUCKET="mock"\nDATABASE_URL="x"\n';
+    expect(withoutEnvValues(env, ["R2_ENDPOINT", "R2_BUCKET"])).toBe('# R2\nDATABASE_URL="x"\n');
   });
 });

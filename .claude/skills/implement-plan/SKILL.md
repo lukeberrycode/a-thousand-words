@@ -24,7 +24,7 @@ Nobody is watching. Never wait for an answer, and never ask one. When something 
 
 - Change the code as the plan says. Reuse what's in `src/lib` before writing anything new.
 - For a change users can see, search the UI for every place the old behaviour is described or shown: labels, help text, placeholders, empty states and docs. Grep for the words, not only the code. For example, the annotation editor's help text lists the Markdown it supports.
-- A schema change needs a migration from `npm run db:migrate`, which uses this worktree's own database. Note `prod:migrate` for the pull request.
+- A schema change needs a migration from `npm run db:migrate -- --name <short_name>` (the name, because there's no terminal to ask for one), which uses this worktree's own database. Note `prod:migrate` for the pull request.
 - New decisions along the way get an ADR (`write-adr` skill).
 
 ## 3. Tests
@@ -52,7 +52,7 @@ Fix each failure and run the check again. After three failed attempts at the sam
 
 ## 5. Review
 
-Ask the `code-reviewer` subagent to review the branch against `main`. Fix every blocker and anything marked "should fix" that's clearly right, then run step 4's checks again. Then ask for one more review. If blockers remain after the second round, list them under **Needs the owner**.
+Ask the `code-reviewer` subagent to review the branch against `origin/main` (`git diff origin/main...HEAD`): local `main` may be behind. Fix every blocker and anything marked "should fix" that's clearly right, then run step 4's checks again. Then ask for one more review. If blockers remain after the second round, list them under **Needs the owner**.
 
 ## 6. Docs
 
@@ -90,7 +90,7 @@ Check the definition of done in `CLAUDE.md`. The README, `docs/architecture.md`,
 
 ## 8. Report
 
-End your final message with this line, and nothing after it:
+End your final message with this line, and nothing after it. Once the pull request is open, end **every** later final message with it too: the Stop hook can send you back to fix a check after you've reported, and the launcher reads only your last message.
 
 ```
 RESULT {"pr": "<pull request URL>", "draft": <true or false>}

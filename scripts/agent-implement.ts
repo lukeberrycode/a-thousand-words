@@ -25,6 +25,8 @@ void main();
 async function main() {
   const branch = process.argv[2];
   if (!branch) fail("Usage: npm run agent:implement -- <plan/slug | adr/NNNN-slug>");
+  // The guard accepts this prefix only because Claude Code's EnterWorktree adds it (ADR 0021).
+  if (branch.startsWith("worktree-")) fail(`Name the branch without the worktree- prefix.`);
 
   const main = checkoutFolders()[0];
   const git = (...args: string[]) => execFileSync("git", args, { cwd: main, encoding: "utf8" }).trim();
@@ -72,31 +74,46 @@ async function main() {
     ],
     { cwd: worktree, stdio: ["ignore", "pipe", "inherit"] },
   );
+  const exited = new Promise<number>((resolve) => {
+    claude.on("error", (err) => {
+      console.error(`Couldn't start claude: ${err.message}`);
+      resolve(127);
+    });
+    claude.on("close", (status) => resolve(status ?? 1));
+  });
 
   const log = createWriteStream(logPath);
-  let finalText = "";
+  // The last RESULT line the agent wrote anywhere. Normally it ends the final message, but the Stop
+  // hook can send the agent back to work after it has reported.
+  let resultLine = "";
   for await (const line of createInterface({ input: claude.stdout })) {
     log.write(`${line}\n`);
     const event = parse(line);
     // The agent's own words, a line each, so a watching terminal can follow along.
     if (event?.type === "assistant") {
       for (const part of event.message?.content ?? []) {
-        if (part.type === "text" && part.text.trim()) console.log(`> ${part.text.trim().split("\n")[0]}`);
+        if (part.type !== "text" || !part.text.trim()) continue;
+        console.log(`> ${part.text.trim().split("\n")[0]}`);
+        resultLine = [...part.text.matchAll(/^RESULT (\{.*\})\s*$/gm)].pop()?.[1] ?? resultLine;
       }
     }
-    if (event?.type === "result") finalText = String(event.result ?? "");
+    if (event?.type === "result") {
+      resultLine = [...String(event.result ?? "").matchAll(/^RESULT (\{.*\})\s*$/gm)].pop()?.[1] ?? resultLine;
+    }
   }
   log.end();
-  const code = await new Promise<number>((resolve) => claude.on("close", (status) => resolve(status ?? 1)));
+  const code = await exited;
 
-  const result = /^RESULT (\{.*\})\s*$/m.exec(finalText);
-  const outcome = result ? parse(result[1]) : null;
-  if (code !== 0 || !outcome?.pr) {
+  const outcome = resultLine ? parse(resultLine) : null;
+  if (!outcome?.pr) {
     notify(`${branch}: failed. Log: ${logPath}`, "critical");
     fail(`The agent didn't open a pull request (exit ${code}). Read ${logPath}; the worktree is ${worktree}.`);
   }
-  const summary = `${branch}: ${outcome.draft ? "draft PR, needs you" : "PR ready for review"}: ${outcome.pr}`;
-  notify(summary, outcome.draft ? "normal" : "low");
+  // A pull request exists even if the run then stopped badly (over budget, say): report it, as a draft.
+  const draft = outcome.draft !== false || code !== 0;
+  const stopped = code !== 0 ? ` (the agent stopped with exit ${code})` : "";
+  const summary = `${branch}: ${draft ? "draft PR, needs you" : "PR ready for review"}: ${outcome.pr}${stopped}`;
+  notify(summary, draft ? "normal" : "low");
   console.log(`\n${summary}`);
 }
 

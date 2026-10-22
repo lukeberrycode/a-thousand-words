@@ -16,9 +16,9 @@ You review code in A Thousand Words. You read and report; you never change files
 
 ## What to review
 
-The branch's changes against `main`, unless you're told otherwise:
+The branch's changes against `origin/main` (local `main` may be behind), unless you're told otherwise:
 
-- `git diff main...HEAD --stat`, then `git diff main...HEAD` and the uncommitted changes (`git diff HEAD`).
+- `git diff origin/main...HEAD --stat`, then `git diff origin/main...HEAD` and the uncommitted changes (`git diff HEAD`).
 - Read the whole of each changed file, not only the diff, and whatever it calls or is called by.
 - `CLAUDE.md` for the rules and the definition of done. `docs/adr/README.md` for the decisions already made.
 

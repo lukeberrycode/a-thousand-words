@@ -62,7 +62,14 @@ export function withDatabaseUrl(envFile: string, url: string) {
 /** Sets each of `values` in the text of an env file, at the end, keeping every other line. */
 export function withEnvValues(envFile: string, values: Readonly<Record<string, string>>) {
   const names = Object.keys(values);
-  const kept = envFile.split("\n").filter((line) => !names.some((name) => new RegExp(`^\\s*${name}\\s*=`).test(line)));
   const added = names.map((name) => `${name}="${values[name]}"`).join("\n");
-  return `${kept.join("\n").trimEnd()}\n${added}\n`.trimStart();
+  return `${withoutEnvValues(envFile, names).trimEnd()}\n${added}\n`.trimStart();
+}
+
+/** Removes the lines that set any of `names` from the text of an env file, keeping every other line. */
+export function withoutEnvValues(envFile: string, names: readonly string[]) {
+  return envFile
+    .split("\n")
+    .filter((line) => !names.some((name) => new RegExp(`^\\s*${name}\\s*=`).test(line)))
+    .join("\n");
 }

@@ -80,8 +80,9 @@ function etag(body: Uint8Array) {
 }
 
 function xmlError(res: ServerResponse, status: number, code: string, message: string) {
+  const escaped = message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   res.writeHead(status, { "Content-Type": "application/xml" });
-  res.end(`<?xml version="1.0" encoding="UTF-8"?><Error><Code>${code}</Code><Message>${message}</Message></Error>`);
+  res.end(`<?xml version="1.0" encoding="UTF-8"?><Error><Code>${code}</Code><Message>${escaped}</Message></Error>`);
 }
 
 async function handle(req: IncomingMessage, res: ServerResponse) {
@@ -113,6 +114,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     }
     res.writeHead(200, {
       "Content-Type": object.contentType,
+      // An uploader chooses the content type. Never let a stored file run as a page on localhost.
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox",
       "Content-Length": object.body.length,
       ETag: etag(object.body),
     });
@@ -125,15 +129,27 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   return xmlError(res, 501, "NotImplemented", `${req.method} isn't supported by the R2 mock.`);
 }
 
-const server = createServer((req, res) => {
-  handle(req, res)
-    .catch((err) => {
-      if (!res.headersSent) xmlError(res, 400, "InvalidRequest", String((err as Error).message));
-    })
-    .finally(() => console.log(`r2-mock ${req.method} ${req.url?.split("?")[0]} ${res.statusCode}`));
+// Loopback only, so nothing else on the network can reach it, on both IPv4 and IPv6: "localhost"
+// resolves to 127.0.0.1 in some clients and ::1 in others. A machine without IPv6 skips ::1.
+const servers = ["127.0.0.1", "::1"].map((host) => {
+  const server = createServer((req, res) => {
+    handle(req, res)
+      .catch((err) => {
+        if (!res.headersSent) xmlError(res, 400, "InvalidRequest", String((err as Error).message));
+      })
+      .finally(() => console.log(`r2-mock ${req.method} ${req.url?.split("?")[0]} ${res.statusCode}`));
+  });
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (host === "::1" && err.code === "EADDRNOTAVAIL") return;
+    throw err;
+  });
+  server.listen(port, host);
+  return server;
 });
-// All interfaces, as `next dev` does: "localhost" can resolve to ::1 in one client and 127.0.0.1 in another.
-server.listen(port, () => {
-  console.log(`R2 mock on http://localhost:${port}, ${values.dir ? `objects in ${values.dir}` : "objects in memory"}`);
-});
-for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => server.close(() => process.exit(0)));
+console.log(`R2 mock on http://localhost:${port}, ${values.dir ? `objects in ${values.dir}` : "objects in memory"}`);
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+  process.on(signal, () => {
+    for (const server of servers) server.close();
+    process.exit(0);
+  });
+}

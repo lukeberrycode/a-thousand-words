@@ -17,7 +17,14 @@ import { execFileSync, spawn } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { MOCK_AUTH_ENV, mockR2Env } from "../src/lib/mock-env";
-import { checkoutPort, databaseName, devPort, withEnvValues, worktreeName } from "../src/lib/worktree";
+import {
+  checkoutPort,
+  databaseName,
+  devPort,
+  withEnvValues,
+  withoutEnvValues,
+  worktreeName,
+} from "../src/lib/worktree";
 import { checkoutFolders, currentWorktree } from "./checkout";
 
 function run(command: string, args: string[]) {
@@ -68,7 +75,11 @@ const output = run("npx", ["--no-install", "prisma", "dev", "--name", database, 
 const url = output.match(/postgres:\/\/\S+/)?.[0];
 if (!url) fail(`prisma dev didn't print a connection string:\n${output}`);
 const values = mock ? { DATABASE_URL: url, ...mockR2Env(r2Port), ...MOCK_AUTH_ENV } : { DATABASE_URL: url };
-writeFileSync(".env.local", withEnvValues(existsSync(".env.local") ? readFileSync(".env.local", "utf8") : "", values));
+// Without --mock, drop any mock values an earlier `--mock` setup left, or they'd still win over .env.
+const mockNames = Object.keys({ ...mockR2Env(r2Port), ...MOCK_AUTH_ENV });
+const previous = existsSync(".env.local") ? readFileSync(".env.local", "utf8") : "";
+const kept = mock ? previous : withoutEnvValues(previous, mockNames);
+writeFileSync(".env.local", withEnvValues(kept, values));
 
 execFileSync("npx", ["--no-install", "prisma", "migrate", "deploy"], { stdio: "inherit" });
 // tsx runs this as CommonJS, which has no top-level await.

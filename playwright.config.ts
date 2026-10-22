@@ -18,7 +18,7 @@ import { MAIN_PORT, checkoutPort } from "./src/lib/worktree";
 // bucket's CORS rule only lets the browser upload from http://localhost:3000.
 
 const worktree = currentWorktree();
-const realR2 = Boolean(process.env.E2E_REAL_R2);
+const realR2 = process.env.E2E_REAL_R2 === "1";
 if (realR2 && worktree !== null) {
   throw new Error("E2E_REAL_R2 runs only in the main checkout: the dev bucket accepts uploads from localhost:3000.");
 }
