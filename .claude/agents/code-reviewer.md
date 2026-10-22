@@ -30,7 +30,7 @@ Lint, typecheck and unit tests run in a hook and in CI, so don't repeat them. Lo
 2. **Security.**
    - Every server action (`"use server"` files: `src/app/**/actions.ts`, `src/app/user-menu.tsx`) is reachable by a direct POST. Each must call `getCurrentUser()`, refuse unapproved users (`PENDING_APPROVAL`), and check ownership where the action edits or deletes.
    - Input from the client is validated on the server (`src/lib/uploads.ts`, `src/lib/annotations.ts`).
-   - No secrets in code, logs or client bundles. Nothing reads `.env.prod` or runs `prod:*`.
+   - No secrets in code, logs or client bundles. Nothing reads `.env.prod` or KeePassXC, or runs `prod:*` or `preview:*`.
    - Annotation Markdown stays without HTML or images (ADR 0008).
 3. **Data.** Schema changes have a migration in `prisma/migrations/`, and the PR must say to run `prod:migrate` before merging. R2 objects are deleted with their database rows.
 4. **Tests.** New or changed pure functions have unit tests next to them. Changes users can see have a system test in `e2e/`, or an entry in `docs/system-tests.md` that says why it's manual.
