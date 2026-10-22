@@ -50,5 +50,5 @@ next-env.d.ts
 # Lighthouse CI reports (local runs)
 /.lighthouseci/
 
-# Claude Code worktrees (local)
-/.claude/worktrees/
+# git worktrees made by Claude Code
+.claude/worktrees/

@@ -12,7 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Claude Code agent worktrees: other checkouts, linted there.
+    // The AWS CDK stack has its own package, config and checks (infra/README.md).
+    "infra/**",
+    // Git worktrees made by Claude Code are separate checkouts with their own checks.
     ".claude/worktrees/**",
   ]),
 ]);

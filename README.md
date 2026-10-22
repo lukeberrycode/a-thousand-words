@@ -19,7 +19,7 @@ I'm a senior software engineer with seventeen years' experience, most of it ship
 
 ### Progress (October 2026)
 
-1. **AI-assisted development.** Claude Code (Opus 5.5) wrote most of the code. It works from a [one-pager](docs/one-pager.md), [decision records](docs/adr/README.md) and [system tests](docs/system-tests.md); I set the scope and make the decisions. It went from idea to a deployed alpha within a week. No code is used in anger without a full human review ([milestone 9](docs/one-pager.md#milestones)). The agent now works inside a checked-in permission envelope and a sandbox, hooks stop it finishing a task while checks fail, and CI checks every pull request ([ADR 0015](docs/adr/0015-agent-guardrails-and-ci.md)). Next: custom skills and subagents for repeated workflows, and parallel agents in git worktrees.
+1. **AI-assisted development.** Claude Code (Opus 5.5) wrote most of the code. It works from a [one-pager](docs/one-pager.md), [decision records](docs/adr/README.md) and [system tests](docs/system-tests.md); I set the scope and make the decisions. It went from idea to a deployed alpha within a week. No code is used in anger without a full human review ([milestone 9](docs/one-pager.md#milestones)). The agent now works inside a checked-in permission envelope and a sandbox, hooks stop it finishing a task while checks fail, and CI checks every pull request ([ADR 0015](docs/adr/0015-agent-guardrails-and-ci.md)). Repeated work has skills (writing ADRs, releasing), and two subagents with narrow permissions review code and write tests ([ADR 0017](docs/adr/0017-skills-and-subagents.md)). Next: parallel agents in git worktrees.
 2. **Technologies.** I've learned Next.js (App Router) and React, and designed and migrated a relational schema with Prisma on Postgres. Some of it builds directly on my production work: Cloudflare R2 speaks the S3 API, through the same AWS SDK I used with S3. Vercel's push-to-deploy fills the role that GitLab, ArgoCD and Helm filled at my last job.
 3. **Finding work.** No new role yet. I'm still looking, so if you're hiring, [get in touch on LinkedIn](https://www.linkedin.com/in/luke-berry-software-engineer).
 4. **The product.** It's live with 12 annotated paintings, and early feedback has been good. I'll keep improving it release by release.
@@ -29,6 +29,14 @@ I'm a senior software engineer with seventeen years' experience, most of it ship
 Next.js (App Router, TypeScript) · Tailwind CSS · Postgres + Prisma · Cloudflare R2 · Annotorious · Auth.js
 
 Why each was chosen: [docs/adr](docs/adr/README.md). How it fits together: [docs/architecture.md](docs/architecture.md).
+
+## Services
+
+- [Vercel](https://vercel.com/lukeberrycode) hosts the app and holds the production environment variables.
+- [Neon](https://console.neon.tech) runs the Postgres database.
+- [Cloudflare R2](https://dash.cloudflare.com) stores uploaded images.
+- [GitHub OAuth apps](https://github.com/settings/developers) handle sign-in.
+- [AWS](https://console.aws.amazon.com) runs the nightly orphan cleanup (see [infra/README.md](infra/README.md)).
 
 ## Getting started
 
@@ -60,11 +68,11 @@ npm run dev                # http://localhost:3000
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run db:seed` | Load the seed paintings into the database and R2 from `.env` (dry run unless `-- --yes`) |
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
-| `npm run prod:migrate` | Apply migrations to production, using `.env.prod` |
-| `npm run prod:seed` | Seed production, using `.env.prod` (dry run unless `-- --yes`) |
-| `npm run preview:migrate` | Apply migrations to the preview database, using `.env.preview` |
-| `npm run preview:seed` | Seed the preview database, using `.env.preview` (dry run unless `-- --yes`) |
-| `npm run prod:users` | List or approve accounts on production, using `.env.prod` |
+| `npm run prod:migrate` | Apply migrations to production, with settings from KeePassXC (see [Deploying](#deploying)) |
+| `npm run prod:seed` | Seed production, with settings from KeePassXC (dry run unless `-- --yes`) |
+| `npm run preview:migrate` | Apply migrations to the preview database, with settings from KeePassXC |
+| `npm run preview:seed` | Seed the preview database, with settings from KeePassXC (dry run unless `-- --yes`) |
+| `npm run prod:users` | List or approve accounts on production, with settings from KeePassXC |
 
 After pulling a change to `prisma/schema.prisma`, run `npx prisma generate` (or `npm install`) before any of the `db:*`, `prod:*` or `preview:*` scripts. The generated client in `src/generated/prisma` is git-ignored and isn't rebuilt when you pull, so a script run with the old one fails on the new models (for example, `Cannot read properties of undefined (reading 'upsert')`). Vercel regenerates it on every deploy.
 
@@ -78,8 +86,43 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
   - `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`: the production OAuth app
   - `REPORT_EMAIL`: where "Report it" links send email
 - **New accounts:** a first GitHub sign-in creates a pending account that can browse but not upload or annotate. Approve it with `npm run prod:users -- approve <github-login>` (run `npm run prod:users` to see who's waiting).
-- **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` reads `.env.prod`, which is git-ignored and holds Neon's direct connection string plus the production R2 values.
+- **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` uses Neon's direct connection string, from KeePassXC (below).
+- **Production and preview settings for the `prod:*` and `preview:*` scripts** come from KeePassXC, not from files in the project ([ADR 0019](docs/adr/0019-prod-secrets-from-keepassxc.md)). See [KeePassXC entries](#keepassxc-entries) below. Each run asks for the database's password, so run these scripts in your own terminal.
+- **Orphaned uploads:** a small AWS stack in [`infra/`](infra/README.md) deletes R2 files with no `Image` row once a day ([ADR 0018](docs/adr/0018-orphan-cleanup-on-aws.md)). It deploys from `main` through GitHub Actions after a one-time setup.
 - **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07, MAN-09, MAN-10) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
+
+### KeePassXC entries
+
+`scripts/with-keepass-env.sh` reads two entries from your KeePassXC database: `a-thousand-words-prod` for the `prod:*` scripts and `a-thousand-words-preview` for the `preview:*` ones.
+
+**Settings,** in your shell profile (for example `~/.bashrc`):
+
+```bash
+export KEEPASS_DB="$HOME/path/to/your.kdbx"   # required
+export KEEPASS_GROUP="Projects"                # only if the entries are in a group; a path like Work/Projects works too
+export KEEPASS_KEY_FILE="$HOME/path/to/keyfile" # only if the database uses a key file
+```
+
+The script finds an entry by its path from the root of the database. If the entries are in a group and `KEEPASS_GROUP` isn't set, it fails with "Could not find entry with path".
+
+**Each entry's Notes field** holds one line per variable. The title must match exactly. The Password field and any custom attributes aren't read.
+
+```
+# Production:
+# DATABASE_URL must be Neon's direct connection string
+# R2 values must refer to the production bucket
+DATABASE_URL="postgresql://neondb_owner:<password>@<host>.neon.tech/neondb?sslmode=verify-full&channel_binding=require"
+R2_ACCOUNT_ID="<account id>"
+R2_ACCESS_KEY_ID="<access key id>"
+R2_SECRET_ACCESS_KEY="<secret access key>"
+R2_BUCKET="a-thousand-words-prod"
+R2_PUBLIC_URL="https://pub-<id>.r2.dev"
+```
+
+- `DATABASE_URL` is required: the script stops without it. Use Neon's **direct** string (not the `-pooler` one), with `sslmode=verify-full`. The preview entry uses the preview branch's direct string.
+- `prod:seed` and `preview:seed` also need `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. A missing `R2_BUCKET` stops even the dry run; the other three are only read when the seed runs with `--yes`. `R2_PUBLIC_URL` isn't used by these scripts; keep it there so the entry holds the whole of production's storage settings.
+- **Format:** `KEY=value`, `KEY="value"` or `KEY='value'`, with no spaces around `=`. Lines starting with `#`, and blank lines, are skipped. Windows line endings are fine.
+- **Not supported:** an `export ` prefix, a comment after a value on the same line (it becomes part of the value), escapes inside quotes, and values over more than one line.
 
 ## Working with Claude Code
 
@@ -88,6 +131,8 @@ The project is set up for an AI coding agent to work on it safely ([ADR 0015](do
 - `CLAUDE.md`: the agent's rules, commands and definition of done.
 - `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, push to `main`), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.
 - `.claude/hooks/`: block edits to secrets and pushes to `main`, format each edited file, and stop the agent finishing a task while lint, typecheck or unit tests fail.
+- `.claude/skills/`: `write-adr` records a decision in the house format; `/release <PR>` takes a pull request to production in the right order (migrate, merge, deploy, production checks), with the owner running the production steps ([ADR 0017](docs/adr/0017-skills-and-subagents.md)).
+- `.claude/agents/`: a `code-reviewer` that can only read, and a `test-writer` that can only edit test files. A hook enforces both.
 - `.github/workflows/ci.yml`: format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
 
 ## Project docs
@@ -98,3 +143,4 @@ The project is set up for an AI coding agent to work on it safely ([ADR 0015](do
 - [Architecture](docs/architecture.md)
 - [Architecture Decision Records](docs/adr/README.md)
 - [System tests](docs/system-tests.md): checks of the running app, with how each is run (manual or automated)
+- [Orphan cleanup on AWS](infra/README.md): the CDK stack, its one-time setup and its cost
