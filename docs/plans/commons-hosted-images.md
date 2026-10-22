@@ -58,6 +58,18 @@ The image page must use the served size. Today it turns each region's fractions 
 
 Fingerprints for duplicate detection (ADR 0010) are still worked out once, when the painting is added, from the 1920 pixel file. They describe the version the boxes were placed on, so they stay right while the painting is pinned to it.
 
+### Standard widths
+
+Wikimedia rejects or strictly rate-limits a thumbnail at any other width, so the app never asks for one. The browser scales the file to whatever size the layout needs.
+
+1. **One function builds every Commons URL.** `commonsImageUrl(file, width)` takes a `width` whose type allows only 120, 250, 330, 500, 960, 1280, 1920 or 3840, so any other number fails the typecheck. Unit tests cover the URLs it builds. Nothing else in the code builds a Commons URL.
+2. **The browser chooses the size.** Home rows and the image page use a `srcset` of standard widths only, such as `330w, 500w, 960w`, with a `sizes` hint. The browser picks the smallest file that's sharp enough for the screen and its pixel density, and CSS scales it down. A 280 pixel card on a high-density phone loads the 960 file.
+3. **Never more than the original.** Commons doesn't serve a thumbnail wider than the original file. A painting's usable widths are the standard ones below its original width, plus the original file itself. A painting 1500 pixels wide offers 330, 500, 960 and 1280, then the original, never 1920. The function reads the original's width from `CommonsFile`.
+4. **Zoom upgrades in steps.** The image page starts with 1920, and loads 3840 only when the zoom goes past what 1920 shows sharply. Boxes are placed with the size of the file actually loaded (above).
+5. **Fall back if Commons refuses.** If a Commons image fails to load, for example because of rate limiting or a change in Wikimedia's rules, the page switches to the R2 copy. This is another reason to keep the fallback (below).
+
+The content tooling follows the same rule: the seed already downloads at 1920, and the `add-paintings` skill will too. Vercel's or Cloudflare's image resizing would give exact sizes, but they cost money and repeat work Wikimedia already does, so they aren't needed.
+
 ### Watching Commons
 
 A scheduled job checks every `CommonsFile` against Commons once a day. It asks the Commons API about 50 files per request, follows redirects, and compares each file's current version with the one stored.
