@@ -64,3 +64,4 @@ execFileSync("npx", ["--no-install", "prisma", "migrate", "deploy"], { stdio: "i
 execFileSync("npx", ["--no-install", "tsx", "prisma/seed.ts", "--yes"], { stdio: "inherit" });
 
 console.log(`\nWorktree ${worktree} is ready: database ${database}, dev server http://localhost:${port}.`);
+console.log(`For uploads, the R2 development bucket's CORS rule must allow http://localhost:${port}.`);

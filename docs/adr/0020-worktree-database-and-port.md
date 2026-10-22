@@ -36,4 +36,6 @@ Options for the port:
 - Each worktree needs `npm install` and `npm run worktree:setup` before it runs, and `npm run worktree:teardown` before it's removed. A forgotten teardown leaves a stopped `prisma dev` server behind; `npx prisma dev ls` lists them.
 - Manual GitHub sign-in only works on port 3000, the callback URL registered with GitHub, so manual sign-in checks stay in the main checkout. The automated tests don't use GitHub.
 - The R2 development bucket is still shared. Every test and upload uses its own keys, so that's safe for now.
+- Browsers upload straight to R2, so the development bucket's CORS rule must allow each worktree's origin (`http://localhost:<port>`), or uploads fail there. Setup prints the origin to add.
+- Two checkouts running the system tests at once share the machine's CPU. Each run takes about three times as long, and a test near its 60-second limit can time out.
 - Lighthouse (`npm run test:perf`) still runs only in the main checkout, on port 3000.

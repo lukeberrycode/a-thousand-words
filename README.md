@@ -88,7 +88,7 @@ npm run dev                  # prints the worktree's port, between 20000 and 209
 npm run worktree:teardown    # before removing the worktree
 ```
 
-The setup writes the worktree's `DATABASE_URL` to `.env.local`, which wins over `.env`. The port comes from the folder name, so it's the same every time. GitHub sign-in only returns to port 3000, so check it by hand in the main checkout.
+The setup writes the worktree's `DATABASE_URL` to `.env.local`, which wins over `.env`. The port comes from the folder name, so it's the same every time. GitHub sign-in only returns to port 3000, so check it by hand in the main checkout. Uploads go straight from the browser to R2, so add the worktree's origin (setup prints it) to the development bucket's CORS rule.
 
 ## Deploying
 
