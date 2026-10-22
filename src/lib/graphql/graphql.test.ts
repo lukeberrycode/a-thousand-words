@@ -14,14 +14,53 @@ const { fakeDb, rows } = vi.hoisted(() => {
       { id: "u2", name: null, email: "anon@example.com", approvedAt: null },
     ],
     images: [
-      { id: "i1", ownerId: "u1", title: "First", description: null, storageKey: "images/1.jpg", width: 800, height: 600, sha256: "x", createdAt: t("1") },
-      { id: "i2", ownerId: "u1", title: "Second", description: "Two", storageKey: "images/2.jpg", width: 10, height: 10, sha256: "y", createdAt: t("2") },
-      { id: "i3", ownerId: "u2", title: "Third", description: null, storageKey: "images/3.jpg", width: 10, height: 10, sha256: "z", createdAt: t("3") },
+      {
+        id: "i1",
+        ownerId: "u1",
+        title: "First",
+        description: null,
+        storageKey: "images/1.jpg",
+        width: 800,
+        height: 600,
+        sha256: "x",
+        createdAt: t("1"),
+      },
+      {
+        id: "i2",
+        ownerId: "u1",
+        title: "Second",
+        description: "Two",
+        storageKey: "images/2.jpg",
+        width: 10,
+        height: 10,
+        sha256: "y",
+        createdAt: t("2"),
+      },
+      {
+        id: "i3",
+        ownerId: "u2",
+        title: "Third",
+        description: null,
+        storageKey: "images/3.jpg",
+        width: 10,
+        height: 10,
+        sha256: "z",
+        createdAt: t("3"),
+      },
     ],
-    regions: [{ id: "r1", imageId: "i1", authorId: "u1", x: 0.1, y: 0.2, w: 0.3, h: 0.4, createdAt: t("4"), updatedAt: t("5") }],
+    regions: [
+      { id: "r1", imageId: "i1", authorId: "u1", x: 0.1, y: 0.2, w: 0.3, h: 0.4, createdAt: t("4"), updatedAt: t("5") },
+    ],
     annotations: [
       { id: "a1", regionId: "r1", authorId: "u1", bodyMarkdown: "A **hat**", createdAt: t("4"), updatedAt: t("4") },
-      { id: "a2", regionId: "r1", authorId: "u2", bodyMarkdown: "<script>alert(1)</script>", createdAt: t("6"), updatedAt: t("6") },
+      {
+        id: "a2",
+        regionId: "r1",
+        authorId: "u2",
+        bodyMarkdown: "<script>alert(1)</script>",
+        createdAt: t("6"),
+        updatedAt: t("6"),
+      },
     ],
     collections: [{ id: "c1", slug: "early", name: "Early", blurb: null, sortOrder: 0 }],
     collectionImages: [
@@ -127,7 +166,11 @@ describe("image", () => {
             annotations: [
               { bodyMarkdown: "A **hat**", createdAt: "2026-10-04T12:00:00.000Z", author: { name: "Ada" } },
               // Returned as stored, for the client to render safely (ADR 0008).
-              { bodyMarkdown: "<script>alert(1)</script>", createdAt: "2026-10-06T12:00:00.000Z", author: { name: null } },
+              {
+                bodyMarkdown: "<script>alert(1)</script>",
+                createdAt: "2026-10-06T12:00:00.000Z",
+                author: { name: null },
+              },
             ],
           },
         ],
@@ -168,13 +211,18 @@ describe("images", () => {
     expect(fakeDb.image.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ take: 3 }));
 
     const second = await run(query, { first: 2, after: "i2" });
-    expect(second.data).toEqual({ images: { nodes: [{ id: "i1" }], pageInfo: { endCursor: "i1", hasNextPage: false } } });
+    expect(second.data).toEqual({
+      images: { nodes: [{ id: "i1" }], pageInfo: { endCursor: "i1", hasNextPage: false } },
+    });
     expect(fakeDb.image.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: { id: "i2" }, skip: 1 }));
   });
 
   it.each([0, 51, -1])("refuses first: %i", async (first) => {
     const result = await run(query, { first });
-    expect(result.errors?.[0]).toMatchObject({ message: "first must be between 1 and 50.", extensions: { code: "BAD_USER_INPUT" } });
+    expect(result.errors?.[0]).toMatchObject({
+      message: "first must be between 1 and 50.",
+      extensions: { code: "BAD_USER_INPUT" },
+    });
     expect(fakeDb.image.findMany).not.toHaveBeenCalled();
   });
 });

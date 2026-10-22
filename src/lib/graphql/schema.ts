@@ -3,7 +3,7 @@ import { createSchema } from "graphql-yoga";
 import { db } from "@/lib/db";
 import { publicUrl } from "@/lib/storage";
 
-// The read-only GraphQL API at /api/graphql (ADR 0015). It exposes what any visitor can already
+// The read-only GraphQL API at /api/graphql (ADR 0020). It exposes what any visitor can already
 // see on the site, and nothing else: no emails, approval state, fingerprints or Auth.js rows.
 
 /** Most images one `images` query returns. */
@@ -104,7 +104,15 @@ const imageSelect = {
   createdAt: true,
 } as const;
 
-type ImageRow = { id: string; title: string; description: string | null; storageKey: string; width: number; height: number; createdAt: Date };
+type ImageRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  storageKey: string;
+  width: number;
+  height: number;
+  createdAt: Date;
+};
 type HasId = { id: string };
 type Dated = { createdAt: Date; updatedAt?: Date };
 
@@ -133,7 +141,10 @@ const resolvers = {
     },
 
     collections: () =>
-      db.collection.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, slug: true, name: true, blurb: true } }),
+      db.collection.findMany({
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, slug: true, name: true, blurb: true },
+      }),
   },
 
   Image: {
@@ -141,7 +152,10 @@ const resolvers = {
     createdAt: (image: Dated) => image.createdAt.toISOString(),
     owner: (image: HasId) => db.image.findUnique({ where: { id: image.id } }).owner(authorSelect),
     regions: (image: HasId) =>
-      db.image.findUnique({ where: { id: image.id } }).regions({ orderBy: { createdAt: "asc" } }).then((r) => r ?? []),
+      db.image
+        .findUnique({ where: { id: image.id } })
+        .regions({ orderBy: { createdAt: "asc" } })
+        .then((r) => r ?? []),
   },
 
   Region: {
@@ -163,9 +177,11 @@ const resolvers = {
 
   Collection: {
     images: async (collection: HasId) => {
-      const links = await db.collection
-        .findUnique({ where: { id: collection.id } })
-        .images({ orderBy: { position: "asc" }, take: COLLECTION_IMAGES_MAX, select: { image: { select: imageSelect } } });
+      const links = await db.collection.findUnique({ where: { id: collection.id } }).images({
+        orderBy: { position: "asc" },
+        take: COLLECTION_IMAGES_MAX,
+        select: { image: { select: imageSelect } },
+      });
       return (links ?? []).map((link) => link.image);
     },
   },

@@ -1,0 +1,78 @@
+# Checks and deploys the AWS stack in infra/ (ADR 0018). Pull requests that touch it get a
+# typecheck, the tests and `cdk synth`, with no AWS credentials. Pushes to main, and manual runs
+# on main, deploy it, using GitHub's OIDC token to assume a role in AWS: no AWS keys are stored
+# in GitHub. The deploy is skipped until the AWS_DEPLOY_ROLE_ARN repository variable is set
+# (infra/README.md).
+name: Infra
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra.yml"
+  # Deploys again without a code change, for example after changing ORPHAN_CLEANUP_DRY_RUN.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: infra
+
+env:
+  # Settings for the stack, from repository variables. Dry run stays on until ORPHAN_CLEANUP_DRY_RUN
+  # is set to "false".
+  CDK_CONTEXT: >-
+    -c dryRun=${{ vars.ORPHAN_CLEANUP_DRY_RUN || 'true' }}
+    -c alarmEmail=${{ vars.ALARM_EMAIL }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Synth
+        run: npx cdk synth --quiet $CDK_CONTEXT
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: infra-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - run: npm ci
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-west-2' }}
+      - name: Deploy
+        run: npx cdk deploy AThousandWordsOrphanCleanup --require-approval never $CDK_CONTEXT

@@ -1,4 +1,4 @@
-# 15. A small, read-only GraphQL API with GraphQL Yoga
+# 20. A small, read-only GraphQL API with GraphQL Yoga
 
 Date: 2026-10-20 · Status: Accepted
 

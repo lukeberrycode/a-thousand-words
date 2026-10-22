@@ -1,10 +1,12 @@
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-// Unit tests (`npm test`), added for the GraphQL API (ADR 0015). They run in Node without a
-// database: tests mock `@/lib/db`. The system tests in e2e/ are Playwright's, not Vitest's.
+// Unit tests: pure functions, next to the code they test (`*.test.ts`), and the GraphQL API's,
+// which mock `@/lib/db` so they run without a database. The Playwright system tests in e2e/
+// (`*.spec.ts`) run separately, with `npm run test:system`.
+
 export default defineConfig({
-  resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",

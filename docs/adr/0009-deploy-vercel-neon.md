@@ -1,6 +1,6 @@
 # 9. Deploy on Vercel with Neon Postgres; migrate and seed from a workstation
 
-Date: 2026-10-02 · Status: Accepted
+Date: 2026-10-02 · Status: Accepted; the bullet on production secrets is superseded by [ADR 0019](0019-prod-secrets-from-keepassxc.md)
 
 ## Context
 
@@ -11,7 +11,7 @@ Milestone 6 puts the demo on a public URL. ADR 0002 chose Vercel for hosting and
 - **Hosting:** Vercel, on the free `*.vercel.app` subdomain. A custom domain can be added later without code changes.
 - **Database:** **Neon** Postgres, in a US East region near Vercel's default functions region. The app uses Neon's **pooled** connection string, because serverless functions open many short-lived connections.
 - **Migrations:** applied by hand with `npm run prod:migrate` (`prisma migrate deploy`), using Neon's **direct** connection string. They don't run as part of the Vercel build: preview builds would otherwise migrate the production database, and a failed migration would be mixed up with a failed deploy.
-- **Production secrets for these commands** live in `.env.prod`. It's git-ignored, and Next.js never loads it automatically, so local builds can't reach production by accident. The app's own production settings are Vercel environment variables.
+- **Production secrets for these commands** live in `.env.prod` (superseded: they now come from KeePassXC, [ADR 0019](0019-prod-secrets-from-keepassxc.md)). It's git-ignored, and Next.js never loads it automatically, so local builds can't reach production by accident. The app's own production settings are Vercel environment variables.
 - **Separate production resources:** an R2 bucket and an R2 API token, a GitHub OAuth app and an `AUTH_SECRET`, all separate from development.
 - **Image URLs:** the production bucket's `r2.dev` URL for now. Cloudflare rate-limits it and describes it as for development, but a portfolio demo's traffic is small. Moving to a custom domain only changes `R2_PUBLIC_URL`.
 - **Seed content:** `prisma/seed-data.ts` holds 12 public-domain paintings from Wikimedia Commons with 77 annotations. `npm run prod:seed -- --yes` loads them, owned by an "A Thousand Words" user. Without `--yes` it only prints which database and bucket it would use.

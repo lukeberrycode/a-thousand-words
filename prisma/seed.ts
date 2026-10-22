@@ -5,9 +5,10 @@
 //   npm run db:seed -- --yes
 //
 // Uses DATABASE_URL and the R2_* values from the environment (.env locally). Safe to re-run:
-// paintings already seeded (same R2 key) are skipped, a painting whose Commons file can't be found
-// is skipped with a warning, and each collection's membership is replaced with the one listed. Run it against production deliberately,
-// with production values in the environment; see the deploy guide.
+// paintings already seeded (same R2 key) are skipped, except that one with no annotations yet gets
+// its seed annotations; a painting whose Commons file can't be found is skipped with a warning; and
+// each collection's membership is replaced with the one listed. Run it against production
+// deliberately, with production values in the environment; see the deploy guide.
 
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -15,7 +16,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { PrismaClient } from "@/generated/prisma/client";
 import { fingerprint } from "@/lib/image-hash";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
-import { artworks, collections } from "./seed-data";
+import { artworks, collections, type SeedArtwork } from "./seed-data";
 
 // Wikimedia asks API clients to identify themselves.
 const USER_AGENT = "a-thousand-words-seed/1.0 (https://github.com/lukeberrycode/a-thousand-words)";
@@ -55,8 +56,20 @@ async function main() {
     const notFound: string[] = [];
     for (const art of artworks) {
       const storageKey = storageKeyFor(art.slug);
-      if (await db.image.findUnique({ where: { storageKey }, select: { id: true } })) {
-        console.log(`skip  ${art.title} (already seeded)`);
+      const existing = await db.image.findUnique({ where: { storageKey }, select: { id: true } });
+      if (existing) {
+        // Paintings first seeded without annotations get them once they're written. Any annotation,
+        // by anyone, means the painting is left alone.
+        const annotated = await db.annotation.count({ where: { region: { imageId: existing.id } } });
+        if (annotated === 0 && art.annotations.length > 0) {
+          await db.image.update({
+            where: { id: existing.id },
+            data: { regions: { create: seedRegions(art, owner.id) } },
+          });
+          console.log(`annotated ${art.title} (${art.annotations.length} annotations)`);
+        } else {
+          console.log(`skip  ${art.title} (already seeded)`);
+        }
         continue;
       }
 
@@ -70,9 +83,7 @@ async function main() {
       // Size and duplicate-detection hashes, exactly as createImage computes them.
       const { width, height, sha256, phash } = await fingerprint(bytes);
 
-      await r2.send(
-        new PutObjectCommand({ Bucket: bucket, Key: storageKey, Body: bytes, ContentType: "image/jpeg" }),
-      );
+      await r2.send(new PutObjectCommand({ Bucket: bucket, Key: storageKey, Body: bytes, ContentType: "image/jpeg" }));
       await db.image.create({
         data: {
           ownerId: owner.id,
@@ -83,16 +94,7 @@ async function main() {
           height,
           sha256,
           phash,
-          regions: {
-            // Pages list boxes oldest first; space the timestamps so they keep this order.
-            // Each seed box holds one annotation.
-            create: art.annotations.map((a, i) => ({
-              authorId: owner.id,
-              ...a.region,
-              createdAt: new Date(Date.now() + i * 1000),
-              annotations: { create: { authorId: owner.id, bodyMarkdown: a.body } },
-            })),
-          },
+          regions: { create: seedRegions(art, owner.id) },
         },
       });
       console.log(`added ${art.title} (${width}×${height}, ${art.annotations.length} annotations)`);
@@ -108,6 +110,17 @@ async function main() {
   } finally {
     await db.$disconnect();
   }
+}
+
+/** The painting's seed boxes, each holding one annotation by the seed user. */
+function seedRegions(art: SeedArtwork, authorId: string) {
+  // Pages list boxes oldest first; space the timestamps so they keep this order.
+  return art.annotations.map((a, i) => ({
+    authorId,
+    ...a.region,
+    createdAt: new Date(Date.now() + i * 1000),
+    annotations: { create: { authorId, bodyMarkdown: a.body } },
+  }));
 }
 
 function storageKeyFor(slug: string) {

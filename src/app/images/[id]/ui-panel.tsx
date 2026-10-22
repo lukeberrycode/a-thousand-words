@@ -93,10 +93,20 @@ export function UiPanel({
           <Link href="/" className="min-w-0 flex-1 truncate text-xs font-semibold text-zinc-500 hover:underline">
             A Thousand Words
           </Link>
-          <IconButton label="Zoom out" onClick={() => onZoom("out")} disabled={zoomDisabled} className="hidden pointer-fine:grid">
+          <IconButton
+            label="Zoom out"
+            onClick={() => onZoom("out")}
+            disabled={zoomDisabled}
+            className="hidden pointer-fine:grid"
+          >
             <MinusIcon />
           </IconButton>
-          <IconButton label="Zoom in" onClick={() => onZoom("in")} disabled={zoomDisabled} className="hidden pointer-fine:grid">
+          <IconButton
+            label="Zoom in"
+            onClick={() => onZoom("in")}
+            disabled={zoomDisabled}
+            className="hidden pointer-fine:grid"
+          >
             <PlusIcon />
           </IconButton>
           <IconButton label={flipLabel} onClick={onFlip}>
@@ -116,7 +126,9 @@ export function UiPanel({
             disabled={entries.length === 0}
             className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-zinc-700"
           >
-            {entries.length === 0 ? "No annotations yet" : `${entries.length} ${entries.length === 1 ? "annotation" : "annotations"}`}
+            {entries.length === 0
+              ? "No annotations yet"
+              : `${entries.length} ${entries.length === 1 ? "annotation" : "annotations"}`}
             {entries.length > 0 && <span aria-hidden> {section === "list" ? "▴" : "▾"}</span>}
           </button>
           <IconButton label="Hide boxes" pressed={!boxesVisible} onClick={onToggleBoxes}>

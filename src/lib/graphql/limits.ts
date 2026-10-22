@@ -7,7 +7,7 @@ import {
   type ValidationContext,
 } from "graphql";
 
-// Query limits for the GraphQL API (ADR 0015), checked before anything runs.
+// Query limits for the GraphQL API (ADR 0020), checked before anything runs.
 // The schema has no cycles (an Author doesn't link back to images), so its deepest real query is
 // 6 levels: images → nodes → regions → annotations → author → name. The depth limit allows a
 // little headroom and still holds if links are added later. The field limit counts every field
@@ -54,10 +54,14 @@ export function queryLimits(maxDepth = MAX_DEPTH, maxFields = MAX_FIELDS) {
         walk(operation.selectionSet, 1, new Set());
 
         if (deepest > maxDepth) {
-          context.reportError(new GraphQLError(`Query is nested too deeply (at most ${maxDepth} levels).`, { nodes: operation }));
+          context.reportError(
+            new GraphQLError(`Query is nested too deeply (at most ${maxDepth} levels).`, { nodes: operation }),
+          );
         }
         if (fields > maxFields) {
-          context.reportError(new GraphQLError(`Query selects too many fields (at most ${maxFields}).`, { nodes: operation }));
+          context.reportError(
+            new GraphQLError(`Query selects too many fields (at most ${maxFields}).`, { nodes: operation }),
+          );
         }
       },
     };

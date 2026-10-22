@@ -15,7 +15,7 @@ import { annotations, image } from "./data";
 
 const noopSubscribe = () => () => {};
 
-const byId =new Map(annotations.map((a) => [a.id, a]));
+const byId = new Map(annotations.map((a) => [a.id, a]));
 
 // Larger regions first, so smaller ones render on top and stay clickable.
 const shapes = [...annotations]

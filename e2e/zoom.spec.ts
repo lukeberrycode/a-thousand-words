@@ -12,7 +12,8 @@ test("MAN-10: Zoom, pan and the UI panel (desktop, mouse)", async ({ page, world
   const view = new ImagePage(page, image);
   await view.goto();
   const viewport = page.viewportSize()!;
-  const panelEdge = () => view.panel.getByRole("button", { name: /^Move this panel to the/ }).getAttribute("aria-label");
+  const panelEdge = () =>
+    view.panel.getByRole("button", { name: /^Move this panel to the/ }).getAttribute("aria-label");
   // The label names where the panel would go: it's now on the other side.
   const ON_RIGHT = "Move this panel to the left";
   const ON_LEFT = "Move this panel to the right";

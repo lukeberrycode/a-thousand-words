@@ -1,0 +1,12 @@
+{
+  "app": "npx tsx bin/app.ts",
+  "watch": {
+    "include": ["bin/**", "lib/**", "lambda/**"]
+  },
+  "context": {
+    "dryRun": "true",
+    "maxDeletes": "100",
+    "budgetUsd": "5",
+    "githubRepo": "lukeberrycode/a-thousand-words"
+  }
+}
