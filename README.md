@@ -98,7 +98,9 @@ The script finds an entry by its path from the root of the database. If the entr
 **Each entry's Notes field** holds one line per variable. The title must match exactly. The Password field and any custom attributes aren't read.
 
 ```
-# Production: Neon's direct connection string, and the production bucket
+# Production:
+# DATABASE_URL must be Neon's direct connection string
+# R2 values must refer to the production bucket
 DATABASE_URL="postgresql://neondb_owner:<password>@<host>.neon.tech/neondb?sslmode=verify-full&channel_binding=require"
 R2_ACCOUNT_ID="<account id>"
 R2_ACCESS_KEY_ID="<access key id>"
