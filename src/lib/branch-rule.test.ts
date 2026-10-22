@@ -118,7 +118,11 @@ describe("branchProblem", () => {
 
 describe("isDocsOnly", () => {
   it("is true for files under docs/ and top-level Markdown", () => {
-    expect(isDocsOnly(["docs/adr/0021-x.md", "docs/plans/foo.md", "README.md", "CLAUDE.md"])).toBe(true);
+    expect(isDocsOnly(["docs/adr/0021-x.md", "docs/plans/foo.md", "README.md"])).toBe(true);
+  });
+
+  it.each([["CLAUDE.md"], ["AGENTS.md"]])("is false for the agent's rules, %s", (file) => {
+    expect(isDocsOnly(["docs/one-pager.md", file])).toBe(false);
   });
 
   it("is true for non-Markdown files under docs/", () => {

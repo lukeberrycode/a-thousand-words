@@ -38,9 +38,15 @@ export function branchProblem(branch: string, filesOnMain: readonly string[]): s
   );
 }
 
-/** True if a push changes only docs: anything under docs/, or a Markdown file at the top level. */
+// The agent's own rules: a change to them goes through review, like code.
+const AGENT_RULES = ["CLAUDE.md", "AGENTS.md"];
+
+/**
+ * True if a push changes only docs: anything under docs/, or a Markdown file at the top level other
+ * than the agent's rules.
+ */
 export function isDocsOnly(files: readonly string[]) {
-  return files.every((file) => file.startsWith("docs/") || /^[^/]+\.md$/.test(file));
+  return files.every((file) => file.startsWith("docs/") || (/^[^/]+\.md$/.test(file) && !AGENT_RULES.includes(file)));
 }
 
 /** A branch a git command creates. `ifMissing`: only if no branch has that name yet. */

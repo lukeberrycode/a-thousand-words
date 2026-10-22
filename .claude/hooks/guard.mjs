@@ -30,13 +30,27 @@ async function guard() {
     }),
   );
   const { tool_name: tool, tool_input: args = {}, cwd } = input;
-  const { branchProblem, branchesCreated, isDocsOnly } = await import(
-    new URL("../../src/lib/branch-rule.ts", import.meta.url)
-  );
 
+  if (tool === "Edit" || tool === "Write" || tool === "NotebookEdit") {
+    const name = basename(args.file_path ?? args.notebook_path ?? "");
+    if (/^\.env(\..+)?$/.test(name) && name !== ".env.example") {
+      block(`${name} holds secrets: edit it by hand, not through Claude. Document new variables in .env.example.`);
+    }
+    if (name === "package-lock.json") block("Change package-lock.json through npm (npm install), not by editing it.");
+    return;
+  }
+
+  // Loaded only for git and EnterWorktree, so a broken branch-rule.ts can still be fixed with Edit.
+  let rule;
+  const loadRule = async () => (rule ??= await import(new URL("../../src/lib/branch-rule.ts", import.meta.url)));
+
+  // Each git call is short, and main is fetched at most once, so the hook stays inside its timeout.
   const git = (...gitArgs) =>
-    execFileSync("git", gitArgs, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 8000 }).trim();
+    execFileSync("git", gitArgs, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 }).trim();
+  let fetched = false;
   const fetchMain = () => {
+    if (fetched) return;
+    fetched = true;
     try {
       git("fetch", "--quiet", "origin", "main");
     } catch {
@@ -54,42 +68,42 @@ async function guard() {
     return worktree;
   };
   const checkBranch = (name) => {
-    if (!branchProblem(name, [])) return; // Exempt: fix/, docs/, dependabot/.
+    if (!rule.branchProblem(name, [])) return; // Exempt: fix/, docs/, dependabot/.
     const filesOnMain = () => {
       try {
-        return git("ls-tree", "-r", "--name-only", "origin/main", "--", "docs/plans", "docs/adr").split("\n");
+        return git("ls-tree", "-r", "--full-tree", "--name-only", "origin/main", "--", "docs/plans", "docs/adr").split(
+          "\n",
+        );
       } catch {
         return [];
       }
     };
-    if (!branchProblem(name, filesOnMain())) return;
+    if (!rule.branchProblem(name, filesOnMain())) return;
     fetchMain();
-    const problem = branchProblem(name, filesOnMain());
+    const problem = rule.branchProblem(name, filesOnMain());
     if (problem) block(problem);
   };
-
-  if (tool === "Edit" || tool === "Write" || tool === "NotebookEdit") {
-    const name = basename(args.file_path ?? args.notebook_path ?? "");
-    if (/^\.env(\..+)?$/.test(name) && name !== ".env.example") {
-      block(`${name} holds secrets: edit it by hand, not through Claude. Document new variables in .env.example.`);
-    }
-    if (name === "package-lock.json") block("Change package-lock.json through npm (npm install), not by editing it.");
-  }
 
   // A new worktree gets a new branch, named after the worktree.
   if (tool === "EnterWorktree" && !args.path) {
     if (!args.name) block("Name the worktree after what it carries out, such as plan/<slug> or adr/<number>-<slug>.");
+    await loadRule();
     checkBranch(args.name);
   }
 
   if (tool !== "Bash") return;
   const command = String(args.command ?? "");
+  // A command that moves to another directory runs git somewhere the checks below don't look.
+  const movesDirectory = /(^|[;&|(\s])(cd|pushd)\s/.test(command);
   for (const part of command.split(/&&|\|\||;|\||\n/)) {
     const words = part.trim().split(/\s+/);
     if (words[0] !== "git") continue;
+    await loadRule();
+    const elsewhere =
+      movesDirectory || words.some((w) => /^(-C|--git-dir|--work-tree)(=.*)?$/.test(w) || /^-C./.test(w));
 
     // New branches: checked when made in a worktree, or with a new worktree from anywhere.
-    for (const { name, ifMissing } of branchesCreated(words)) {
+    for (const { name, ifMissing } of rule.branchesCreated(words)) {
       if (!words.includes("worktree") && !inWorktree()) continue;
       if (ifMissing) {
         try {
@@ -105,31 +119,52 @@ async function guard() {
     const at = words.indexOf("push");
     if (at < 0) continue;
     const rest = words.slice(at + 1);
-    if (rest.some((w) => /^(-f|--force|--force-with-lease.*|--mirror|--delete|-d)$/.test(w))) {
+    if (rest.some((w) => /^(-f|--force|--force-with-lease.*|--force-if-includes|--mirror|--delete|-d|\+.*)$/.test(w))) {
       block("Force pushes and branch deletes on the remote are for the owner to run.");
+    }
+    if (rest.some((w) => /^(--all|--branches)$/.test(w))) {
+      block("Push one branch at a time: --all would push main too.");
     }
     let current = "";
     try {
       current = git("branch", "--show-current");
     } catch {}
-    const refs = rest.filter((w) => !w.startsWith("-")).slice(1);
+    // Positional words, skipping the values of options that take one. The first is the remote.
+    const positional = rest.filter(
+      (w, i) => !w.startsWith("-") && !/^(-o|--push-option|--repo|--receive-pack|--exec)$/.test(rest[i - 1] ?? ""),
+    );
+    const refs = positional.slice(1);
+    if (elsewhere && refs.length === 0) block("Name the branch to push when running git push in another directory.");
     const pushes = (refs.length > 0 ? refs : ["HEAD"]).map((ref) => {
-      const [source, target = source] = ref.replace(/^\+/, "").split(":");
+      const [source, target = source] = ref.split(":");
       const branch = target === "HEAD" ? current : target.replace(/^refs\/heads\//, "");
-      return { source, branch, tag: target.startsWith("refs/tags/") };
+      let tag = target.startsWith("refs/tags/");
+      if (!tag && !ref.includes(":")) {
+        try {
+          git("rev-parse", "--verify", "--quiet", `refs/tags/${target}`);
+          tag = true;
+        } catch {}
+      }
+      return { source, branch, tag };
     });
 
     for (const { source, branch, tag } of pushes) {
       if (tag) continue;
       if (!source) block("Branch deletes on the remote are for the owner to run.");
-      if (branch === "main") {
-        const deploys =
-          "Pushing code to main deploys the live site, so the owner does it. Push a branch and open a pull request.";
+      const deploys =
+        "Pushing code to main deploys the live site, so the owner does it. Push a branch and open a pull request.";
+      if (branch === "main" || (elsewhere && /(^|:)(refs\/heads\/)?main$/.test(source))) {
         if (inWorktree()) block(`${deploys} From a worktree, docs go through a pull request too.`);
+        if (elsewhere) block(`${deploys} To push docs to main, run git push from the main checkout, without cd or -C.`);
         fetchMain();
-        const files = git("log", "--name-only", "--format=", `origin/main..${source}`).split("\n").filter(Boolean);
-        if (!isDocsOnly(files)) block(`${deploys} Only docs (docs/, top-level *.md) go straight to main.`);
-      } else if (inWorktree()) {
+        // No rename detection: a file moved from src/ into docs/ is a code change.
+        const files = git("diff", "--no-renames", "--name-only", `origin/main...${source}`).split("\n").filter(Boolean);
+        if (files.length === 0 || !rule.isDocsOnly(files)) {
+          block(
+            `${deploys} Only docs (docs/, and top-level *.md other than CLAUDE.md and AGENTS.md) go straight to main.`,
+          );
+        }
+      } else if (inWorktree() && !elsewhere) {
         checkBranch(branch);
       }
     }
