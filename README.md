@@ -143,11 +143,12 @@ R2_PUBLIC_URL="https://pub-<id>.r2.dev"
 The project is set up for an AI coding agent to work on it safely ([ADR 0015](docs/adr/0015-agent-guardrails-and-ci.md)):
 
 - `CLAUDE.md`: the agent's rules, commands and definition of done.
-- `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, push to `main`), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.
-- `.claude/hooks/`: block edits to secrets and pushes to `main`, format each edited file, and stop the agent finishing a task while lint, typecheck or unit tests fail.
+- `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, force push), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.
+- `.claude/hooks/`: block edits to secrets and pushes of code to `main`, format each edited file, and stop the agent finishing a task while lint, typecheck or unit tests fail. The rules are strictest in git worktrees, where agents work unattended. In the main checkout, where the owner is at hand, docs can go straight to `main`, and failing checks are shown without holding the turn open ([ADR 0021](docs/adr/0021-agent-rules-by-checkout.md)).
+- Branches: `plan/<slug>` carries out `docs/plans/<slug>.md`, and `adr/<number>-<slug>` carries out an ADR. Either must already be on `main`. `fix/`, `docs/` and `dependabot/` branches need neither. CI checks every pull request's branch.
 - `.claude/skills/`: `write-adr` records a decision in the house format; `/release <PR>` takes a pull request to production in the right order (migrate, merge, deploy, production checks), with the owner running the production steps ([ADR 0017](docs/adr/0017-skills-and-subagents.md)).
 - `.claude/agents/`: a `code-reviewer` that can only read, and a `test-writer` that can only edit test files. A hook enforces both.
-- `.github/workflows/ci.yml`: format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
+- `.github/workflows/ci.yml`: branch name, format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
 
 ## Project docs
 

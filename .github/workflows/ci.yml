@@ -29,6 +29,15 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # A pull request's branch carries out a plan or an ADR already on main (ADR 0021). The name
+      # goes through an env variable, never straight into the script.
+      - name: Branch
+        if: github.event_name == 'pull_request'
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          git fetch --quiet --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+          npm run -s check:branch -- "$BRANCH"
       - name: Format
         run: npm run format:check
       - name: Lint

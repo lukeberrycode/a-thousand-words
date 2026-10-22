@@ -23,7 +23,7 @@ Model in use: Claude Opus 5.5 (October 2026). When the model changes, ask what i
 
 - **Decisions get an ADR.** Any choice of library, service, data shape or approach that someone might later ask "why?" about. Use the `write-adr` skill. Supersede old ADRs; don't delete them.
 - **Never touch production.** Don't read `.env`, `.env.prod` or `.env.preview`, don't run `npm run prod:*` or `preview:*`, and don't run `keepassxc-cli`: production secrets come from the owner's KeePassXC database (ADR 0019). If a change needs a production migration, say so in the PR description: `npm run prod:migrate` runs **before** the merge.
-- **Branches and PRs.** Work on a branch, one PR per milestone or change. The owner merges and pushes to `main`.
+- **Branches and PRs.** Work on a branch, one PR per milestone or change. Name it after what it carries out: `plan/<slug>` for `docs/plans/<slug>.md`, `adr/<number>-<slug>` for an ADR. The plan or ADR must already be on `main`; write it there first. `fix/`, `docs/` and `dependabot/` branches need neither (ADR 0021). The owner merges code. In the main checkout, docs-only changes can be pushed straight to `main`; from a worktree they go through a PR.
 - **Only run installed tools.** Use `npm run <script>` or `npx --no-install <tool>`. A bare `npx <name>` downloads and runs any package with that name.
 - Write docs in British English, in plain, short sentences.
 

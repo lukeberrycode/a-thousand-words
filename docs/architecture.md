@@ -55,7 +55,7 @@ src/app/              Routes (App Router); see "Routes and views" below
 src/auth.ts           Auth.js config (GitHub provider, Prisma adapter)
 src/lib/              Shared code: db client, storage, current user, validation, regions, duplicate check
 src/generated/prisma  Generated Prisma Client (gitignored)
-scripts/              Dev server start, worktree setup (ADR 0020), env loading, account approval
+scripts/              Dev server start, worktree setup (ADR 0020), env loading, account approval, branch check (ADR 0021)
 infra/                AWS CDK stack for the nightly orphan cleanup; its own package
 .github/workflows/    GitHub Actions, including the infra checks and deploy
 ```
