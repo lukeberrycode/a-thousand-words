@@ -30,6 +30,14 @@ Next.js (App Router, TypeScript) · Tailwind CSS · Postgres + Prisma · Cloudfl
 
 Why each was chosen: [docs/adr](docs/adr/README.md). How it fits together: [docs/architecture.md](docs/architecture.md).
 
+## Services
+
+- [Vercel](https://vercel.com/lukeberrycode) hosts the app and holds the production environment variables.
+- [Neon](https://console.neon.tech) runs the Postgres database.
+- [Cloudflare R2](https://dash.cloudflare.com) stores uploaded images.
+- [GitHub OAuth apps](https://github.com/settings/developers) handle sign-in.
+- [AWS](https://console.aws.amazon.com) runs the nightly orphan cleanup (see [infra/README.md](infra/README.md)).
+
 ## Getting started
 
 Requires Node 20+ and a Postgres database.
