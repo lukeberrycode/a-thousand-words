@@ -885,7 +885,7 @@ function summary(body: string) {
   const firstLine = body.split("\n").find((line) => line.trim()) ?? "";
   return (
     firstLine
-      .replace(/[#*_`>\[\]]/g, "")
+      .replace(/[#*_`<>\[\]]/g, "")
       .replace(/\(https?:[^)]*\)/g, "")
       .trim() || "Annotation"
   );
