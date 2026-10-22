@@ -56,7 +56,8 @@ if (!existsSync(".env")) {
 
 // Starts the server, or finds it already running, and prints its connection string.
 const output = run("npx", ["--no-install", "prisma", "dev", "--name", database, "--detach"]);
-const url = output.match(/postgres:\/\/\S+/)?.[0];
+// The TCP URL, not the `prisma+postgres://` one that `prisma dev start` prints before it.
+const url = output.match(/(?<![\w+])postgres(?:ql)?:\/\/[^\s"']+/)?.[0];
 if (!url) fail(`prisma dev didn't print a connection string:\n${output}`);
 writeFileSync(".env.local", withDatabaseUrl(existsSync(".env.local") ? readFileSync(".env.local", "utf8") : "", url));
 
