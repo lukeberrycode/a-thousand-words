@@ -25,7 +25,7 @@ Options for R2:
   - `next dev` building into `.next-test`, because Next allows one dev server per build folder.
 
   Nothing is reused. The run sets mock R2 values and dummy auth values (`src/lib/mock-env.ts`), so all it needs from `.env` is `DATABASE_URL`.
-- **`E2E_REAL_R2=1`** runs the tests against the real bucket from `.env` instead, for an occasional check that R2 itself still behaves.
+- **`E2E_REAL_R2=1`** runs the tests against the real bucket from `.env` instead, for an occasional check that R2 itself still behaves. That runs as the tests did before: in the main checkout, on port 3000, reusing its dev server. The dev bucket's CORS rule only accepts uploads from `http://localhost:3000`, so worktrees never could upload to it. Before this ADR, upload tests in a worktree failed for that reason.
 - **`npm run worktree:setup -- --mock`** gives a worktree mock values instead of a copy of `.env`, and seeds the mock (folder `.r2-mock/`). `npm run dev` then starts the mock alongside Next.
 - **CI's `system` job** runs the system tests with a Postgres service container and the mock.
 
