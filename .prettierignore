@@ -3,6 +3,8 @@ package-lock.json
 *.md
 docs/wireframes/
 public/
+# AWS CDK build output (git-ignored in infra/.gitignore, which Prettier doesn't read).
+infra/cdk.out/
 
 # Dotfiles, apart from the ones the project owns. Also skips the placeholders that Claude Code's
 # sandbox puts over protected paths.
