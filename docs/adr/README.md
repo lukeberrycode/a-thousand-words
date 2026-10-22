@@ -23,3 +23,4 @@ One short file per decision: the context, what was decided, and the consequences
 | [0017](0017-skills-and-subagents.md) | Skills for repeated work, and subagents with narrow permissions | Accepted |
 | [0018](0018-orphan-cleanup-on-aws.md) | Clean up orphaned uploads with a small AWS CDK stack | Accepted |
 | [0019](0019-prod-secrets-from-keepassxc.md) | Read production and preview secrets from KeePassXC, not from files in the project | Accepted |
+| [0020](0020-graphql-api.md) | A small, read-only GraphQL API with GraphQL Yoga | Accepted |
