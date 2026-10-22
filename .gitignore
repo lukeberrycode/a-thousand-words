@@ -17,8 +17,9 @@
 /blob-report/
 /playwright/.cache/
 
-# next.js
+# next.js; .next-test is the system tests' own dev server (ADR 0024)
 /.next/
+/.next-test/
 /out/
 
 # production
@@ -52,3 +53,9 @@ next-env.d.ts
 
 # git worktrees made by Claude Code
 .claude/worktrees/
+
+# logs of agent:implement runs (ADR 0025)
+.claude/agent-runs/
+
+# objects stored by the local R2 mock (ADR 0024)
+/.r2-mock/

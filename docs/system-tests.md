@@ -29,10 +29,12 @@ npm run test:system               # every automated test, about two minutes
 npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-01 to ANN-08
 ```
 
-- **Setup:** as in Before you start: the local database running with migrations applied, and `.env` with working R2 values. The tests use the checkout's dev server if it's running, and start `npm run dev` if it isn't. That's port 3000 in the main checkout.
-- **In a git worktree:** run `npm run worktree:setup` first. The tests then use the worktree's own database and port, so several worktrees can run them at once ([ADR 0020](adr/0020-worktree-database-and-port.md)). SEC-01 checks the GitHub callback for the worktree's port, which GitHub itself would refuse: manual sign-in checks stay in the main checkout.
+- **Setup:** the local database running with migrations applied. Nothing else: each run starts its own R2 mock (`scripts/r2-mock.ts`, objects in memory) and its own `next dev`, building into `.next-test`, on the checkout's test ports (3100 and 3101 in the main checkout). They never reuse a dev server already running, so a run always tests this checkout's code, and needs no R2 or GitHub values from `.env` ([ADR 0024](adr/0024-r2-mock-for-system-tests.md)).
+- **Against real R2:** `E2E_REAL_R2=1 npm run test:system` uses the bucket from `.env` instead of the mock, as the tests did before it. Run it now and then, since the mock doesn't check signatures. It runs only in the main checkout, on port 3000, using the dev server there if one is running: the dev bucket's CORS rule accepts uploads from `http://localhost:3000` only.
+- **In CI:** the `system` job runs them on every pull request, with Postgres as a service container.
+- **In a git worktree:** run `npm run worktree:setup` (or `npm run worktree:setup -- --mock`, which needs no `.env`) first. The tests then use the worktree's own database and port, so several worktrees can run them at once ([ADR 0020](adr/0020-worktree-database-and-port.md)). SEC-01 checks the GitHub callback for the worktree's port, which GitHub itself would refuse: manual sign-in checks stay in the main checkout.
 - **Sign-in:** the tests don't use GitHub. Each signs in by creating a `Session` row for a test user and setting the session cookie, which is what a real sign-in leaves behind (ADR 0013). The OAuth flow itself stays a manual test.
-- **Data:** each test creates its own users (ids starting `e2e-`), images and annotations in the development database and R2 bucket, and deletes them afterwards. The seed paintings and your own content are never touched.
+- **Data:** each test creates its own users (ids starting `e2e-`), images and annotations in the development database and the R2 mock, and deletes them afterwards. The seed paintings and your own content are never touched.
 - **One at a time:** the local database from `npx prisma dev` fails at random when several connections query it at once, so tests run serially.
 - **A failure** leaves a trace in `test-results/`. Open it with `npx playwright show-trace <path>/trace.zip` to step through the page as it was.
 - **Each test's name starts with its ID,** and its **Automation** line below says which file it's in and which steps, if any, stay manual.
@@ -79,7 +81,7 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
   3. Delete the test file.
 - **Expected:** the image shows in step 2.
 - **Proves:** public read access is on and `R2_PUBLIC_URL` is correct, so image pages can show uploaded files.
-- **Automation:** Automated: [`e2e/env.spec.ts`](../e2e/env.spec.ts) uploads the test file with the R2 API instead of the dashboard.
+- **Automation:** Automated: [`e2e/env.spec.ts`](../e2e/env.spec.ts) uploads the test file with the R2 API instead of the dashboard. By default that checks the R2 mock; run it with `E2E_REAL_R2=1` to check the real bucket.
 
 ### ENV-05: Build and lint pass
 

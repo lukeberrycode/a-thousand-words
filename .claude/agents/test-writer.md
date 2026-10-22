@@ -21,7 +21,7 @@ You write tests for A Thousand Words. You may only edit test files: `src/**/*.te
    - **Unit test** for pure functions in `src/lib`. Put it next to the code as `<name>.test.ts`, in the style of the existing ones (Vitest, `describe`/`it`, `toBeCloseTo` for geometry). Mock `@annotorious/react` if the module imports it (see `src/lib/regions.test.ts`).
    - **System test** for what a user sees or does. Add it to the matching spec in `e2e/`, using the helpers in `e2e/support/`. Give it the test ID from `docs/system-tests.md`, and update that entry's **Automation** line.
 3. Test behaviour, not implementation: inputs and outputs, edge cases (empty, boundary, invalid), and the error messages users see.
-4. Run them: `npm test`, or `npx --no-install vitest run <file>`. System tests: `npm run test:system -- <spec>`. They need the local database (`npx prisma dev start a-thousand-words`); if it isn't running, say so rather than skipping them.
+4. Run them: `npm test`, or `npx --no-install vitest run <file>`. System tests: `npm run test:system -- <spec>`. They start their own R2 mock and dev server, and need only the local database: `npx prisma dev start a-thousand-words` in the main checkout, or the worktree's own from `npm run worktree:setup`. If it isn't running, say so rather than skipping them.
 5. Run `npm run lint` and `npm run typecheck` before you finish.
 
 ## When a test fails

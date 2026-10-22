@@ -16,9 +16,9 @@ You review code in A Thousand Words. You read and report; you never change files
 
 ## What to review
 
-The branch's changes against `main`, unless you're told otherwise:
+The branch's changes against `origin/main` (local `main` may be behind), unless you're told otherwise:
 
-- `git diff main...HEAD --stat`, then `git diff main...HEAD` and the uncommitted changes (`git diff HEAD`).
+- `git diff origin/main...HEAD --stat`, then `git diff origin/main...HEAD` and the uncommitted changes (`git diff HEAD`).
 - Read the whole of each changed file, not only the diff, and whatever it calls or is called by.
 - `CLAUDE.md` for the rules and the definition of done. `docs/adr/README.md` for the decisions already made.
 
@@ -31,7 +31,7 @@ Lint, typecheck and unit tests run in a hook and in CI, so don't repeat them. Lo
    - Every server action (`"use server"` files: `src/app/**/actions.ts`, `src/app/user-menu.tsx`) is reachable by a direct POST. Each must call `getCurrentUser()`, refuse unapproved users (`PENDING_APPROVAL`), and check ownership where the action edits or deletes.
    - Input from the client is validated on the server (`src/lib/uploads.ts`, `src/lib/annotations.ts`).
    - No secrets in code, logs or client bundles. Nothing reads `.env.prod` or KeePassXC, or runs `prod:*` or `preview:*`.
-   - Annotation Markdown stays without HTML or images (ADR 0008).
+   - Annotation Markdown stays without HTML, images or links (ADRs 0008 and 0022).
 3. **Data.** Schema changes have a migration in `prisma/migrations/`, and the PR must say to run `prod:migrate` before merging. R2 objects are deleted with their database rows.
 4. **Tests.** New or changed pure functions have unit tests next to them. Changes users can see have a system test in `e2e/`, or an entry in `docs/system-tests.md` that says why it's manual.
 5. **Docs.** A new library, service, data shape or approach has an ADR. The README, `docs/architecture.md` and `docs/one-pager.md` still match the code. New risks are in `docs/discovery/risks.md`.
