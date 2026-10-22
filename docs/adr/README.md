@@ -11,7 +11,7 @@ One short file per decision: the context, what was decided, and the consequences
 | [0005](0005-fractional-region-coordinates.md) | Fractional, rectangle-only region coordinates | Accepted |
 | [0006](0006-open-annotation-and-public-domain-seed.md) | Any signed-in user can annotate; seed with public-domain art | Accepted |
 | [0007](0007-authjs-v5-beta.md) | Auth.js v5 (beta) for sign-in | Accepted |
-| [0008](0008-markdown-rendering.md) | Render annotation Markdown with react-markdown, without HTML or images | Accepted |
+| [0008](0008-markdown-rendering.md) | Render annotation Markdown with react-markdown, without HTML or images | Amended by 0022 |
 | [0009](0009-deploy-vercel-neon.md) | Deploy on Vercel with Neon Postgres; migrate and seed from a workstation | Accepted |
 | [0010](0010-duplicate-detection.md) | Warn about duplicate uploads using a perceptual hash | Accepted |
 | [0011](0011-regions-and-overlap.md) | Boxes hold several annotations; refuse boxes that would hide each other | Accepted |
@@ -23,3 +23,4 @@ One short file per decision: the context, what was decided, and the consequences
 | [0017](0017-skills-and-subagents.md) | Skills for repeated work, and subagents with narrow permissions | Accepted |
 | [0018](0018-orphan-cleanup-on-aws.md) | Clean up orphaned uploads with a small AWS CDK stack | Accepted |
 | [0019](0019-prod-secrets-from-keepassxc.md) | Read production and preview secrets from KeePassXC, not from files in the project | Accepted |
+| [0022](0022-no-links-in-annotations.md) | Annotations can't contain links | Accepted |
