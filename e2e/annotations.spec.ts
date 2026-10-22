@@ -41,11 +41,11 @@ test("ANN-01: Create an annotation", async ({ page, world }) => {
   const drawn = (await view.draft.locator(".a9s-shape-handle").boundingBox())!;
   expect(card.x >= drawn.x + drawn.width || card.x + card.width <= drawn.x).toBe(true);
 
-  await view.card.getByLabel("What's in this region?").fill("**Bold** and a [link](https://example.com)");
+  await view.card.getByLabel("What's in this region?").fill("**Bold** and _italic_");
   await view.card.getByRole("button", { name: "Save" }).click();
 
   await expect(view.card.locator("strong", { hasText: "Bold" })).toBeVisible();
-  await expect(view.card.getByRole("link", { name: "link" })).toHaveAttribute("href", "https://example.com");
+  await expect(view.card.locator("em", { hasText: "italic" })).toBeVisible();
   await expect(view.card.getByText(`By ${user.name}`)).toBeVisible();
   await expect(view.card.getByRole("button", { name: "Edit" })).toBeVisible();
   await expect(view.card.getByRole("button", { name: "Delete" })).toBeVisible();
@@ -140,26 +140,23 @@ test("ANN-04: Annotation text is rendered safely", async ({ page, world }) => {
   });
 
   const text =
-    '<b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com)';
+    '<b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com) <https://example.com/auto>';
   await view.panel.getByRole("button", { name: "Annotate", exact: true }).click();
   await view.drawBox({ x: 0.1, y: 0.1, w: 0.2, h: 0.2 });
   await view.card.getByLabel("What's in this region?").fill(text);
   await view.card.getByRole("button", { name: "Save" }).click();
 
-  const good = view.card.getByRole("link", { name: "good" });
-  await expect(good).toBeVisible();
   // The HTML shows as text.
   await expect(view.card.getByText('<b onclick="alert(1)">html</b>', { exact: false })).toBeVisible();
   await expect(view.card.locator("b")).toHaveCount(0);
   await expect(view.card.locator("[onclick]")).toHaveCount(0);
-  // The unsafe link's URL is dropped, so it's plain text, and no image loads.
+  // Every link, safe or not, is plain text without its URL (ADR 0022), and no image loads.
   await expect(view.card.getByText("bad")).toBeVisible();
-  await expect(view.card.getByRole("link", { name: "bad" })).toHaveCount(0);
-  await expect(view.card.locator('[href^="javascript:"]')).toHaveCount(0);
+  await expect(view.card.getByText("good")).toBeVisible();
+  await expect(view.card.getByText("https://example.com/auto")).toBeVisible();
+  await expect(view.card.getByRole("link")).toHaveCount(0);
+  await expect(view.card.locator("[href]")).toHaveCount(0);
   await expect(view.card.locator("img")).toHaveCount(0);
-  await expect(good).toHaveAttribute("href", "https://example.com");
-  await expect(good).toHaveAttribute("target", "_blank");
-  await expect(good).toHaveAttribute("rel", "nofollow ugc noopener noreferrer");
 });
 
 test("ANN-05: The annotation action rejects requests that aren't signed in", async ({ page, world }) => {

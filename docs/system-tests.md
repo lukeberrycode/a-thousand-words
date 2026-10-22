@@ -281,7 +281,7 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
   1. Click **Annotate**.
   2. Drag a box over part of the image.
   3. Optionally move or resize the box.
-  4. Type some Markdown, e.g. `**Bold** and a [link](https://example.com)`, and click **Save**.
+  4. Type some Markdown, e.g. `**Bold** and _italic_`, and click **Save**.
 - **Expected:**
   - After step 1, the button reads **Done annotating**, with a hint to drag a box.
   - After step 2, the view zooms so the box and an editor card sit side by side, and the UI panel hides.
@@ -321,15 +321,14 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
   1. Save an annotation whose text is:
 
      ```
-     <b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com)
+     <b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com) <https://example.com/auto>
      ```
 
   2. Select it, and inspect the panel with the browser's dev tools.
 - **Expected:**
   - The HTML shows as plain text.
-  - `bad` shows as plain text, not a link (its unsafe URL is dropped), and no image loads.
-  - The `good` link opens in a new tab and has `rel="nofollow ugc noopener noreferrer"`.
-- **Proves:** untrusted annotation text can't run scripts, use unsafe links or load images (ADR 0008).
+  - `bad`, `good` and `https://example.com/auto` show as plain text. The panel has no links, and no image loads.
+- **Proves:** untrusted annotation text can't run scripts, link anywhere or load images (ADRs 0008 and 0022).
 - **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
 
 ### ANN-05: The annotation action rejects requests that aren't signed in

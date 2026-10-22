@@ -124,7 +124,7 @@ Uploading requires sign-in; both server actions reject anonymous calls.
 7. The action checks the session, the region (inside the image and not tiny), the overlap rule and the text (not empty, at most 5,000 characters), then creates the `Region` with its first `Annotation`. It calls `refresh()`, so the page re-renders with the new region, which is then opened. The user stays in annotate mode, to draw another box.
 8. An open box's card lists all its annotations, oldest first, with **+ Add your annotation** for approved users who haven't annotated it yet. That calls `addAnnotation`.
 
-Annotation text is untrusted, so it's rendered without HTML or images ([ADR 0008](adr/0008-markdown-rendering.md)).
+Annotation text is untrusted, so it's rendered without HTML, images or links ([ADR 0008](adr/0008-markdown-rendering.md), [ADR 0022](adr/0022-no-links-in-annotations.md)).
 
 ## Editing and deleting
 
