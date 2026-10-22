@@ -55,7 +55,7 @@ npm run dev                # http://localhost:3000
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` | Start the dev server |
+| `npm run dev` | Start the dev server: port 3000 in the main checkout, a fixed port per worktree ([below](#working-in-git-worktrees)) |
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript, without building (generates Next.js's route types first) |
@@ -67,6 +67,8 @@ npm run dev                # http://localhost:3000
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run db:seed` | Load the seed paintings into the database and R2 from `.env` (dry run unless `-- --yes`) |
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
+| `npm run worktree:setup` | In a git worktree: give it its own local database, migrated and seeded ([below](#working-in-git-worktrees)) |
+| `npm run worktree:teardown` | In a git worktree, before removing it: delete its local database |
 | `npm run prod:migrate` | Apply migrations to production, with settings from KeePassXC (see [Deploying](#deploying)) |
 | `npm run prod:seed` | Seed production, with settings from KeePassXC (dry run unless `-- --yes`) |
 | `npm run preview:migrate` | Apply migrations to the preview database, with settings from KeePassXC |
@@ -74,6 +76,19 @@ npm run dev                # http://localhost:3000
 | `npm run prod:users` | List or approve accounts on production, with settings from KeePassXC |
 
 After pulling a change to `prisma/schema.prisma`, run `npx prisma generate` (or `npm install`) before any of the `db:*`, `prod:*` or `preview:*` scripts. The generated client in `src/generated/prisma` is git-ignored and isn't rebuilt when you pull, so a script run with the old one fails on the new models (for example, `Cannot read properties of undefined (reading 'upsert')`). Vercel regenerates it on every deploy.
+
+## Working in git worktrees
+
+Parallel Claude Code sessions each work in a git worktree under `.claude/worktrees/`. Each worktree gets its own local database and its own dev server port, so one branch's migrations and system tests don't touch another's ([ADR 0020](docs/adr/0020-worktree-database-and-port.md)).
+
+```bash
+npm install                  # in the worktree
+npm run worktree:setup       # copies .env if missing, starts its database, migrates and seeds it
+npm run dev                  # prints the worktree's port, between 20000 and 20999
+npm run worktree:teardown    # before removing the worktree
+```
+
+The setup writes the worktree's `DATABASE_URL` to `.env.local`, which wins over `.env`. The port comes from the folder name, so it's the same every time. GitHub sign-in only returns to port 3000, so check it by hand in the main checkout.
 
 ## Deploying
 

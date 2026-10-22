@@ -5,7 +5,7 @@
 //   npm run db:users -- approve <who>      approve one: a GitHub login, an email or a user id
 //   npm run prod:users [-- approve <who>]  the same against production, with settings from KeePassXC
 
-import "dotenv/config";
+import "./load-env";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 

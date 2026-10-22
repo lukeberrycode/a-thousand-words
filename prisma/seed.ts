@@ -10,7 +10,7 @@
 // each collection's membership is replaced with the one listed. Run it against production
 // deliberately, with production values in the environment; see the deploy guide.
 
-import "dotenv/config";
+import "../scripts/load-env";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { PrismaClient } from "@/generated/prisma/client";

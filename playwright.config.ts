@@ -1,9 +1,16 @@
 import { defineConfig, devices } from "@playwright/test";
-import "dotenv/config";
+import "./scripts/load-env";
+import { currentWorktree } from "./scripts/checkout";
+import { devPort } from "./src/lib/worktree";
 
 // Automated system tests (docs/system-tests.md, ADR 0013). Each test is named after its test ID.
 // They run against the dev server and local database described there, with the R2 values in .env.
 // Sign-in uses a database session made by the test instead of GitHub (e2e/support/world.ts).
+
+// This checkout's dev server: port 3000 in the main checkout, a port fixed by the folder name in a
+// worktree (ADR 0020). A server already on that port is reused, so it should be this checkout's.
+// localhost, not 127.0.0.1: the session cookie is set for localhost (docs/system-tests.md).
+const baseURL = `http://localhost:${devPort(currentWorktree())}`;
 
 export default defineConfig({
   testDir: "e2e",
@@ -16,8 +23,7 @@ export default defineConfig({
   reporter: [["list"]],
   globalSetup: "./e2e/support/global-setup.ts",
   use: {
-    // localhost, not 127.0.0.1: the session cookie is set for localhost (docs/system-tests.md).
-    baseURL: "http://localhost:3000",
+    baseURL,
     trace: "retain-on-failure",
     // The image page then zooms without animating, so box positions can be read straight away.
     reducedMotion: "reduce",
@@ -25,7 +31,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } } }],
   webServer: {
     command: "npm run dev",
-    url: "http://localhost:3000",
+    url: baseURL,
     reuseExistingServer: true,
     timeout: 120_000,
   },
