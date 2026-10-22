@@ -284,10 +284,10 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
   1. Click **Annotate**.
   2. Drag a box over part of the image.
   3. Optionally move or resize the box.
-  4. Type some Markdown, e.g. `**Bold** and a [link](https://example.com)`, and click **Save**.
+  4. Type some Markdown, e.g. `**Bold** and _italic_`, and click **Save**.
 - **Expected:**
   - After step 1, the button reads **Done annotating**, with a hint to drag a box.
-  - After step 2, the view zooms so the box and an editor card sit side by side, and the UI panel hides.
+  - After step 2, the view zooms so the box and an editor card sit side by side, and the UI panel hides. The editor's help text lists bold, italic and lists, and says links show as plain text (ADR 0022).
   - After step 4, the editor closes and you're still in annotate mode. The new region is open: drawn with a thick amber outline while the others recede, and its card shows the formatted text, your name, and **Edit** and **Delete**. The region sits where the box was when you clicked Save.
 - **Proves:** drawing, the pixels-to-fractions conversion, the server action and the page refresh work together.
 - **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
@@ -324,15 +324,19 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
   1. Save an annotation whose text is:
 
      ```
-     <b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com)
+     <b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com) <https://example.com/auto> https://example.com/bare
      ```
 
-  2. Select it, and inspect the panel with the browser's dev tools.
+  2. Select it, and inspect the card with the browser's dev tools.
+  3. Check the new `Annotation` row in Studio.
 - **Expected:**
+  - Step 1 saves with no error, even though the text has link syntax.
   - The HTML shows as plain text.
-  - `bad` shows as plain text, not a link (its unsafe URL is dropped), and no image loads.
-  - The `good` link opens in a new tab and has `rel="nofollow ugc noopener noreferrer"`.
-- **Proves:** untrusted annotation text can't run scripts, use unsafe links or load images (ADR 0008).
+  - No image loads, and neither `pic` nor the image's URL shows.
+  - The card has no links at all. `bad` and `good` show as plain text, without their URLs.
+  - The autolink shows as the plain text `https://example.com/auto`, without its angle brackets. The bare URL shows as plain text.
+  - In step 3, `bodyMarkdown` is exactly the text typed, links included.
+- **Proves:** untrusted annotation text can't run scripts, load images (ADR 0008) or link anywhere (ADR 0022). Links are removed when the text is shown, not when it's saved.
 - **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
 
 ### ANN-05: The annotation action rejects requests that aren't signed in
