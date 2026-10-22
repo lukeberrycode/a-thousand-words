@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // The AWS CDK stack has its own package, config and checks (infra/README.md).
     "infra/**",
+    // Git worktrees made by Claude Code are separate checkouts with their own checks.
+    ".claude/worktrees/**",
   ]),
 ]);
 

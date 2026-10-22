@@ -33,7 +33,8 @@ const hash = createHash("sha256")
   .update(git("rev-parse", "HEAD"))
   .update(git("diff", "HEAD", "--", ...paths));
 for (const file of git("ls-files", "--others", "--exclude-standard", "-z", "--", ...paths).split("\0")) {
-  if (file) hash.update(file).update(readFileSync(join(root, file)));
+  // A nested repository, such as a git worktree under .claude/worktrees, is listed as "dir/".
+  if (file && !file.endsWith("/")) hash.update(file).update(readFileSync(join(root, file)));
 }
 const state = hash.digest("hex");
 
