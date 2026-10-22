@@ -6,12 +6,18 @@
 //                               checkout if missing, starts the worktree's `prisma dev` server,
 //                               points .env.local at it, applies the migrations and seeds it.
 //                               Safe to re-run, for example after a restart.
+//   npm run worktree:setup -- --mock
+//                               the same, but with no secrets: instead of copying .env, it points
+//                               .env.local at a local R2 mock and dummy auth values, and seeds the
+//                               mock (ADR 0024). `npm run dev` then starts the mock too. GitHub
+//                               sign-in doesn't work in such a worktree. agent:implement uses this.
 //   npm run worktree:teardown   in a worktree, before removing it: deletes its database.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
-import { databaseName, devPort, worktreeName, withDatabaseUrl } from "../src/lib/worktree";
+import { MOCK_AUTH_ENV, mockR2Env } from "../src/lib/mock-env";
+import { checkoutPort, databaseName, devPort, withEnvValues, worktreeName } from "../src/lib/worktree";
 import { checkoutFolders, currentWorktree } from "./checkout";
 
 function run(command: string, args: string[]) {
@@ -48,7 +54,10 @@ for (const folder of others) {
   }
 }
 
-if (!existsSync(".env")) {
+const mock = process.argv.includes("--mock");
+const r2Port = checkoutPort(worktree, "r2");
+
+if (!mock && !existsSync(".env")) {
   if (!existsSync(join(main, ".env"))) fail(`No .env here or in ${main}. See .env.example.`);
   copyFileSync(join(main, ".env"), ".env");
   console.log(`Copied .env from ${main}.`);
@@ -58,9 +67,45 @@ if (!existsSync(".env")) {
 const output = run("npx", ["--no-install", "prisma", "dev", "--name", database, "--detach"]);
 const url = output.match(/postgres:\/\/\S+/)?.[0];
 if (!url) fail(`prisma dev didn't print a connection string:\n${output}`);
-writeFileSync(".env.local", withDatabaseUrl(existsSync(".env.local") ? readFileSync(".env.local", "utf8") : "", url));
+const values = mock ? { DATABASE_URL: url, ...mockR2Env(r2Port), ...MOCK_AUTH_ENV } : { DATABASE_URL: url };
+writeFileSync(".env.local", withEnvValues(existsSync(".env.local") ? readFileSync(".env.local", "utf8") : "", values));
 
 execFileSync("npx", ["--no-install", "prisma", "migrate", "deploy"], { stdio: "inherit" });
-execFileSync("npx", ["--no-install", "tsx", "prisma/seed.ts", "--yes"], { stdio: "inherit" });
+// tsx runs this as CommonJS, which has no top-level await.
+void seedAndFinish();
 
-console.log(`\nWorktree ${worktree} is ready: database ${database}, dev server http://localhost:${port}.`);
+async function seedAndFinish() {
+  const stopMock = mock ? await startMock() : () => {};
+  try {
+    execFileSync("npx", ["--no-install", "tsx", "prisma/seed.ts", "--yes"], { stdio: "inherit" });
+  } finally {
+    stopMock();
+  }
+  const storage = mock ? `R2 mock http://localhost:${r2Port}` : "R2 from .env";
+  console.log(
+    `\nWorktree ${worktree} is ready: database ${database}, ${storage}, dev server http://localhost:${port}.`,
+  );
+}
+
+/** Starts the R2 mock for the seed, unless one is already running here. Returns how to stop it. */
+async function startMock() {
+  const up = () =>
+    fetch(`http://localhost:${r2Port}/`).then(
+      (res) => res.ok,
+      () => false,
+    );
+  if (await up()) return () => {};
+  const child = spawn(
+    "npx",
+    ["--no-install", "tsx", "scripts/r2-mock.ts", "--port", String(r2Port), "--dir", ".r2-mock"],
+    {
+      stdio: "ignore",
+    },
+  );
+  for (let i = 0; i < 100 && !(await up()); i++) await new Promise((resolve) => setTimeout(resolve, 100));
+  if (!(await up())) {
+    child.kill();
+    fail(`The R2 mock didn't start on port ${r2Port}.`);
+  }
+  return () => void child.kill();
+}

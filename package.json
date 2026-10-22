@@ -20,6 +20,7 @@
     "worktree:setup": "tsx scripts/worktree.ts setup",
     "worktree:teardown": "tsx scripts/worktree.ts teardown",
     "check:branch": "tsx scripts/check-branch.ts",
+    "agent:implement": "tsx scripts/agent-implement.ts",
     "test:system": "playwright test",
     "test:perf": "lhci autorun",
     "prod:migrate": "sh scripts/with-keepass-env.sh a-thousand-words-prod prisma migrate deploy",

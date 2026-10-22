@@ -61,7 +61,7 @@ npm run dev                # http://localhost:3000
 | `npm run typecheck` | TypeScript, without building (generates Next.js's route types first) |
 | `npm test` | The unit tests (Vitest, `src/**/*.test.ts`); `npm run test:watch` reruns them on change |
 | `npm run format` | Format the code with Prettier; `npm run format:check` only checks |
-| `npm run test:system` | The automated system tests ([docs/system-tests.md](docs/system-tests.md#running-the-automated-tests)): Playwright against the dev server, local database and R2 bucket from `.env`. Run `npx playwright install chromium` once first. |
+| `npm run test:system` | The automated system tests ([docs/system-tests.md](docs/system-tests.md#running-the-automated-tests)): Playwright against the local database, with its own dev server and R2 mock ([ADR 0024](docs/adr/0024-r2-mock-for-system-tests.md)). `E2E_REAL_R2=1` uses the R2 bucket from `.env` instead. Run `npx playwright install chromium` once first. |
 | `npm run test:perf` | Lighthouse CI against a production build of the home page (`npm run build` first, with the local database running). Warns below the performance budgets. Set `CHROME_PATH` to a Chrome or Chromium binary, e.g. Playwright's under `~/.cache/ms-playwright/`. |
 | `npm run db:migrate` | Create and apply migrations (`prisma migrate dev`). Restart `npm run dev` afterwards: it keeps one Prisma client across hot reloads, so it won't know about new columns until restarted. |
 | `npm run db:studio` | Browse the database in Prisma Studio |
@@ -69,6 +69,7 @@ npm run dev                # http://localhost:3000
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
 | `npm run worktree:setup` | In a git worktree: give it its own local database, migrated and seeded ([below](#working-in-git-worktrees)) |
 | `npm run worktree:teardown` | In a git worktree, before removing it: delete its local database |
+| `npm run agent:implement -- <branch>` | Have an agent carry out a plan or ADR from `main` in a new worktree, unattended, through to a pull request ([below](#unattended-agents)) |
 | `npm run prod:migrate` | Apply migrations to production, with settings from KeePassXC (see [Deploying](#deploying)) |
 | `npm run prod:seed` | Seed production, with settings from KeePassXC (dry run unless `-- --yes`) |
 | `npm run preview:migrate` | Apply migrations to the preview database, with settings from KeePassXC |
@@ -84,11 +85,22 @@ Parallel Claude Code sessions each work in a git worktree under `.claude/worktre
 ```bash
 npm install                  # in the worktree
 npm run worktree:setup       # copies .env if missing, starts its database, migrates and seeds it
+                             # (-- --mock: no .env; uses a local R2 mock instead, ADR 0024)
 npm run dev                  # prints the worktree's port, between 20000 and 20999
 npm run worktree:teardown    # before removing the worktree
 ```
 
 The setup writes the worktree's `DATABASE_URL` to `.env.local`, which wins over `.env`. The port comes from the folder name, so it's the same every time. GitHub sign-in only returns to port 3000, so check it by hand in the main checkout.
+
+## Unattended agents
+
+With a plan or ADR on `main`, one command has an agent carry it out ([ADR 0025](docs/adr/0025-headless-agent-implements-plans.md)):
+
+```bash
+npm run agent:implement -- adr/0022-no-links-in-annotations
+```
+
+It makes the worktree and sets it up with the R2 mock, so no secrets are copied. Then it runs Claude Code headless, in auto mode, on the `implement-plan` skill. The agent carries out the plan, has the tests written, runs every check including the system tests, gets a code review, and opens a pull request. The pull request is a draft, with a "Needs the owner" section, when something is left for you. A desktop notification says which. The log is in `.claude/agent-runs/`. `AGENT_BUDGET_USD` caps the spend (default 25).
 
 ## Deploying
 

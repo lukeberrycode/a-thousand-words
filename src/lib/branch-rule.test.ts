@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { branchProblem, branchesCreated, isDocsOnly } from "./branch-rule";
+import { branchProblem, branchesCreated, isDocsOnly, targetFile } from "./branch-rule";
 
 const onMain = [
   "docs/plans/commons.md",
@@ -212,5 +212,29 @@ describe("branchesCreated", () => {
 
   it("returns nothing for an empty command", () => {
     expect(branchesCreated([])).toEqual([]);
+  });
+});
+
+describe("targetFile", () => {
+  const onMain = ["docs/plans/agent-implement.md", "docs/adr/0022-no-links-in-annotations.md", "docs/adr/README.md"];
+
+  it("finds the plan a plan/ branch carries out", () => {
+    expect(targetFile("plan/agent-implement", onMain)).toBe("docs/plans/agent-implement.md");
+  });
+
+  it("finds an ADR by its number, whatever the branch's slug", () => {
+    expect(targetFile("adr/0022-no-links-in-annotations", onMain)).toBe("docs/adr/0022-no-links-in-annotations.md");
+    expect(targetFile("adr/0022-anything", onMain)).toBe("docs/adr/0022-no-links-in-annotations.md");
+    expect(targetFile("adr/0022", onMain)).toBe("docs/adr/0022-no-links-in-annotations.md");
+  });
+
+  it("ignores the worktree- prefix", () => {
+    expect(targetFile("worktree-plan/agent-implement", onMain)).toBe("docs/plans/agent-implement.md");
+  });
+
+  it("gives null when the file isn't on main, or the branch names nothing", () => {
+    for (const branch of ["plan/missing", "adr/0099-x", "fix/typo", "docs/readme", "feature/x", "adr/22-x"]) {
+      expect(targetFile(branch, onMain)).toBeNull();
+    }
   });
 });

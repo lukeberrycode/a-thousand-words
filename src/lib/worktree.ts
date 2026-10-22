@@ -6,8 +6,8 @@
 export const MAIN_PORT = 3000;
 export const MAIN_DATABASE = "a-thousand-words";
 
-// Worktree ports are 20000 to 20999: clear of the usual dev server ports, and below the range
-// Linux hands out for outgoing connections (32768 and up).
+// Worktree dev server ports are 20000 to 20999: clear of the usual dev server ports, and below the
+// range Linux hands out for outgoing connections (32768 and up).
 const FIRST_PORT = 20000;
 const PORT_COUNT = 1000;
 
@@ -31,7 +31,22 @@ function hash(text: string) {
 
 /** The dev server port: 3000 for the main checkout (null), otherwise fixed by the worktree's name. */
 export function devPort(worktree: string | null) {
-  return worktree === null ? MAIN_PORT : FIRST_PORT + (hash(worktree) % PORT_COUNT);
+  return checkoutPort(worktree, "app");
+}
+
+// Each checkout also runs a local R2 mock beside its dev server, and the system tests start their
+// own app server and mock, so they never test a server someone else started (ADR 0024). Each kind
+// of server has its own band of 1000 ports, at the same offset as the dev server: 20000 to 23999.
+const BANDS = { app: 0, r2: 1000, testApp: 2000, testR2: 3000 };
+const MAIN_PORTS = { app: MAIN_PORT, r2: 3001, testApp: 3100, testR2: 3101 };
+
+/** Which server a port is for: the dev server, its R2 mock, or the system tests' app and mock. */
+export type PortKind = keyof typeof BANDS;
+
+/** A checkout's port for one kind of server. The main checkout (null) has fixed ports. */
+export function checkoutPort(worktree: string | null, kind: PortKind) {
+  if (worktree === null) return MAIN_PORTS[kind];
+  return FIRST_PORT + BANDS[kind] + (hash(worktree) % PORT_COUNT);
 }
 
 /** The `prisma dev` server name for the checkout's database. */
@@ -41,6 +56,13 @@ export function databaseName(worktree: string | null) {
 
 /** Sets `DATABASE_URL` in the text of an env file, keeping every other line. */
 export function withDatabaseUrl(envFile: string, url: string) {
-  const kept = envFile.split("\n").filter((line) => !/^\s*DATABASE_URL\s*=/.test(line));
-  return `${kept.join("\n").trimEnd()}\nDATABASE_URL="${url}"\n`.trimStart();
+  return withEnvValues(envFile, { DATABASE_URL: url });
+}
+
+/** Sets each of `values` in the text of an env file, at the end, keeping every other line. */
+export function withEnvValues(envFile: string, values: Readonly<Record<string, string>>) {
+  const names = Object.keys(values);
+  const kept = envFile.split("\n").filter((line) => !names.some((name) => new RegExp(`^\\s*${name}\\s*=`).test(line)));
+  const added = names.map((name) => `${name}="${values[name]}"`).join("\n");
+  return `${kept.join("\n").trimEnd()}\n${added}\n`.trimStart();
 }

@@ -1,6 +1,6 @@
 # Plan: agents carry out plans in worktrees, through to a pull request
 
-Status: agreed, 22 October 2026. Its decisions get ADRs 0024 and 0025 when the work starts.
+Status: carried out on `plan/agent-implement`, 22 October 2026. Decisions: [ADR 0024](../adr/0024-r2-mock-for-system-tests.md) and [ADR 0025](../adr/0025-headless-agent-implements-plans.md).
 
 ## Why
 

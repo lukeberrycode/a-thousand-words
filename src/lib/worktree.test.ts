@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { MAIN_DATABASE, MAIN_PORT, databaseName, devPort, withDatabaseUrl, worktreeName } from "./worktree";
+import {
+  MAIN_DATABASE,
+  MAIN_PORT,
+  checkoutPort,
+  databaseName,
+  devPort,
+  withDatabaseUrl,
+  withEnvValues,
+  worktreeName,
+  type PortKind,
+} from "./worktree";
 
 const names = ["graphql", "fix-upload", "review-pr-23", "isolation", "search", "agent-a1b2c3"];
 
@@ -33,6 +43,35 @@ describe("devPort", () => {
   it("gives realistic worktree names different ports", () => {
     const ports = names.map(devPort);
     expect(new Set(ports).size).toBe(names.length);
+  });
+});
+
+describe("checkoutPort", () => {
+  const kinds: PortKind[] = ["app", "r2", "testApp", "testR2"];
+  const bands = { app: 20000, r2: 21000, testApp: 22000, testR2: 23000 };
+
+  it("gives the main checkout fixed ports, with the dev server on 3000", () => {
+    expect(kinds.map((kind) => checkoutPort(null, kind))).toEqual([3000, 3001, 3100, 3101]);
+  });
+
+  it("matches devPort for the dev server", () => {
+    for (const name of [null, ...names]) expect(checkoutPort(name, "app")).toBe(devPort(name));
+  });
+
+  it("keeps each kind in its own band of 1000, at the dev server's offset", () => {
+    for (const name of [...names, "", "x".repeat(200)]) {
+      const offset = devPort(name) - 20000;
+      for (const kind of kinds) expect(checkoutPort(name, kind)).toBe(bands[kind] + offset);
+    }
+  });
+
+  it("never gives two kinds the same port, in any checkout", () => {
+    const all = [null, ...names].flatMap((name) => kinds.map((kind) => checkoutPort(name, kind)));
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("stays below the ports Linux hands out for outgoing connections", () => {
+    for (const name of names) for (const kind of kinds) expect(checkoutPort(name, kind)).toBeLessThan(32768);
   });
 });
 
@@ -132,5 +171,18 @@ describe("withDatabaseUrl", () => {
   it("gives the same file when run twice", () => {
     const once = withDatabaseUrl("A=1\n# note\n\nB=2\n", url);
     expect(withDatabaseUrl(once, url)).toBe(once);
+  });
+});
+
+describe("withEnvValues", () => {
+  it("sets several values, replacing old lines and keeping the rest", () => {
+    const env = 'R2_BUCKET=old\n# keep\nAUTH_SECRET="s"\nR2_ENDPOINT = "http://x"\n';
+    expect(withEnvValues(env, { R2_ENDPOINT: "http://localhost:21000", R2_BUCKET: "mock" })).toBe(
+      '# keep\nAUTH_SECRET="s"\nR2_ENDPOINT="http://localhost:21000"\nR2_BUCKET="mock"\n',
+    );
+  });
+
+  it("doesn't touch a variable whose name only starts the same", () => {
+    expect(withEnvValues("R2_BUCKET_OLD=1\n", { R2_BUCKET: "b" })).toBe('R2_BUCKET_OLD=1\nR2_BUCKET="b"\n');
   });
 });
