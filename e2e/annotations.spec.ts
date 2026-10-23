@@ -91,16 +91,19 @@ test("ANN-02: Annotations are visible to everyone and stay aligned", async ({ pa
   await expect(view.card.getByText(`By ${author.name}`)).toBeVisible();
   await view.closeCard();
 
-  // Step 3: the box stays over the same part of the image at every size.
-  expectRegion(await view.shapeRegion(regionId), box, 0.003);
+  // Step 3: the box stays over the same part of the image at every size. Zooming and resizing
+  // animate the view, and the image and box are measured one after the other, so check again
+  // until the view has settled.
+  const aligned = () => expect(async () => expectRegion(await view.shapeRegion(regionId), box, 0.003)).toPass();
+  await aligned();
   await view.panel.getByRole("button", { name: "Zoom in" }).click();
   await view.panel.getByRole("button", { name: "Zoom in" }).click();
-  expectRegion(await view.shapeRegion(regionId), box, 0.003);
+  await aligned();
   await view.panel.getByRole("button", { name: "Zoom out" }).click();
-  expectRegion(await view.shapeRegion(regionId), box, 0.003);
+  await aligned();
   await page.setViewportSize({ width: 400, height: 820 });
   await expect(view.panel).toBeVisible();
-  expectRegion(await view.shapeRegion(regionId), box, 0.003);
+  await aligned();
 });
 
 test("ANN-03: Cancelling and leaving annotate mode discard the draft", async ({ page, world }) => {

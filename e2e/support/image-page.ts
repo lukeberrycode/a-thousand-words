@@ -31,30 +31,22 @@ export class ImagePage {
   /** The box being drawn, or edited with handles. */
   readonly draft = this.page.locator("svg.a9s-annotationlayer g.drawing g.a9s-annotation.selected");
 
-  /**
-   * The screen centre of one of the draft's corner handles, once it has stopped moving. Opening the
-   * card zooms the view to the box (Rule 5.6), and a drag that starts mid-animation misses the handle.
-   */
+  /** The screen centre of one of the draft's corner handles. */
   async handle(corner: "topleft" | "topright" | "bottomleft" | "bottomright") {
-    const handle = this.draft.locator(`.a9s-corner-handle-${corner}`);
-    const readings: ({ x: number; y: number } | null)[] = [];
-    await expect
-      .poll(async () => {
-        const box = await handle.boundingBox();
-        const here = box && { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-        const last = readings.at(-1);
-        readings.push(here);
-        return here !== null && last != null && here.x === last.x && here.y === last.y;
-      })
-      .toBe(true);
-    return readings.at(-1)!;
+    const box = await this.draft.locator(`.a9s-corner-handle-${corner}`).boundingBox();
+    if (!box) throw new Error(`The ${corner} handle isn't on screen.`);
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   }
 
   /** Drag the mouse between two screen points. */
   async dragOnScreen(a: { x: number; y: number }, b: { x: number; y: number }) {
     await this.page.mouse.move(a.x, a.y);
     await this.page.mouse.down();
+    const start = Date.now();
     await this.page.mouse.move(b.x, b.y, { steps: 12 });
+    // Annotorious takes a press and release within 250 ms as a click, however far the mouse moved,
+    // and a click on empty image deselects the box. A person's drag is slower than that.
+    await this.page.waitForTimeout(Math.max(0, 300 - (Date.now() - start)));
     await this.page.mouse.up();
   }
 
