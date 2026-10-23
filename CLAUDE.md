@@ -20,6 +20,9 @@ Model in use: Claude Opus 5.5 (October 2026). When the model changes, ask what i
 - `npm run test:perf`: Lighthouse CI against a production build (`npm run build` first).
 - `npm run db:migrate` after a schema change, then restart `npm run dev`.
 
+Run `npm run build` and `npm run test:system` on their own: no `| tail`, `2>&1`, `cd`, `timeout` or env-var prefix. Only the exact command runs outside the sandbox. Arguments after `--` are fine for test:system.
+
+
 ## Rules
 
 - **Decisions get an ADR.** Any choice of library, service, data shape or approach that someone might later ask "why?" about. Use the `write-adr` skill. Supersede old ADRs; don't delete them.

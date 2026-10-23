@@ -48,6 +48,8 @@ npm run test:system
 
 `npm run test:system` starts its own R2 mock and dev server, on this worktree's test ports (`playwright.config.ts`). It needs nothing running first.
 
+Run `npm run build` and `npm run test:system` on their own: no `| tail`, `2>&1`, `cd`, `timeout` or env-var prefix. Only the exact command runs outside the sandbox. Arguments after `--` are fine for test:system.
+
 Fix each failure and run the check again. After three failed attempts at the same failure, stop fixing it. Record the failing command, the last output that matters, and what you tried, under **Needs the owner**. Then go on.
 
 ## 5. Review
