@@ -45,7 +45,7 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "retain-on-failure",
-    // The image page then zooms without animating, so box positions can be read straight away.
+    // The image page then zooms without animating. The box layer can still lag a frame behind.
     reducedMotion: "reduce",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1280, height: 800 } } }],

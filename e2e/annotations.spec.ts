@@ -91,9 +91,9 @@ test("ANN-02: Annotations are visible to everyone and stay aligned", async ({ pa
   await expect(view.card.getByText(`By ${author.name}`)).toBeVisible();
   await view.closeCard();
 
-  // Step 3: the box stays over the same part of the image at every size. Zooming and resizing
-  // animate the view, and the image and box are measured one after the other, so check again
-  // until the view has settled.
+  // Step 3: the box stays over the same part of the image at every size. The image and box are
+  // measured one after the other, and the box layer can lag a frame behind a zoom or resize, so
+  // check again until they agree.
   const aligned = () => expect(async () => expectRegion(await view.shapeRegion(regionId), box, 0.003)).toPass();
   await aligned();
   await view.panel.getByRole("button", { name: "Zoom in" }).click();
