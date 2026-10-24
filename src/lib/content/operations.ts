@@ -28,7 +28,11 @@ export type Annotate = {
   sources: string[];
 };
 
-/** Change the text, and optionally the box, of a content annotation. */
+/**
+ * Change the text, and optionally the box, of a content annotation. If the box can't move (it
+ * holds someone else's annotation, or would hide another box), the whole step is skipped, text
+ * included, so the text never ends up beside the wrong box.
+ */
 export type EditAnnotation = {
   op: "editAnnotation";
   key: string;

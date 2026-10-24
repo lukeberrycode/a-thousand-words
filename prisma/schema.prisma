@@ -165,6 +165,6 @@ model ContentMigration {
   // SHA-256 of the file's operations as stable JSON. A changed file is refused.
   checksum  String
   appliedAt DateTime @default(now())
-  // What the run did and skipped: { changes: string[], skips: string[], unmatched: string[] }.
+  // What the run did and skipped: { changes: string[], skipped: string[], unmatched: string[] }.
   summary   Json
 }
