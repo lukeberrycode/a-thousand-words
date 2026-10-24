@@ -13,14 +13,18 @@ const words = (command: string) => command.split(/\s+/);
 
 describe("branchProblem", () => {
   describe("exempt prefixes", () => {
-    it.each(["fix/typo", "docs/readme", "dependabot/npm_and_yarn/next-16.1.0"])(
+    it.each(["fix/typo", "docs/readme", "content/dutch-golden-age", "dependabot/npm_and_yarn/next-16.1.0"])(
       "allows %s even when nothing is on main",
       (branch) => {
         expect(branchProblem(branch, [])).toBeNull();
       },
     );
 
-    it.each(["fix/", "docs/", "dependabot/"])("rejects the bare prefix %s", (branch) => {
+    it("allows a content branch made by EnterWorktree", () => {
+      expect(branchProblem("worktree-content/dutch-golden-age", [])).toBeNull();
+    });
+
+    it.each(["fix/", "docs/", "content/", "dependabot/"])("rejects the bare prefix %s", (branch) => {
       const message = branchProblem(branch, onMain);
       expect(message).not.toBeNull();
       expect(message).toContain(branch);
@@ -88,6 +92,7 @@ describe("branchProblem", () => {
         expect(message).toContain("adr/");
         expect(message).toContain("fix/");
         expect(message).toContain("docs/");
+        expect(message).toContain("content/");
         expect(message).toContain("dependabot/");
       },
     );
@@ -233,7 +238,15 @@ describe("targetFile", () => {
   });
 
   it("gives null when the file isn't on main, or the branch names nothing", () => {
-    for (const branch of ["plan/missing", "adr/0099-x", "fix/typo", "docs/readme", "feature/x", "adr/22-x"]) {
+    for (const branch of [
+      "plan/missing",
+      "adr/0099-x",
+      "fix/typo",
+      "docs/readme",
+      "content/x",
+      "feature/x",
+      "adr/22-x",
+    ]) {
       expect(targetFile(branch, onMain)).toBeNull();
     }
   });
