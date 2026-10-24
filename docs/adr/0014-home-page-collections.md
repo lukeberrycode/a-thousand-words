@@ -1,6 +1,6 @@
 # 14. Home page rows of themed collections
 
-Date: 2026-10-08 · Status: Accepted
+Date: 2026-10-08 · Status: Accepted. Amended by [ADR 0026](0026-content-migrations.md): collections are curated in content files, and membership changes only by explicit operations.
 
 ## Context
 

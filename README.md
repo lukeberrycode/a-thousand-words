@@ -47,7 +47,7 @@ npm install                # also generates the Prisma client
 cp .env.example .env       # then set DATABASE_URL, the R2_* values and the AUTH_* values
 npx prisma dev             # optional: starts a local Postgres and prints its URL
 npm run db:migrate         # apply the schema
-npm run db:seed -- --yes   # optional: public-domain paintings and home page collections
+npm run content:apply -- --yes   # optional: the content files' paintings and home page collections
 npm run dev                # http://localhost:3000
 ```
 
@@ -65,15 +65,16 @@ npm run dev                # http://localhost:3000
 | `npm run test:perf` | Lighthouse CI against a production build of the home page (`npm run build` first, with the local database running). Warns below the performance budgets. Set `CHROME_PATH` to a Chrome or Chromium binary, e.g. Playwright's under `~/.cache/ms-playwright/`. |
 | `npm run db:migrate` | Create and apply migrations (`prisma migrate dev`). Restart `npm run dev` afterwards: it keeps one Prisma client across hot reloads, so it won't know about new columns until restarted. |
 | `npm run db:studio` | Browse the database in Prisma Studio |
-| `npm run db:seed` | Load the seed paintings into the database and R2 from `.env` (dry run unless `-- --yes`) |
+| `npm run content:status` | Which content files ([below](#content)) this database has applied, and which are pending |
+| `npm run content:apply` | Apply the pending content files to the database and R2 from `.env` (dry run unless `-- --yes`) |
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
-| `npm run worktree:setup` | In a git worktree: give it its own local database, migrated and seeded ([below](#working-in-git-worktrees)) |
+| `npm run worktree:setup` | In a git worktree: give it its own local database, migrated and with the content applied ([below](#working-in-git-worktrees)) |
 | `npm run worktree:teardown` | In a git worktree, before removing it: delete its local database |
 | `npm run agent:implement -- <branch>` | Have an agent carry out a plan or ADR from `main` in a new worktree, unattended, through to a pull request ([below](#unattended-agents)) |
 | `npm run prod:migrate` | Apply migrations to production, with settings from KeePassXC (see [Deploying](#deploying)) |
-| `npm run prod:seed` | Seed production, with settings from KeePassXC (dry run unless `-- --yes`) |
+| `npm run prod:content` | Apply pending content files to production, with settings from KeePassXC (dry run unless `-- --yes`) |
 | `npm run preview:migrate` | Apply migrations to the preview database, with settings from KeePassXC |
-| `npm run preview:seed` | Seed the preview database, with settings from KeePassXC (dry run unless `-- --yes`) |
+| `npm run preview:content` | Apply pending content files to the preview database, with settings from KeePassXC (dry run unless `-- --yes`) |
 | `npm run prod:users` | List or approve accounts on production, with settings from KeePassXC |
 
 After pulling a change to `prisma/schema.prisma`, run `npx prisma generate` (or `npm install`) before any of the `db:*`, `prod:*` or `preview:*` scripts. The generated client in `src/generated/prisma` is git-ignored and isn't rebuilt when you pull, so a script run with the old one fails on the new models (for example, `Cannot read properties of undefined (reading 'upsert')`). Vercel regenerates it on every deploy.
@@ -84,7 +85,7 @@ Parallel Claude Code sessions each work in a git worktree under `.claude/worktre
 
 ```bash
 npm install                  # in the worktree
-npm run worktree:setup       # copies .env if missing, starts its database, migrates and seeds it
+npm run worktree:setup       # copies .env if missing, starts its database, migrates it and applies the content
                              # (-- --mock: no .env; uses a local R2 mock instead, ADR 0024)
 npm run dev                  # prints the worktree's port, between 20000 and 20999
 npm run worktree:teardown    # before removing the worktree
@@ -114,8 +115,19 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
 - **New accounts:** a first GitHub sign-in creates a pending account that can browse but not upload or annotate. Approve it with `npm run prod:users -- approve <github-login>` (run `npm run prod:users` to see who's waiting).
 - **Schema changes:** migrations don't run during the build. Run `npm run prod:migrate` from the PR's branch **before** merging a PR that adds a migration. The live code ignores new columns and tables, but new code deployed before its migration fails. (A migration that removes or renames something the live code still uses needs the reverse order: first deploy code that no longer uses it.) `prod:migrate` uses Neon's direct connection string, from KeePassXC (below).
 - **Production and preview settings for the `prod:*` and `preview:*` scripts** come from KeePassXC, not from files in the project ([ADR 0019](docs/adr/0019-prod-secrets-from-keepassxc.md)). See [KeePassXC entries](#keepassxc-entries) below. Each run asks for the database's password, so run these scripts in your own terminal.
+- **Content:** after merging a PR that adds a content file, run `npm run prod:content` to see what it would do, then `npm run prod:content -- --yes` ([Content](#content)).
 - **Orphaned uploads:** a small AWS stack in [`infra/`](infra/README.md) deletes R2 files with no `Image` row once a day ([ADR 0018](docs/adr/0018-orphan-cleanup-on-aws.md)). It deploys from `main` through GitHub Actions after a one-time setup.
 - **Before sharing the URL:** run the production checks (PROD-01 to PROD-05) and the touch checks (MAN-07, MAN-09, MAN-10) in [docs/system-tests.md](docs/system-tests.md) on a real phone.
+
+### Content
+
+The site's own paintings, annotations and collections are added by numbered content files in `prisma/content/`, as schema changes are added by migrations ([ADR 0026](docs/adr/0026-content-migrations.md)). Each file is applied once to each database, in order, and recorded in the `ContentMigration` table.
+
+- `0001-baseline.ts` is what the old seed loaded. Later files add paintings in batches of at most 25, and every annotation names its sources. The `add-paintings` skill writes them.
+- An applied file is never edited: a correction is a new file, using `editAnnotation` or `removeAnnotation`. The runner refuses to run if an applied file's operations have changed.
+- A run never changes anyone else's images, boxes or annotations. A step that would is skipped, and the dry run lists it.
+- Each file applies in one transaction. Paintings are downloaded from Wikimedia Commons and uploaded to R2 before it starts, so a failed run can leave files in R2 with no row. In production the nightly orphan cleanup removes them; in the preview bucket, delete them by hand.
+- On production, the first run of `0001-baseline` claims the paintings and annotations the old seed made, and lists any it can't match. Those are left as they are.
 
 ### KeePassXC entries
 
@@ -146,7 +158,7 @@ R2_PUBLIC_URL="https://pub-<id>.r2.dev"
 ```
 
 - `DATABASE_URL` is required: the script stops without it. Use Neon's **direct** string (not the `-pooler` one), with `sslmode=verify-full`. The preview entry uses the preview branch's direct string.
-- `prod:seed` and `preview:seed` also need `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. A missing `R2_BUCKET` stops even the dry run; the other three are only read when the seed runs with `--yes`. `R2_PUBLIC_URL` isn't used by these scripts; keep it there so the entry holds the whole of production's storage settings.
+- `prod:content` and `preview:content` also need `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_BUCKET`. A missing `R2_BUCKET` stops even the dry run; the other three are only read when a run with `--yes` uploads or deletes a file. `R2_PUBLIC_URL` isn't used by these scripts; keep it there so the entry holds the whole of production's storage settings.
 - **Format:** `KEY=value`, `KEY="value"` or `KEY='value'`, with no spaces around `=`. Lines starting with `#`, and blank lines, are skipped. Windows line endings are fine.
 - **Not supported:** an `export ` prefix, a comment after a value on the same line (it becomes part of the value), escapes inside quotes, and values over more than one line.
 
@@ -157,7 +169,7 @@ The project is set up for an AI coding agent to work on it safely ([ADR 0015](do
 - `CLAUDE.md`: the agent's rules, commands and definition of done.
 - `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, force push), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.
 - `.claude/hooks/`: block edits to secrets and pushes of code to `main`, format each edited file, and stop the agent finishing a task while lint, typecheck or unit tests fail. The rules are strictest in git worktrees, where agents work unattended. In the main checkout, where the owner is at hand, docs (but not `CLAUDE.md` or `AGENTS.md`) can go straight to `main`, and failing checks are shown without holding the turn open ([ADR 0021](docs/adr/0021-agent-rules-by-checkout.md)).
-- Branches: `plan/<slug>` carries out `docs/plans/<slug>.md`, and `adr/<number>-<slug>` carries out an ADR. Either must already be on `main`. `fix/`, `docs/` and `dependabot/` branches need neither. CI checks every pull request's branch.
+- Branches: `plan/<slug>` carries out `docs/plans/<slug>.md`, and `adr/<number>-<slug>` carries out an ADR. Either must already be on `main`. `fix/`, `docs/`, `content/` and `dependabot/` branches need neither. CI checks every pull request's branch.
 - `.claude/skills/`: `write-adr` records a decision in the house format; `/release <PR>` takes a pull request to production in the right order (migrate, merge, deploy, production checks), with the owner running the production steps ([ADR 0017](docs/adr/0017-skills-and-subagents.md)).
 - `.claude/agents/`: a `code-reviewer` that can only read, and a `test-writer` that can only edit test files. A hook enforces both.
 - `.github/workflows/ci.yml`: branch name, format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.

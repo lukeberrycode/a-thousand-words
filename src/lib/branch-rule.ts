@@ -1,10 +1,10 @@
 // Which branches may exist (ADR 0021): a branch carries out a plan or an ADR that's already on
-// `main`, or it's a fix, a docs change or a Dependabot update. These are the pure parts:
+// `main`, or it's a fix, a docs change, a content file (ADR 0026) or a Dependabot update. These are the pure parts:
 // .claude/hooks/guard.mjs and scripts/check-branch.ts ask git what's on `main`. Node loads this
 // file in the hook without a build step, so it uses only types that can be stripped.
 
 /** Branches that need no plan or ADR. */
-export const EXEMPT_PREFIXES = ["fix/", "docs/", "dependabot/"];
+export const EXEMPT_PREFIXES = ["fix/", "docs/", "content/", "dependabot/"];
 
 // Claude Code's EnterWorktree tool names a worktree's branch `worktree-<name>`.
 const WORKTREE_PREFIX = "worktree-";
