@@ -3,7 +3,7 @@ import { createSchema } from "graphql-yoga";
 import { db } from "@/lib/db";
 import { publicUrl } from "@/lib/storage";
 
-// The read-only GraphQL API at /api/graphql (ADR 0020). It exposes what any visitor can already
+// The read-only GraphQL API at /api/graphql (ADR 0023). It exposes what any visitor can already
 // see on the site, and nothing else: no emails, approval state, fingerprints or Auth.js rows.
 
 /** Most images one `images` query returns. */

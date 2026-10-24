@@ -3,7 +3,7 @@ import { createYoga, type Plugin } from "graphql-yoga";
 import { queryLimits } from "@/lib/graphql/limits";
 import { schema } from "@/lib/graphql/schema";
 
-// The GraphQL server behind /api/graphql (ADR 0020). A function rather than a module-level
+// The GraphQL server behind /api/graphql (ADR 0023). A function rather than a module-level
 // instance, so the tests can build one as production would.
 
 function validationRules(rules: ValidationRule[]): Plugin {

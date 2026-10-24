@@ -1,6 +1,6 @@
-# 20. A small, read-only GraphQL API with GraphQL Yoga
+# 23. A small, read-only GraphQL API with GraphQL Yoga
 
-Date: 2026-10-20 · Status: Accepted
+Date: 2026-10-20 (renumbered from 0020 on 2026-10-22) · Status: Accepted
 
 ## Context
 
@@ -37,6 +37,6 @@ Options considered:
 - Two new runtime dependencies (`graphql-yoga`, `graphql`). Yoga brings in packages from graphql-tools and envelop.
 - Two ways to read the data: server components query Prisma directly, and the API queries it through resolvers. Pages don't use the API, so it can change without breaking the site, but the two can drift. The schema has to be updated by hand when the data model changes.
 - Server actions remain the only way to write. If the API ever gains mutations, they must reuse the actions' checks, with ownership in the write's `where` (ADR 0006), rather than repeat them.
-- There's no rate limiting. The query limits bound the cost of one request, not the number of requests; Vercel's platform limits are the only protection against floods (risk R14).
+- There's no rate limiting. The query limits bound the cost of one request, not the number of requests; Vercel's platform limits are the only protection against floods (risk R18).
 - Vitest must load graphql-yoga's dependencies through Vite (`server.deps.inline` in `vitest.config.mts`). Otherwise they'd get graphql's CommonJS build and our code its ES module build, and graphql refuses to mix the two. Next.js bundles them, so the app isn't affected.
 - Responses aren't cached. Every query reads the database, like the pages do.

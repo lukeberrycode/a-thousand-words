@@ -2,7 +2,7 @@ import type { APIRequestContext } from "@playwright/test";
 import { deleteObject, publicUrl, sql } from "./support/services";
 import { expect, test } from "./support/world";
 
-// The read-only GraphQL API at /api/graphql (docs/system-tests.md, ADR 0020). These call it as any
+// The read-only GraphQL API at /api/graphql (docs/system-tests.md, ADR 0023). These call it as any
 // client would, with no browser and no session, and compare its answers with the database.
 
 type Result = {

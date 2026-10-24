@@ -29,9 +29,12 @@ npm run test:system               # every automated test, about two minutes
 npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-01 to ANN-08
 ```
 
-- **Setup:** as in Before you start: the local database running with migrations applied, and `.env` with working R2 values. The tests use the dev server on port 3000 if it's running, and start `npm run dev` if it isn't.
+- **Setup:** the local database running with migrations applied. Nothing else: each run starts its own R2 mock (`scripts/r2-mock.ts`, objects in memory) and its own `next dev`, building into `.next-test`, on the checkout's test ports (3100 and 3101 in the main checkout). They never reuse a dev server already running, so a run always tests this checkout's code, and needs no R2 or GitHub values from `.env` ([ADR 0024](adr/0024-r2-mock-for-system-tests.md)).
+- **Against real R2:** `E2E_REAL_R2=1 npm run test:system` uses the bucket from `.env` instead of the mock, as the tests did before it. Run it now and then, since the mock doesn't check signatures. It runs only in the main checkout, on port 3000, using the dev server there if one is running: the dev bucket's CORS rule accepts uploads from `http://localhost:3000` only.
+- **In CI:** the `system` job runs them on every pull request, with Postgres as a service container.
+- **In a git worktree:** run `npm run worktree:setup` (or `npm run worktree:setup -- --mock`, which needs no `.env`) first. The tests then use the worktree's own database and port, so several worktrees can run them at once ([ADR 0020](adr/0020-worktree-database-and-port.md)). SEC-01 checks the GitHub callback for the worktree's port, which GitHub itself would refuse: manual sign-in checks stay in the main checkout.
 - **Sign-in:** the tests don't use GitHub. Each signs in by creating a `Session` row for a test user and setting the session cookie, which is what a real sign-in leaves behind (ADR 0013). The OAuth flow itself stays a manual test.
-- **Data:** each test creates its own users (ids starting `e2e-`), images and annotations in the development database and R2 bucket, and deletes them afterwards. The seed paintings and your own content are never touched.
+- **Data:** each test creates its own users (ids starting `e2e-`), images and annotations in the development database and the R2 mock, and deletes them afterwards. The seed paintings and your own content are never touched.
 - **One at a time:** the local database from `npx prisma dev` fails at random when several connections query it at once, so tests run serially.
 - **A failure** leaves a trace in `test-results/`. Open it with `npx playwright show-trace <path>/trace.zip` to step through the page as it was.
 - **Each test's name starts with its ID,** and its **Automation** line below says which file it's in and which steps, if any, stay manual.
@@ -78,7 +81,7 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
   3. Delete the test file.
 - **Expected:** the image shows in step 2.
 - **Proves:** public read access is on and `R2_PUBLIC_URL` is correct, so image pages can show uploaded files.
-- **Automation:** Automated: [`e2e/env.spec.ts`](../e2e/env.spec.ts) uploads the test file with the R2 API instead of the dashboard.
+- **Automation:** Automated: [`e2e/env.spec.ts`](../e2e/env.spec.ts) uploads the test file with the R2 API instead of the dashboard. By default that checks the R2 mock; run it with `E2E_REAL_R2=1` to check the real bucket.
 
 ### ENV-05: Build and lint pass
 
@@ -281,10 +284,10 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
   1. Click **Annotate**.
   2. Drag a box over part of the image.
   3. Optionally move or resize the box.
-  4. Type some Markdown, e.g. `**Bold** and a [link](https://example.com)`, and click **Save**.
+  4. Type some Markdown, e.g. `**Bold** and _italic_`, and click **Save**.
 - **Expected:**
   - After step 1, the button reads **Done annotating**, with a hint to drag a box.
-  - After step 2, the view zooms so the box and an editor card sit side by side, and the UI panel hides.
+  - After step 2, the view zooms so the box and an editor card sit side by side, and the UI panel hides. The editor's help text lists bold, italic and lists, and says links show as plain text (ADR 0022).
   - After step 4, the editor closes and you're still in annotate mode. The new region is open: drawn with a thick amber outline while the others recede, and its card shows the formatted text, your name, and **Edit** and **Delete**. The region sits where the box was when you clicked Save.
 - **Proves:** drawing, the pixels-to-fractions conversion, the server action and the page refresh work together.
 - **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
@@ -321,15 +324,19 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
   1. Save an annotation whose text is:
 
      ```
-     <b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com)
+     <b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com) <https://example.com/auto> https://example.com/bare
      ```
 
-  2. Select it, and inspect the panel with the browser's dev tools.
+  2. Select it, and inspect the card with the browser's dev tools.
+  3. Check the new `Annotation` row in Studio.
 - **Expected:**
+  - Step 1 saves with no error, even though the text has link syntax.
   - The HTML shows as plain text.
-  - `bad` shows as plain text, not a link (its unsafe URL is dropped), and no image loads.
-  - The `good` link opens in a new tab and has `rel="nofollow ugc noopener noreferrer"`.
-- **Proves:** untrusted annotation text can't run scripts, use unsafe links or load images (ADR 0008).
+  - No image loads, and neither `pic` nor the image's URL shows.
+  - The card has no links at all. `bad` and `good` show as plain text, without their URLs.
+  - The autolink shows as the plain text `https://example.com/auto`, without its angle brackets. The bare URL shows as plain text.
+  - In step 3, `bodyMarkdown` is exactly the text typed, links included.
+- **Proves:** untrusted annotation text can't run scripts, load images (ADR 0008) or link anywhere (ADR 0022). Links are removed when the text is shown, not when it's saved.
 - **Automation:** Automated: [`e2e/annotations.spec.ts`](../e2e/annotations.spec.ts).
 
 ### ANN-05: The annotation action rejects requests that aren't signed in
@@ -528,7 +535,7 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
 
 ## GraphQL API
 
-The read-only API at `/api/graphql` (ADR 0020). In development, opening http://localhost:3000/api/graphql in a browser gives GraphiQL, where you can run the queries below. Signed out is fine: the API never reads the session.
+The read-only API at `/api/graphql` (ADR 0023). In development, opening http://localhost:3000/api/graphql in a browser gives GraphiQL, where you can run the queries below. Signed out is fine: the API never reads the session.
 
 ### API-01: Query an image with its regions and annotations
 
@@ -647,4 +654,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | Boxes and overlap, ADR 0011 (written with the code) | ANN-07, ANN-08, MAN-08 |
 | Artwork-led image page, ADR 0012 (written with the code) | MAN-10; MAN-07, MAN-08 and MAN-09 rewritten |
 | On-screen keyboard (written with the code) | MAN-09 |
-| GraphQL API, ADR 0020 (written with the code) | API-01 to API-03 |
+| GraphQL API, ADR 0023 (written with the code) | API-01 to API-03 |

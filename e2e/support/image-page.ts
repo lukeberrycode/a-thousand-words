@@ -42,7 +42,11 @@ export class ImagePage {
   async dragOnScreen(a: { x: number; y: number }, b: { x: number; y: number }) {
     await this.page.mouse.move(a.x, a.y);
     await this.page.mouse.down();
+    const start = Date.now();
     await this.page.mouse.move(b.x, b.y, { steps: 12 });
+    // Annotorious takes a press and release within 250 ms as a click, however far the mouse moved,
+    // and a click on empty image deselects the box. A person's drag is slower than that.
+    await this.page.waitForTimeout(Math.max(0, 300 - (Date.now() - start)));
     await this.page.mouse.up();
   }
 

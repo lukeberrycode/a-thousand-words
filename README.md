@@ -53,7 +53,7 @@ npm run dev                # http://localhost:3000
 
 ## GraphQL API
 
-A small, read-only GraphQL API at `/api/graphql` returns images, their regions and annotations, and the home page collections ([ADR 0020](docs/adr/0020-graphql-api.md)). It needs no sign-in and returns only what the site shows anyone. With `npm run dev` running, open http://localhost:3000/api/graphql in a browser for GraphiQL (development only), or use curl:
+A small, read-only GraphQL API at `/api/graphql` returns images, their regions and annotations, and the home page collections ([ADR 0023](docs/adr/0023-graphql-api.md)). It needs no sign-in and returns only what the site shows anyone. With `npm run dev` running, open http://localhost:3000/api/graphql in a browser for GraphiQL (development only), or use curl:
 
 ```bash
 curl -s http://localhost:3000/api/graphql \
@@ -67,18 +67,21 @@ Pass `endCursor` as `after` for the next page. `bodyMarkdown` is untrusted user 
 
 | Script | What it does |
 | --- | --- |
-| `npm run dev` | Start the dev server |
+| `npm run dev` | Start the dev server: port 3000 in the main checkout, a fixed port per worktree ([below](#working-in-git-worktrees)) |
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript, without building (generates Next.js's route types first) |
 | `npm test` | The unit tests (Vitest, `src/**/*.test.ts`); `npm run test:watch` reruns them on change |
 | `npm run format` | Format the code with Prettier; `npm run format:check` only checks |
-| `npm run test:system` | The automated system tests ([docs/system-tests.md](docs/system-tests.md#running-the-automated-tests)): Playwright against the dev server, local database and R2 bucket from `.env`. Run `npx playwright install chromium` once first. |
+| `npm run test:system` | The automated system tests ([docs/system-tests.md](docs/system-tests.md#running-the-automated-tests)): Playwright against the local database, with its own dev server and R2 mock ([ADR 0024](docs/adr/0024-r2-mock-for-system-tests.md)). `E2E_REAL_R2=1` uses the R2 bucket from `.env` instead. Run `npx playwright install chromium` once first. |
 | `npm run test:perf` | Lighthouse CI against a production build of the home page (`npm run build` first, with the local database running). Warns below the performance budgets. Set `CHROME_PATH` to a Chrome or Chromium binary, e.g. Playwright's under `~/.cache/ms-playwright/`. |
 | `npm run db:migrate` | Create and apply migrations (`prisma migrate dev`). Restart `npm run dev` afterwards: it keeps one Prisma client across hot reloads, so it won't know about new columns until restarted. |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 | `npm run db:seed` | Load the seed paintings into the database and R2 from `.env` (dry run unless `-- --yes`) |
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
+| `npm run worktree:setup` | In a git worktree: give it its own local database, migrated and seeded ([below](#working-in-git-worktrees)) |
+| `npm run worktree:teardown` | In a git worktree, before removing it: delete its local database |
+| `npm run agent:implement -- <branch>` | Have an agent carry out a plan or ADR from `main` in a new worktree, unattended, through to a pull request ([below](#unattended-agents)) |
 | `npm run prod:migrate` | Apply migrations to production, with settings from KeePassXC (see [Deploying](#deploying)) |
 | `npm run prod:seed` | Seed production, with settings from KeePassXC (dry run unless `-- --yes`) |
 | `npm run preview:migrate` | Apply migrations to the preview database, with settings from KeePassXC |
@@ -86,6 +89,30 @@ Pass `endCursor` as `after` for the next page. `bodyMarkdown` is untrusted user 
 | `npm run prod:users` | List or approve accounts on production, with settings from KeePassXC |
 
 After pulling a change to `prisma/schema.prisma`, run `npx prisma generate` (or `npm install`) before any of the `db:*`, `prod:*` or `preview:*` scripts. The generated client in `src/generated/prisma` is git-ignored and isn't rebuilt when you pull, so a script run with the old one fails on the new models (for example, `Cannot read properties of undefined (reading 'upsert')`). Vercel regenerates it on every deploy.
+
+## Working in git worktrees
+
+Parallel Claude Code sessions each work in a git worktree under `.claude/worktrees/`. Each worktree gets its own local database and its own dev server port, so one branch's migrations and system tests don't touch another's ([ADR 0020](docs/adr/0020-worktree-database-and-port.md)).
+
+```bash
+npm install                  # in the worktree
+npm run worktree:setup       # copies .env if missing, starts its database, migrates and seeds it
+                             # (-- --mock: no .env; uses a local R2 mock instead, ADR 0024)
+npm run dev                  # prints the worktree's port, between 20000 and 20999
+npm run worktree:teardown    # before removing the worktree
+```
+
+The setup writes the worktree's `DATABASE_URL` to `.env.local`, which wins over `.env`. The port comes from the folder name, so it's the same every time. GitHub sign-in only returns to port 3000, so check it by hand in the main checkout.
+
+## Unattended agents
+
+With a plan or ADR on `main`, one command has an agent carry it out ([ADR 0025](docs/adr/0025-headless-agent-implements-plans.md)):
+
+```bash
+npm run agent:implement -- adr/0022-no-links-in-annotations
+```
+
+It makes the worktree and sets it up with the R2 mock, so no secrets are copied. Then it runs Claude Code headless, in auto mode, on the `implement-plan` skill. The agent carries out the plan, has the tests written, runs every check including the system tests, gets a code review, and opens a pull request. The pull request is a draft, with a "Needs the owner" section, when something is left for you. A desktop notification says which. The log is in `.claude/agent-runs/`. `AGENT_BUDGET_USD` caps the spend (default 25).
 
 ## Deploying
 
@@ -140,11 +167,12 @@ R2_PUBLIC_URL="https://pub-<id>.r2.dev"
 The project is set up for an AI coding agent to work on it safely ([ADR 0015](docs/adr/0015-agent-guardrails-and-ci.md)):
 
 - `CLAUDE.md`: the agent's rules, commands and definition of done.
-- `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, push to `main`), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.
-- `.claude/hooks/`: block edits to secrets and pushes to `main`, format each edited file, and stop the agent finishing a task while lint, typecheck or unit tests fail.
+- `.claude/settings.json`: what the agent may do without asking, what it may never do (read secrets, touch production, merge, force push), and the Bash sandbox. Personal additions go in `.claude/settings.local.json`, which isn't committed.
+- `.claude/hooks/`: block edits to secrets and pushes of code to `main`, format each edited file, and stop the agent finishing a task while lint, typecheck or unit tests fail. The rules are strictest in git worktrees, where agents work unattended. In the main checkout, where the owner is at hand, docs (but not `CLAUDE.md` or `AGENTS.md`) can go straight to `main`, and failing checks are shown without holding the turn open ([ADR 0021](docs/adr/0021-agent-rules-by-checkout.md)).
+- Branches: `plan/<slug>` carries out `docs/plans/<slug>.md`, and `adr/<number>-<slug>` carries out an ADR. Either must already be on `main`. `fix/`, `docs/` and `dependabot/` branches need neither. CI checks every pull request's branch.
 - `.claude/skills/`: `write-adr` records a decision in the house format; `/release <PR>` takes a pull request to production in the right order (migrate, merge, deploy, production checks), with the owner running the production steps ([ADR 0017](docs/adr/0017-skills-and-subagents.md)).
 - `.claude/agents/`: a `code-reviewer` that can only read, and a `test-writer` that can only edit test files. A hook enforces both.
-- `.github/workflows/ci.yml`: format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
+- `.github/workflows/ci.yml`: branch name, format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
 
 ## Project docs
 
