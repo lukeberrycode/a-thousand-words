@@ -76,4 +76,6 @@ Claude can add paintings, annotations and collections far faster than early user
 10. **Content migrations:** replace the one-off seed with numbered content files, each applied once per database and recorded, like schema migrations. A run adds and corrects the site's own content and skips anything that would touch users' images, boxes or annotations. A project skill writes the files, of up to 25 paintings each, with a source for every annotation. Content isn't reviewed before it goes up; mistakes are reported and corrected by later files. [Plan](plans/content-migrations.md).
 11. **Serve content paintings from Wikimedia Commons:** load them from Commons at standard widths instead of from R2, so home rows use small versions. A second AWS CDK stack checks Commons daily: it pins a painting with a new version to the version its boxes were placed on, for the owner to check, and handles a deleted one. [Plan](plans/commons-hosted-images.md).
 
+**Alongside the MVP:** a small, read-only GraphQL API at `/api/graphql`, to demonstrate GraphQL ([ADR 0023](adr/0023-graphql-api.md)). It returns only what the site already shows; writes stay in the server actions.
+
 **After the MVP**, in rough priority order: voting → reputation points → replies and threads → polygon regions → search and tags → verified creator annotations.

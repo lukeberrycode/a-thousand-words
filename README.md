@@ -26,7 +26,7 @@ I'm a senior software engineer with seventeen years' experience, most of it ship
 
 ## Stack
 
-Next.js (App Router, TypeScript) · Tailwind CSS · Postgres + Prisma · Cloudflare R2 · Annotorious · Auth.js
+Next.js (App Router, TypeScript) · Tailwind CSS · Postgres + Prisma · Cloudflare R2 · Annotorious · Auth.js · GraphQL Yoga (a read-only API)
 
 Why each was chosen: [docs/adr](docs/adr/README.md). How it fits together: [docs/architecture.md](docs/architecture.md).
 
@@ -50,6 +50,18 @@ npm run db:migrate         # apply the schema
 npm run db:seed -- --yes   # optional: public-domain paintings and home page collections
 npm run dev                # http://localhost:3000
 ```
+
+## GraphQL API
+
+A small, read-only GraphQL API at `/api/graphql` returns images, their regions and annotations, and the home page collections ([ADR 0023](docs/adr/0023-graphql-api.md)). It needs no sign-in and returns only what the site shows anyone. With `npm run dev` running, open http://localhost:3000/api/graphql in a browser for GraphiQL (development only), or use curl:
+
+```bash
+curl -s http://localhost:3000/api/graphql \
+  -H 'content-type: application/json' \
+  -d '{"query":"{ images(first: 2) { nodes { id title url regions { x y w h annotations { bodyMarkdown author { name } } } } pageInfo { endCursor hasNextPage } } }"}'
+```
+
+Pass `endCursor` as `after` for the next page. `bodyMarkdown` is untrusted user text: render it as the site does ([ADR 0008](docs/adr/0008-markdown-rendering.md)).
 
 ## Scripts
 

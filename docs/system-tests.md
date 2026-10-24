@@ -533,6 +533,53 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
 - **Automation:** Partly automated: [`e2e/zoom.spec.ts`](../e2e/zoom.spec.ts) covers steps 1 to 5 in desktop Chrome with a mouse: the zoom buttons, mouse wheel and keys, dragging, the flip button, arrow keys, scrolling and the boxes button. The trackpad pinch, touch gestures and step 6 need a laptop trackpad and a phone. Checked by hand on 2026-10-06 in desktop Chrome; not yet on a phone or with a trackpad.
 
 
+## GraphQL API
+
+The read-only API at `/api/graphql` (ADR 0023). In development, opening http://localhost:3000/api/graphql in a browser gives GraphiQL, where you can run the queries below. Signed out is fine: the API never reads the session.
+
+### API-01: Query an image with its regions and annotations
+
+- **Needs:** an image with at least two regions, one of them with annotations by two people
+- **Steps:**
+  1. Run `query { image(id: "<id>") { id title description url width height createdAt owner { name } regions { id x y w h createdAt updatedAt annotations { bodyMarkdown createdAt updatedAt author { name } } } } }`, with the image's id from its page URL.
+  2. Open the `url` from the response.
+  3. Run `{ image(id: "no-such-image") { id } }`.
+- **Expected:**
+  - Step 1 matches the image's page and Studio: the title, description and size; the owner's name; each region's box as fractions (0 to 1), oldest first; and each region's annotations, oldest first, with the text exactly as stored (Markdown and HTML unrendered) and each author's name. Dates are ISO 8601 in UTC.
+  - Step 2 shows the image.
+  - Step 3 returns `{ "data": { "image": null } }`, without an error.
+- **Proves:** the API serves what the site shows, read straight from the database.
+- **Automation:** Automated: [`e2e/api.spec.ts`](../e2e/api.spec.ts).
+
+### API-02: Page through every image, newest first
+
+- **Needs:** more images than one page holds; a way to delete one (MAN-05)
+- **Steps:**
+  1. Run `query { images(first: 3) { nodes { id createdAt } pageInfo { endCursor hasNextPage } } }`.
+  2. Run it again with `after: "<endCursor>"`, using the last page's `endCursor`, until `hasNextPage` is `false`.
+  3. Run step 1 with `first: 2`, delete the second image it returns, then run it with `first: 1` and that page's `endCursor` as `after`.
+  4. Run step 1 with `after: "nonsense"`.
+- **Expected:**
+  - Steps 1 and 2 return every image exactly once, newest first. Images made at the same moment come in a fixed order (by id), so pages never overlap or skip one.
+  - Step 3 returns the image that came after the deleted one: a cursor still works after its image is gone.
+  - Step 4 returns no data, and an error "after isn't a cursor from this API." with `extensions.code` `BAD_USER_INPUT`.
+- **Proves:** clients can read every image in order without missing or repeating any, even while images are deleted, and a bad cursor gets a clear error.
+- **Automation:** Automated: [`e2e/api.spec.ts`](../e2e/api.spec.ts), with three pages per request against whatever images are in the development database.
+
+### API-03: The API gives out no private data
+
+- **Needs:** an image with annotations by at least two people; Studio
+- **Steps:**
+  1. Run a query asking for every field the schema offers, through `image`, `images(first: 50)` and `collections`, including `owner { name }` and annotations' `author { name }`.
+  2. Search the response for the users' email addresses, as Studio shows them.
+  3. Run `{ image(id: "<id>") { owner { email } } }`, then the same with `regions { annotations { author { email } } }`, then with `regions { author { name } }`.
+- **Expected:**
+  - Step 1 shows people's names, but step 2 finds no email address.
+  - Each query in step 3 is refused with a "Cannot query field" error and returns no data: `Author` has no `email`, and `Region` has no `author` (a region doesn't say who drew it).
+- **Proves:** the API exposes only what any visitor can already see on the site (ADR 0020).
+- **Automation:** Automated: [`e2e/api.spec.ts`](../e2e/api.spec.ts). It checks every user's email in the database against the response, not just the test users'.
+
+
 ## Production
 
 Run these on the deployed site before sharing its URL. "Production" means the Vercel URL (https://a-thousand-words-pi.vercel.app/), signed in with the production GitHub OAuth app.
@@ -607,3 +654,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | Boxes and overlap, ADR 0011 (written with the code) | ANN-07, ANN-08, MAN-08 |
 | Artwork-led image page, ADR 0012 (written with the code) | MAN-10; MAN-07, MAN-08 and MAN-09 rewritten |
 | On-screen keyboard (written with the code) | MAN-09 |
+| GraphQL API, ADR 0023 (written with the code) | API-01 to API-03 |
