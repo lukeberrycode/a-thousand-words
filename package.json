@@ -15,7 +15,8 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts",
+    "content:status": "tsx scripts/content.ts status",
+    "content:apply": "tsx scripts/content.ts apply",
     "db:users": "tsx scripts/users.ts",
     "worktree:setup": "tsx scripts/worktree.ts setup",
     "worktree:teardown": "tsx scripts/worktree.ts teardown",
@@ -24,10 +25,10 @@
     "test:system": "playwright test",
     "test:perf": "lhci autorun",
     "prod:migrate": "sh scripts/with-keepass-env.sh a-thousand-words-prod prisma migrate deploy",
-    "prod:seed": "sh scripts/with-keepass-env.sh a-thousand-words-prod tsx prisma/seed.ts",
+    "prod:content": "sh scripts/with-keepass-env.sh a-thousand-words-prod tsx scripts/content.ts apply",
     "prod:users": "sh scripts/with-keepass-env.sh a-thousand-words-prod tsx scripts/users.ts",
     "preview:migrate": "sh scripts/with-keepass-env.sh a-thousand-words-preview prisma migrate deploy",
-    "preview:seed": "sh scripts/with-keepass-env.sh a-thousand-words-preview tsx prisma/seed.ts"
+    "preview:content": "sh scripts/with-keepass-env.sh a-thousand-words-preview tsx scripts/content.ts apply"
   },
   "dependencies": {
     "@annotorious/react": "^3.9.3",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { branchProblem, branchesCreated, isDocsOnly, targetFile } from "./branch-rule";
+import { branchProblem, branchesCreated, contentBranchProblem, isDocsOnly, targetFile } from "./branch-rule";
 
 const onMain = [
   "docs/plans/commons.md",
@@ -13,14 +13,18 @@ const words = (command: string) => command.split(/\s+/);
 
 describe("branchProblem", () => {
   describe("exempt prefixes", () => {
-    it.each(["fix/typo", "docs/readme", "dependabot/npm_and_yarn/next-16.1.0"])(
+    it.each(["fix/typo", "docs/readme", "content/dutch-golden-age", "dependabot/npm_and_yarn/next-16.1.0"])(
       "allows %s even when nothing is on main",
       (branch) => {
         expect(branchProblem(branch, [])).toBeNull();
       },
     );
 
-    it.each(["fix/", "docs/", "dependabot/"])("rejects the bare prefix %s", (branch) => {
+    it("allows a content branch made by EnterWorktree", () => {
+      expect(branchProblem("worktree-content/dutch-golden-age", [])).toBeNull();
+    });
+
+    it.each(["fix/", "docs/", "content/", "dependabot/"])("rejects the bare prefix %s", (branch) => {
       const message = branchProblem(branch, onMain);
       expect(message).not.toBeNull();
       expect(message).toContain(branch);
@@ -88,6 +92,7 @@ describe("branchProblem", () => {
         expect(message).toContain("adr/");
         expect(message).toContain("fix/");
         expect(message).toContain("docs/");
+        expect(message).toContain("content/");
         expect(message).toContain("dependabot/");
       },
     );
@@ -233,8 +238,75 @@ describe("targetFile", () => {
   });
 
   it("gives null when the file isn't on main, or the branch names nothing", () => {
-    for (const branch of ["plan/missing", "adr/0099-x", "fix/typo", "docs/readme", "feature/x", "adr/22-x"]) {
+    for (const branch of [
+      "plan/missing",
+      "adr/0099-x",
+      "fix/typo",
+      "docs/readme",
+      "content/x",
+      "feature/x",
+      "adr/22-x",
+    ]) {
       expect(targetFile(branch, onMain)).toBeNull();
     }
   });
+});
+
+describe("contentBranchProblem", () => {
+  const added = (path: string) => `A\t${path}`;
+
+  it.each(["content/dutch-golden-age", "worktree-content/dutch-golden-age"])(
+    "allows %s to add new content files",
+    (branch) => {
+      expect(
+        contentBranchProblem(branch, [
+          added("prisma/content/0002-dutch.ts"),
+          added("prisma/content/0003-fix-arnolfini.ts"),
+        ]),
+      ).toBeNull();
+    },
+  );
+
+  it("ignores blank lines", () => {
+    expect(contentBranchProblem("content/x", ["", added("prisma/content/0002-dutch.ts"), "  ", ""])).toBeNull();
+  });
+
+  it("allows a content branch with no changes yet", () => {
+    expect(contentBranchProblem("content/x", [])).toBeNull();
+  });
+
+  it.each([
+    ["a modified content file", "M\tprisma/content/0001-baseline.ts"],
+    ["a deleted content file", "D\tprisma/content/0002-dutch.ts"],
+    ["a renamed content file", "R100\tprisma/content/0002-dutch.ts\tprisma/content/0003-dutch.ts"],
+    ["code", added("src/lib/content/plan.ts")],
+    ["a script", added("scripts/content.ts")],
+    ["a file in a nested folder", added("prisma/content/sub/0002-dutch.ts")],
+    ["a file without a number", added("prisma/content/dutch.ts")],
+    ["a file with a short number", added("prisma/content/002-dutch.ts")],
+    ["a file that isn't TypeScript", added("prisma/content/0002-dutch.js")],
+    ["a file beside the content folder", added("prisma/0002-dutch.ts")],
+    ["a line with no tab", "A prisma/content/0002-dutch.ts"],
+  ])("refuses %s, naming the branch and the path", (_, line) => {
+    const message = contentBranchProblem("content/x", [added("prisma/content/0002-ok.ts"), line]);
+    expect(message).not.toBeNull();
+    expect(message).toContain('"content/x"');
+    expect(message).toContain(line.split("\t")[1] ?? line);
+    expect(message).not.toContain("0002-ok.ts");
+  });
+
+  it("names every change it refuses", () => {
+    const message = contentBranchProblem("content/x", ["M\tREADME.md", added("src/x.ts")]);
+    expect(message).toContain("README.md");
+    expect(message).toContain("src/x.ts");
+  });
+
+  it.each(["plan/content-migrations", "fix/typo", "docs/content", "feature/content/x", "main"])(
+    "gives null for %s, which isn't a content branch",
+    (branch) => {
+      expect(
+        contentBranchProblem(branch, ["M\tsrc/lib/content/plan.ts", "D\tprisma/content/0001-baseline.ts"]),
+      ).toBeNull();
+    },
+  );
 });

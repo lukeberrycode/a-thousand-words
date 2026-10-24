@@ -34,7 +34,7 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
 - **In CI:** the `system` job runs them on every pull request, with Postgres as a service container.
 - **In a git worktree:** run `npm run worktree:setup` (or `npm run worktree:setup -- --mock`, which needs no `.env`) first. The tests then use the worktree's own database and port, so several worktrees can run them at once ([ADR 0020](adr/0020-worktree-database-and-port.md)). SEC-01 checks the GitHub callback for the worktree's port, which GitHub itself would refuse: manual sign-in checks stay in the main checkout.
 - **Sign-in:** the tests don't use GitHub. Each signs in by creating a `Session` row for a test user and setting the session cookie, which is what a real sign-in leaves behind (ADR 0013). The OAuth flow itself stays a manual test.
-- **Data:** each test creates its own users (ids starting `e2e-`), images and annotations in the development database and the R2 mock, and deletes them afterwards. The seed paintings and your own content are never touched.
+- **Data:** each test creates its own users (ids starting `e2e-`), images and annotations in the development database and the R2 mock, and deletes them afterwards. The content tests (CON-*) also use content keys, collection slugs and content file names containing `e2e-`, and delete those rows and their files afterwards. The content account (`seed-user`), the paintings content files added and your own content are never touched.
 - **One at a time:** the local database from `npx prisma dev` fails at random when several connections query it at once, so tests run serially.
 - **A failure** leaves a trace in `test-results/`. Open it with `npx playwright show-trace <path>/trace.zip` to step through the page as it was.
 - **Each test's name starts with its ID,** and its **Automation** line below says which file it's in and which steps, if any, stay manual.
@@ -533,20 +533,125 @@ npm run test:system -- -g ANN-0   # only the tests whose names match, e.g. ANN-0
 - **Automation:** Partly automated: [`e2e/zoom.spec.ts`](../e2e/zoom.spec.ts) covers steps 1 to 5 in desktop Chrome with a mouse: the zoom buttons, mouse wheel and keys, dragging, the flip button, arrow keys, scrolling and the boxes button. The trackpad pinch, touch gestures and step 6 need a laptop trackpad and a phone. Checked by hand on 2026-10-06 in desktop Chrome; not yet on a phone or with a trackpad.
 
 
+## Content
+
+Content files in `prisma/content` add and correct paintings, annotations and collections, each applied once per database (ADR 0026). The unit tests check every file and the planner's guards (`src/lib/content/*.test.ts`). These tests check the runner's writes against a real database. Each applies small content files of its own, with `e2e-` keys and file names such as `9901-e2e-1a2b3c4d`, through `applyFile` in `src/lib/content/runner.ts`. Downloads from Commons are faked with test pictures, and paintings go to the R2 mock.
+
+The runner needs the generated Prisma client, which Playwright can't load (`e2e/support/services.ts`), so the tests run it in a separate `tsx` process (`e2e/support/content-run.ts`). By hand, the same checks are made with your own content file in `prisma/content`, `npm run content:apply` and Studio. Delete the file and its `ContentMigration` row afterwards.
+
+### CON-01: A content file is applied and recorded
+
+- **Needs:** a content file that adds a painting, a painting Commons doesn't have, a box with an annotation, and a new collection holding the painting
+- **Steps:**
+  1. Apply it.
+  2. Check Studio and the R2 bucket.
+  3. Open the painting's page and click its box.
+- **Expected:**
+  - Step 1 lists four changes, and one skip: the painting Commons doesn't have.
+  - In step 2, the `Image` row has the painting's `contentKey`, belongs to the content account (`seed-user`), and its file is in R2 at `images/seed/<key>.jpg`. The `Region` has the box's `contentKey`, with one annotation by the content account. The new `Collection` comes after every other row, and holds the painting. The `ContentMigration` row has the file's name, the checksum of its operations, and a summary listing the changes and the skip.
+  - In step 3, the card shows the annotation, by "A Thousand Words".
+- **Proves:** the runner makes every write a file asks for, in one transaction with its record, and a step that can't be done doesn't stop the rest.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts).
+
+### CON-02: A user's box blocks a content box
+
+- **Needs:** a content painting with a box a user drew on it
+- **Steps:**
+  1. Apply a file that adds one box almost covering the user's box, and one clear of it.
+  2. Check Studio.
+- **Expected:** step 1 skips the first box, saying it would hide, or be hidden by, another user's box, and adds the second. In step 2, the first box doesn't exist, and the user's box and annotation are exactly as they were. The skip is in the `ContentMigration` summary.
+- **Proves:** content follows the overlap rule (ADR 0011) against users' boxes, and never moves them.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts).
+
+### CON-03: removePainting is refused when a user has annotated the painting
+
+- **Needs:** two content paintings, one with a user's annotation on a content box
+- **Steps:**
+  1. Apply a file that removes both.
+  2. Check Studio and the R2 bucket.
+- **Expected:** step 1 skips the annotated painting ("someone else has annotated it") and removes the other. In step 2, the annotated painting, its file and the user's annotation are all still there; the other painting's row and file are gone.
+- **Proves:** a content file can't delete users' annotations along with a painting.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts). The guard is also part of the `DELETE` itself, for an annotation added during the run; that race isn't tested.
+
+### CON-04: removeAnnotation keeps a box that holds a user's annotation
+
+- **Needs:** a content painting with two content boxes, one of them also holding a user's annotation
+- **Steps:**
+  1. Apply a file that removes both content annotations.
+  2. Check Studio.
+- **Expected:** both content annotations are gone. The shared box stays where it was, with only the user's annotation. The other box, left empty, is gone.
+- **Proves:** removing content never removes a user's annotation, or the box it's on.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts).
+
+### CON-05: editAnnotation never changes a user's annotation
+
+- **Needs:** a content painting with two content boxes, one of them also holding a user's annotation
+- **Steps:**
+  1. Apply a file that changes the shared box's content annotation, text only.
+  2. Apply a file that moves the shared box, and moves the other box.
+  3. Check Studio after each.
+- **Expected:**
+  - Step 1 changes the content annotation's text. The user's annotation and the box don't change.
+  - Step 2 skips the shared box, which doesn't move, and moves the other box and changes its text.
+- **Proves:** an edit only reaches the content account's own annotation, and a box moves only while it holds no one else's annotations.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts).
+
+### CON-06: A dry run writes nothing
+
+- **Needs:** a content painting with a box
+- **Steps:**
+  1. Do a dry run (`npm run content:apply`, without `--yes`) of a file that adds a painting and a box, edits the existing box, adds a collection, adds both paintings to it, and removes the existing painting.
+  2. Check Studio and the R2 bucket.
+- **Expected:** step 1 lists all seven changes. In step 2, nothing has changed: no new image, box, collection or file in R2, the existing painting, its file and its annotation are as they were, and there's no `ContentMigration` row for the file.
+- **Proves:** a dry run shows what a run would do without doing any of it, so it's safe to run against production first.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts).
+
+### CON-07: An applied file can't be changed or removed
+
+- **Needs:** an applied content file
+- **Steps:**
+  1. Reorder the fields of its operations, and run `npm run content:status`.
+  2. Change an annotation's text in it, and run `content:status` again.
+  3. Remove the file, and run `content:status` again.
+- **Expected:** step 1 reports no problem with the file. Step 2 reports that it "has changed since it was applied", and step 3 that it "isn't in prisma/content". `content:apply` refuses to run while either problem stands.
+- **Proves:** a correction has to be a new file, and Prettier reformatting a file doesn't count as a change.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts) checks steps 1 to 3 with `contentStatus`. That `applyContent` refuses to run is checked by hand. The unit tests (`src/lib/content/runner.test.ts`) also check that a pending file numbered before the last applied one is refused.
+
+### CON-08: A file can change or remove what it added earlier in the same file
+
+- **Needs:** nothing extra
+- **Steps:**
+  1. Apply, with `--yes`, a file that adds a painting and a box, then edits that box's text and moves it; adds a second box, then removes it; and adds a second painting with a box, then removes that painting.
+  2. Check Studio and the R2 bucket.
+- **Expected:** step 1 applies all eight steps without an error or a skip. In step 2, the first box has the edited text and the new place, the second box is gone, and the second painting's row, box and file in R2 are gone.
+- **Proves:** steps can refer to rows an earlier step in the same file created, which only get their real ids during the run.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts).
+
+### CON-09: The baseline claims the old seed's rows, and only those
+
+- **Needs:** a painting as the old seed left it: owned by the content account, stored at `images/seed/<key>.jpg`, with no `contentKey`, and a box holding one content annotation; a user's box with the same text on that painting, and another on the user's own image
+- **Steps:**
+  1. Apply a file that adds the painting by that key, and annotates it with the same text in a different place.
+  2. Check Studio and the R2 bucket.
+- **Expected:** step 1 lists "match painting" and "match annotation", and downloads and uploads nothing. In step 2, the seed's painting and box have their content keys, and are otherwise unchanged: same box position, no new box. The user's image and boxes have no content key, and every annotation with that text is exactly as it was.
+- **Proves:** the one-off baseline run on production (PROD-06) gives the seed's rows their keys without changing them, and never claims a user's rows.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts).
+
+
 ## Production
 
 Run these on the deployed site before sharing its URL. "Production" means the Vercel URL (https://a-thousand-words-pi.vercel.app/), signed in with the production GitHub OAuth app.
 
-### PROD-01: Seed content is live
+### PROD-01: Content is live
 
-- **Needs:** the production seed has run
+- **Needs:** `npm run prod:content -- --yes` has applied every file in `prisma/content` to production (PROD-06 for the baseline)
 - **Steps:**
   1. Open the home page.
-  2. Open three seeded paintings, and click several regions on each.
+  2. Open three paintings from content files, and click several regions on each.
 - **Expected:**
-  - Step 1 shows a **Recently added** row, then a row for each collection in `prisma/seed-data.ts`, each with its blurb and thumbnails. Rows swipe sideways on a phone; on a wider screen, arrow buttons appear on hover and page through the row.
+  - Step 1 shows a **Recently added** row, then a row for each collection the content files add, each with its blurb and thumbnails. Rows swipe sideways on a phone; on a wider screen, arrow buttons appear on hover and page through the row.
   - In step 2, each region sits over what its annotation describes, and the text renders formatted, with "By A Thousand Words".
-- **Proves:** production has the database, the R2 bucket and its public URL wired up, and the seed placed regions correctly.
+- **Proves:** production has the database, the R2 bucket and its public URL wired up, and the content files placed regions correctly.
 - **Automation:** Manual
 
 ### PROD-02: Sign in on production
@@ -588,6 +693,20 @@ Run these on the deployed site before sharing its URL. "Production" means the Ve
 - **Proves:** the site works on the touch screens most visitors will use.
 - **Automation:** Manual
 
+### PROD-06: The baseline is recorded on production without changing content
+
+- **Needs:** the owner's KeePassXC password; the `ContentMigration` table and content keys migrated to production (`npm run prod:migrate`); production filled by the old seed, with no content files applied yet
+- **Steps:**
+  1. Run `npm run prod:content` (a dry run).
+  2. If step 1 is as expected, run `npm run prod:content -- --yes`.
+  3. Run `npm run prod:content` again, and open the home page and a few paintings.
+- **Expected:**
+  - Step 1 prints the production database's host and bucket, then a plan for `0001-baseline`: a "match painting" for every painting and a "match annotation" for every annotation, with no "skipped" and no "no file claims" lines. Any painting or annotation in the file but not on production shows as an add; any production row the file doesn't match shows under "no file claims", and is left as it is. Check each before going on.
+  - Step 2 prints "Applied 0001-baseline." The `ContentMigration` table has a row for `0001-baseline`.
+  - Step 3 says there's nothing to apply. The home page, the paintings and their annotations look exactly as before.
+- **Proves:** moving from the seed to content files gives production's existing content its keys, without adding, changing or removing any of it (ADR 0026).
+- **Automation:** Manual. Production settings come from the owner's KeePassXC database (ADR 0019), which only the owner can unlock, and agents and CI never touch production. CON-01 to CON-09 and the unit tests check the same runner against the development database. CON-09 and `src/lib/content/plan.test.ts` check the matching on a database the seed filled.
+
 
 ## Sources
 
@@ -607,3 +726,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | Boxes and overlap, ADR 0011 (written with the code) | ANN-07, ANN-08, MAN-08 |
 | Artwork-led image page, ADR 0012 (written with the code) | MAN-10; MAN-07, MAN-08 and MAN-09 rewritten |
 | On-screen keyboard (written with the code) | MAN-09 |
+| Content migrations, ADR 0026 (written with the code) | CON-01 to CON-09, PROD-06; PROD-01 rewritten |

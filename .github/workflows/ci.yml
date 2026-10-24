@@ -25,6 +25,9 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The merge commit and its first parent, for the content/ branch check.
+          fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -36,6 +39,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           BRANCH: ${{ github.head_ref }}
+          CONTENT_DIFF_BASE: HEAD^1
         run: |
           git fetch --quiet --depth=1 origin +refs/heads/main:refs/remotes/origin/main
           npm run -s check:branch -- "$BRANCH"

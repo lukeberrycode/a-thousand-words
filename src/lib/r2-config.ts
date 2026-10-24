@@ -1,5 +1,5 @@
 // Settings for the S3 client that talks to Cloudflare R2 (ADR 0002), or to the local mock that
-// stands in for it (scripts/r2-mock.ts, ADR 0024). The app, the seed script and the system tests all
+// stands in for it (scripts/r2-mock.ts, ADR 0024). The app, the content runner and the system tests all
 // build their client from this, so they all follow R2_ENDPOINT the same way.
 
 type Env = Readonly<Record<string, string | undefined>>;

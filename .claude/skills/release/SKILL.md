@@ -41,11 +41,22 @@ gh api "repos/lukeberrycode/a-thousand-words/deployments?environment=Production&
 
 Then check its status (`gh api <statuses_url>`) every minute or so, until the latest state is `success`. If it's `failure` or `error`, stop and tell the owner: the old version stays live until a new deploy succeeds. They can roll back in Vercel.
 
+## 4a. Apply content, if needed
+
+- Run `git diff --name-only <merge commit>^1 <merge commit> -- prisma/content`.
+- If it lists content files, they reach production **after** the deploy (ADR 0026). Ask the owner to run, from an up-to-date `main`, in this prompt:
+
+  ```
+  ! npm run prod:content
+  ```
+
+  That's the dry run. Read it with the owner: skipped steps are listed with their reasons. If it looks right, ask them to run `! npm run prod:content -- --yes`, and check it ends with "Applied" for each file.
+
 ## 5. Check production
 
 Read the **Production** section of `docs/system-tests.md`, and walk the owner through PROD-01 to PROD-05 at https://a-thousand-words-pi.vercel.app/.
 
-- **PROD-01:** check the home page yourself first with WebFetch: it should show a Recently added row, then a row for each collection in prisma/seed-data.ts, each with its blurb and thumbnails. Then ask the owner to open three and click regions.
+- **PROD-01:** check the home page yourself first with WebFetch: it should show a Recently added row, then a row for each collection added by the files in prisma/content, each with its blurb and thumbnails. Then ask the owner to open three and click regions.
 - **PROD-02 to PROD-05** need the owner's browser, GitHub account and phones. Give them the steps and expected results for each, one test at a time, and ask for pass or fail.
 - If the release only changes docs or tests, say which checks can be skipped, and let the owner decide.
 

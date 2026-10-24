@@ -23,7 +23,7 @@ Stack `AThousandWordsGithubDeploy` (`lib/github-deploy-role-stack.ts`) is deploy
 
 - **Dry run is on** until you turn it off. The function then logs each key it would delete (`"Would delete"`) and deletes nothing.
 - **At most 100 deletes a run** (`maxDeletes`). A wrong `DATABASE_URL`, such as an empty database, would make every object look orphaned. With more than 100 orphans the function deletes nothing, logs the keys and fails, which sets off the alarm. If the keys are right, deploy once with a higher `-c maxDeletes=…`.
-- Only keys under `images/` are considered, the prefix the app and the seed write to (`images/<uuid>.<ext>`, `images/seed/<slug>.jpg`).
+- Only keys under `images/` are considered, the prefix the app and the content runner write to (`images/<uuid>.<ext>`, `images/seed/<key>.jpg`).
 - The function lists R2 first and queries Postgres second, so an `Image` row created during the listing is still seen.
 
 ## Commands

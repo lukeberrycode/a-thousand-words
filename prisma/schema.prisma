@@ -81,6 +81,8 @@ model Image {
   // perceptual hash of how it looks. Null for images uploaded before they existed.
   sha256      String?
   phash       BigInt?
+  // Stable key for an image added by a content file (ADR 0026). Null for users' uploads.
+  contentKey  String?      @unique
   createdAt   DateTime     @default(now())
   regions     Region[]
   collections CollectionImage[]
@@ -93,7 +95,7 @@ model Image {
 // An image can belong to any number of collections.
 model Collection {
   id        String            @id @default(cuid())
-  // Stable key used by the seed, so re-running it updates rather than duplicates.
+  // Stable key, used by content files (ADR 0026) to refer to the collection.
   slug      String            @unique
   name      String
   // One line shown under the row heading.
@@ -131,6 +133,9 @@ model Region {
   y           Float
   w           Float
   h           Float
+  // Stable key for a box added by a content file, with its one content annotation (ADR 0026).
+  // Null for users' boxes.
+  contentKey  String?      @unique
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   annotations Annotation[]
@@ -150,4 +155,16 @@ model Annotation {
   updatedAt    DateTime @updatedAt
 
   @@unique([regionId, authorId])
+}
+
+// A content file in prisma/content that has been applied to this database (ADR 0026), as
+// _prisma_migrations records schema migrations.
+model ContentMigration {
+  // The file name without its extension, such as "0001-baseline".
+  name      String   @id
+  // SHA-256 of the file's operations as stable JSON. A changed file is refused.
+  checksum  String
+  appliedAt DateTime @default(now())
+  // What the run did and skipped: { changes: string[], skipped: string[], unmatched: string[] }.
+  summary   Json
 }

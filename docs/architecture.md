@@ -19,13 +19,16 @@ See `prisma/schema.prisma`.
 | Entity | Key fields |
 | --- | --- |
 | User | id, name, email, image, approvedAt, createdAt |
-| Image | id, ownerId, title, description, storageKey, width, height, sha256, phash, createdAt |
-| Region | id, imageId, authorId, x, y, w, h (all 0–1), createdAt, updatedAt |
+| Image | id, ownerId, title, description, storageKey, width, height, sha256, phash, contentKey, createdAt |
+| Region | id, imageId, authorId, x, y, w, h (all 0–1), contentKey, createdAt, updatedAt |
 | Annotation | id, regionId, authorId, bodyMarkdown, createdAt, updatedAt; at most one per user per region |
 | Collection | id, slug, name, blurb, sortOrder, createdAt; a themed row on the home page |
 | CollectionImage | collectionId, imageId, position; links collections and images many-to-many |
+| ContentMigration | name, checksum, appliedAt, summary; a content file applied to this database |
 
 A region is a box on the image, holding one or more annotations by any users ([ADR 0011](adr/0011-regions-and-overlap.md)). Regions are stored as **fractions of the image's width and height**, not pixels, so they stay aligned at any display size ([ADR 0005](adr/0005-fractional-region-coordinates.md)). Annotorious works in pixel coordinates of the natural image, so the client converts using the stored `width` and `height`.
+
+`contentKey` is set only on images and boxes made by content files, so later files can refer to them; it's null for users' rows ([ADR 0026](adr/0026-content-migrations.md)).
 
 `Account`, `Session` and `VerificationToken` are Auth.js's tables, in the shape its Prisma adapter expects.
 
@@ -35,7 +38,7 @@ A region is a box on the image, holding one or more annotations by any users ([A
 - Database sessions: the cookie holds a random token, and `auth()` looks it up in the `Session` table. Signing out deletes the row.
 - `getCurrentUser()` (`src/lib/current-user.ts`) returns the signed-in user or null. Pages use it to decide what to show; every server action checks it too, because server actions can be called by direct POST.
 - No proxy (middleware) check: database sessions can't be verified there without a database call, and only `/upload` is restricted.
-- **Approval:** a first sign-in creates a **pending** account (`User.approvedAt` is null). Pending users can browse and read annotations like visitors, but every upload, annotation and image action refuses them, and the pages show "waiting for approval" instead of the upload form and Annotate button. The site owner approves accounts with `npm run prod:users` (`scripts/users.ts`), which lists pending accounts with their GitHub logins and approves one by login, email or id. The session callback copies approval into the session, so it takes effect on the user's next page load. Accounts that existed before approval was added were approved by its migration, and the seed user is created approved.
+- **Approval:** a first sign-in creates a **pending** account (`User.approvedAt` is null). Pending users can browse and read annotations like visitors, but every upload, annotation and image action refuses them, and the pages show "waiting for approval" instead of the upload form and Annotate button. The site owner approves accounts with `npm run prod:users` (`scripts/users.ts`), which lists pending accounts with their GitHub logins and approves one by login, email or id. The session callback copies approval into the session, so it takes effect on the user's next page load. Accounts that existed before approval was added were approved by its migration, and the content account is created approved.
 
 ## Key risks
 
@@ -50,13 +53,14 @@ The technical risks below shaped the design. All the project's risks, with how e
 
 ```
 docs/                 One-pager, architecture, ADRs, wireframes
-prisma/               Schema and migrations
+prisma/               Schema, migrations, and content files (prisma/content, ADR 0026)
 src/app/              Routes (App Router); see "Routes and views" below
 src/auth.ts           Auth.js config (GitHub provider, Prisma adapter)
-src/lib/              Shared code: db client, storage, current user, validation, regions, duplicate check
+src/lib/              Shared code: db client, storage, current user, validation, regions, duplicate check,
+                      content planner and runner (src/lib/content)
 src/generated/prisma  Generated Prisma Client (gitignored)
 scripts/              Dev server start, worktree setup (ADR 0020), env loading, account approval, branch check (ADR 0021),
-                      local R2 mock (ADR 0024), agent:implement (ADR 0025)
+                      local R2 mock (ADR 0024), agent:implement (ADR 0025), content runner (ADR 0026)
 infra/                AWS CDK stack for the nightly orphan cleanup; its own package
 .github/workflows/    GitHub Actions, including the infra checks and deploy
 ```
@@ -141,7 +145,7 @@ Authors can edit or delete their own annotations, and owners their own images ([
 
 ## Deployment
 
-Vercel hosts the app at https://a-thousand-words-pi.vercel.app/, with Neon Postgres and a production R2 bucket ([ADR 0009](adr/0009-deploy-vercel-neon.md)). Migrations are applied by hand with `npm run prod:migrate`, not during the build. Seed content (`prisma/seed-data.ts`, loaded by `prisma/seed.ts`) is public-domain paintings from Wikimedia Commons, and the collections that group them on the home page ([ADR 0014](adr/0014-home-page-collections.md)). They're stored under `images/seed/<slug>.jpg` and owned by an "A Thousand Words" user. Every image page has a "Report it" link that emails `REPORT_EMAIL`.
+Vercel hosts the app at https://a-thousand-words-pi.vercel.app/, with Neon Postgres and a production R2 bucket ([ADR 0009](adr/0009-deploy-vercel-neon.md)). Migrations are applied by hand with `npm run prod:migrate`, not during the build. The site's own content is public-domain paintings from Wikimedia Commons, their annotations, and the collections that group them on the home page ([ADR 0014](adr/0014-home-page-collections.md)). It comes from numbered content files in `prisma/content`, each applied once per database by `npm run content:apply` (`prod:content` for production, by hand after merging) and recorded in `ContentMigration` ([ADR 0026](adr/0026-content-migrations.md)). A pure planner (`src/lib/content/plan.ts`) turns the database's state and a file into changes and skips, using the same text, box, overlap and duplicate checks as the server actions; the runner plans again inside each file's transaction. Content is owned by an "A Thousand Words" account, every write names that account in its `where`, and any step that would affect a user's content is skipped and reported. Content paintings are stored under `images/seed/<key>.jpg`. Every image page has a "Report it" link that emails `REPORT_EMAIL`.
 
 ## Orphan cleanup (AWS)
 
