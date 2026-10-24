@@ -114,3 +114,25 @@ export function branchesCreated(words: readonly string[]): NewBranch[] {
   }
   return [];
 }
+
+/**
+ * Why a `content/` branch's changes aren't allowed, or null if they are. Content isn't reviewed by
+ * a person (ADR 0026), so such a branch may only add new files in prisma/content: no code, and no
+ * edits to a file that may have been applied. `changes` are `git diff --name-status` lines
+ * against main, such as "A\tprisma/content/0002-dutch.ts". Other branches give null.
+ */
+export function contentBranchProblem(branch: string, changes: readonly string[]): string | null {
+  const name = branch.startsWith(WORKTREE_PREFIX) ? branch.slice(WORKTREE_PREFIX.length) : branch;
+  if (!name.startsWith("content/")) return null;
+  const bad = changes
+    .filter((line) => line.trim())
+    .filter((line) => {
+      const [status, path] = line.split("\t");
+      return status !== "A" || !/^prisma\/content\/\d{4}-[^/]+\.ts$/.test(path ?? "");
+    });
+  if (bad.length === 0) return null;
+  return (
+    `Branch "${branch}" may only add new files in prisma/content (ADR 0026). ` +
+    `Put other changes on another branch: ${bad.map((l) => l.replace("\t", " ")).join(", ")}`
+  );
+}

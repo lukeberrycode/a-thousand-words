@@ -95,7 +95,7 @@ model Image {
 // An image can belong to any number of collections.
 model Collection {
   id        String            @id @default(cuid())
-  // Stable key used by the seed, so re-running it updates rather than duplicates.
+  // Stable key, used by content files (ADR 0026) to refer to the collection.
   slug      String            @unique
   name      String
   // One line shown under the row heading.

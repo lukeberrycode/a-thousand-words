@@ -39,13 +39,13 @@ export function checkFiles(files: ContentFile[]): string[] {
     if (numbers.has(number)) errors.push(`${file.name}: another file has the number ${number}.`);
     numbers.add(number);
 
-    const added = file.operations.filter((o) => o.op === "addPainting").length;
-    if (added > MAX_PAINTINGS_PER_FILE && file.name !== BASELINE) {
-      errors.push(`${file.name}: adds ${added} paintings; a file may add at most ${MAX_PAINTINGS_PER_FILE}.`);
-    }
     if (!Array.isArray(file.operations) || file.operations.length === 0) {
       errors.push(`${file.name}: has no operations.`);
       continue;
+    }
+    const added = file.operations.filter((o) => o.op === "addPainting").length;
+    if (added > MAX_PAINTINGS_PER_FILE && file.name !== BASELINE) {
+      errors.push(`${file.name}: adds ${added} paintings; a file may add at most ${MAX_PAINTINGS_PER_FILE}.`);
     }
 
     const needSources = file.name !== BASELINE;

@@ -70,7 +70,10 @@ export async function loadState(db: Db): Promise<ContentState> {
 export type Status = {
   applied: { name: string; appliedAt: Date }[];
   pending: ContentFile[];
-  /** Reasons to apply nothing: a bad file, a changed applied file, or an applied file that's gone. */
+  /**
+   * Reasons to apply nothing: a bad file, a changed applied file, an applied file that's gone, or a
+   * pending file numbered before one already applied.
+   */
   problems: string[];
 };
 
@@ -87,6 +90,12 @@ export async function contentStatus(db: Db, files: ContentFile[]): Promise<Statu
     }
   }
   const done = new Set(rows.map((r) => r.name));
+  const last = rows.at(-1)?.name;
+  for (const f of files) {
+    if (last && !done.has(f.name) && f.name < last) {
+      problems.push(`${f.name} comes before ${last}, which is already applied. Renumber it to come last.`);
+    }
+  }
   return {
     applied: rows.map(({ name, appliedAt }) => ({ name, appliedAt })),
     pending: files.filter((f) => !done.has(f.name)),
@@ -128,7 +137,8 @@ export async function applyContent(db: PrismaClient, files: ContentFile[], optio
 /**
  * Plan one file against `state` and print the plan. With `yes`, apply it in one transaction,
  * together with its ContentMigration row, planning again inside the transaction. Returns the plan
- * applied, or for a dry run the plan printed. `applyContent` calls this for each pending file, after checking them all.
+ * applied, or for a dry run the plan printed. `applyContent` calls this for each pending file,
+ * after checking them all.
  */
 export async function applyFile(db: PrismaClient, file: ContentFile, state: ContentState, options: RunOptions) {
   const log = options.log ?? console.log;
@@ -140,8 +150,12 @@ export async function applyFile(db: PrismaClient, file: ContentFile, state: Cont
 
   // Upload first: R2 isn't part of the transaction. If it then fails, the files are orphans,
   // which the nightly cleanup removes (ADR 0018).
+  const uploaded = new Set<string>();
   for (const change of plan.changes) {
-    if (change.kind === "addPainting") await options.store.put(change.storageKey, downloads.get(change.key)!.bytes);
+    if (change.kind === "addPainting") {
+      await options.store.put(change.storageKey, downloads.get(change.key)!.bytes);
+      uploaded.add(change.key);
+    }
   }
 
   const { fresh, removed } = await db.$transaction(async (tx) => {
@@ -152,6 +166,11 @@ export async function applyFile(db: PrismaClient, file: ContentFile, state: Cont
     });
     // Plan again: a user may have added a box since the plan above.
     const fresh = planFile(await loadState(tx), file.operations, fetched);
+    for (const c of fresh.changes) {
+      if (c.kind === "addPainting" && !uploaded.has(c.key)) {
+        throw new Error(`${c.key} wasn't uploaded: the site changed during the run. Run it again.`);
+      }
+    }
     const result = await applyPlan(tx, fresh);
     await tx.contentMigration.create({
       data: {
@@ -175,7 +194,8 @@ export async function applyFile(db: PrismaClient, file: ContentFile, state: Cont
       log(`  Couldn't delete ${key} from R2: ${(err as Error).message}`);
     }
   }
-  if (fresh.changes.length !== plan.changes.length || fresh.skipped.length !== plan.skipped.length) {
+  const texts = (p: Plan) => JSON.stringify([p.changes.map((c) => c.text), p.skipped]);
+  if (texts(fresh) !== texts(plan)) {
     log("  Users changed the site during the run, so the file was planned again:");
     printPlan(file.name, fresh, log);
   }
@@ -219,13 +239,22 @@ async function applyPlan(tx: Prisma.TransactionClient, plan: Plan) {
   const id = (planned: string) => ids.get(planned) ?? planned;
   const storageKeys: string[] = [];
   const skipped: string[] = [];
-  // Pages list boxes oldest first; space the timestamps so they keep the file's order.
+  // Pages list boxes oldest first; space the timestamps a millisecond apart so they keep the file's order.
   const start = Date.now();
   let boxes = 0;
 
   const one = (count: number, change: Change) => {
     if (count !== 1) throw new Error(`"${change.text}" matched ${count} rows: the data changed during the run.`);
   };
+  // Under READ COMMITTED, a guard in a statement's WHERE can't see a user's insert that's still
+  // uncommitted, and a cascade would then remove it. Locking the rows first makes such an insert
+  // finish, or wait for this transaction; the guarded statement that follows then sees it.
+  const lockImage = (imageId: string) =>
+    tx.$queryRaw`SELECT 1 FROM "Image" WHERE id = ${imageId} AND "ownerId" = ${me} FOR UPDATE`;
+  const lockRegions = (where: { imageId: string } | { id: string }) =>
+    "id" in where
+      ? tx.$queryRaw`SELECT 1 FROM "Region" WHERE id = ${where.id} FOR UPDATE`
+      : tx.$queryRaw`SELECT 1 FROM "Region" WHERE "imageId" = ${where.imageId} FOR UPDATE`;
 
   for (const c of plan.changes) {
     switch (c.kind) {
@@ -256,12 +285,13 @@ async function applyPlan(tx: Prisma.TransactionClient, plan: Plan) {
             authorId: me,
             contentKey: c.key,
             ...c.region,
-            createdAt: new Date(start + boxes++ * 1000),
+            createdAt: new Date(start + boxes++),
             annotations: { create: { authorId: me, bodyMarkdown: c.body } },
           },
-          select: { id: true },
+          select: { id: true, annotations: { select: { id: true } } },
         });
         ids.set(c.id, row.id);
+        ids.set(`new:annotation:${c.key}`, row.annotations[0].id);
         break;
       }
       case "adoptRegion":
@@ -279,7 +309,7 @@ async function applyPlan(tx: Prisma.TransactionClient, plan: Plan) {
         one(
           (
             await tx.annotation.updateMany({
-              where: { id: c.annotationId, authorId: me, region: { contentKey: c.key } },
+              where: { id: id(c.annotationId), authorId: me, region: { contentKey: c.key } },
               data: { bodyMarkdown: c.body },
             })
           ).count,
@@ -287,10 +317,11 @@ async function applyPlan(tx: Prisma.TransactionClient, plan: Plan) {
         );
         if (c.region) {
           // Only the content account's box, and only while every annotation on it is the content account's.
+          await lockRegions({ id: id(c.regionId) });
           one(
             (
               await tx.region.updateMany({
-                where: { id: c.regionId, authorId: me, annotations: { every: { authorId: me } } },
+                where: { id: id(c.regionId), authorId: me, annotations: { every: { authorId: me } } },
                 data: c.region,
               })
             ).count,
@@ -299,15 +330,19 @@ async function applyPlan(tx: Prisma.TransactionClient, plan: Plan) {
         }
         break;
       case "removeAnnotation":
-        one((await tx.annotation.deleteMany({ where: { id: c.annotationId, authorId: me } })).count, c);
-        await tx.region.deleteMany({ where: { id: c.regionId, authorId: me, annotations: { none: {} } } });
+        one((await tx.annotation.deleteMany({ where: { id: id(c.annotationId), authorId: me } })).count, c);
+        await lockRegions({ id: id(c.regionId) });
+        await tx.region.deleteMany({ where: { id: id(c.regionId), authorId: me, annotations: { none: {} } } });
         break;
       case "removePainting": {
-        // The guard is part of the delete itself, so an annotation added a moment ago can't be lost
-        // to the cascade.
+        // The guard is part of the delete itself, after locking the image and its boxes, so an
+        // annotation added a moment ago can't be lost to the cascade.
+        const imageId = id(c.imageId);
+        await lockImage(imageId);
+        await lockRegions({ imageId });
         const rows = await tx.$queryRaw<{ storageKey: string }[]>`
           DELETE FROM "Image" i
-          WHERE i.id = ${c.imageId} AND i."ownerId" = ${me}
+          WHERE i.id = ${imageId} AND i."ownerId" = ${me}
             AND NOT EXISTS (
               SELECT 1 FROM "Annotation" a JOIN "Region" r ON r.id = a."regionId"
               WHERE r."imageId" = i.id AND a."authorId" <> ${me})
