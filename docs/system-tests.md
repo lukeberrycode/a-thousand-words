@@ -615,7 +615,27 @@ The runner needs the generated Prisma client, which Playwright can't load (`e2e/
   3. Remove the file, and run `content:status` again.
 - **Expected:** step 1 reports no problem with the file. Step 2 reports that it "has changed since it was applied", and step 3 that it "isn't in prisma/content". `content:apply` refuses to run while either problem stands.
 - **Proves:** a correction has to be a new file, and Prettier reformatting a file doesn't count as a change.
-- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts) checks steps 1 to 3 with `contentStatus`. That `applyContent` refuses to run is checked by hand.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts) checks steps 1 to 3 with `contentStatus`. That `applyContent` refuses to run is checked by hand. The unit tests (`src/lib/content/runner.test.ts`) also check that a pending file numbered before the last applied one is refused.
+
+### CON-08: A file can change or remove what it added earlier in the same file
+
+- **Needs:** nothing extra
+- **Steps:**
+  1. Apply, with `--yes`, a file that adds a painting and a box, then edits that box's text and moves it; adds a second box, then removes it; and adds a second painting with a box, then removes that painting.
+  2. Check Studio and the R2 bucket.
+- **Expected:** step 1 applies all eight steps without an error or a skip. In step 2, the first box has the edited text and the new place, the second box is gone, and the second painting's row, box and file in R2 are gone.
+- **Proves:** steps can refer to rows an earlier step in the same file created, which only get their real ids during the run.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts).
+
+### CON-09: The baseline claims the old seed's rows, and only those
+
+- **Needs:** a painting as the old seed left it: owned by the content account, stored at `images/seed/<key>.jpg`, with no `contentKey`, and a box holding one content annotation; a user's box with the same text on that painting, and another on the user's own image
+- **Steps:**
+  1. Apply a file that adds the painting by that key, and annotates it with the same text in a different place.
+  2. Check Studio and the R2 bucket.
+- **Expected:** step 1 lists "match painting" and "match annotation", and downloads and uploads nothing. In step 2, the seed's painting and box have their content keys, and are otherwise unchanged: same box position, no new box. The user's image and boxes have no content key, and every annotation with that text is exactly as it was.
+- **Proves:** the one-off baseline run on production (PROD-06) gives the seed's rows their keys without changing them, and never claims a user's rows.
+- **Automation:** Automated: [`e2e/content.spec.ts`](../e2e/content.spec.ts).
 
 
 ## Production
@@ -685,7 +705,7 @@ Run these on the deployed site before sharing its URL. "Production" means the Ve
   - Step 2 prints "Applied 0001-baseline." The `ContentMigration` table has a row for `0001-baseline`.
   - Step 3 says there's nothing to apply. The home page, the paintings and their annotations look exactly as before.
 - **Proves:** moving from the seed to content files gives production's existing content its keys, without adding, changing or removing any of it (ADR 0026).
-- **Automation:** Manual. Production settings come from the owner's KeePassXC database (ADR 0019), which only the owner can unlock, and agents and CI never touch production. CON-01 to CON-07 and the unit tests check the same runner against the development database, and `src/lib/content/plan.test.ts` checks the matching on a database the seed filled.
+- **Automation:** Manual. Production settings come from the owner's KeePassXC database (ADR 0019), which only the owner can unlock, and agents and CI never touch production. CON-01 to CON-09 and the unit tests check the same runner against the development database. CON-09 and `src/lib/content/plan.test.ts` check the matching on a database the seed filled.
 
 
 ## Sources
@@ -706,4 +726,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | Boxes and overlap, ADR 0011 (written with the code) | ANN-07, ANN-08, MAN-08 |
 | Artwork-led image page, ADR 0012 (written with the code) | MAN-10; MAN-07, MAN-08 and MAN-09 rewritten |
 | On-screen keyboard (written with the code) | MAN-09 |
-| Content migrations, ADR 0026 (written with the code) | CON-01 to CON-07, PROD-06; PROD-01 rewritten |
+| Content migrations, ADR 0026 (written with the code) | CON-01 to CON-09, PROD-06; PROD-01 rewritten |

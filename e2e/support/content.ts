@@ -67,9 +67,12 @@ export const testStatus = (files: ContentFile[]) => run({ mode: "status", files 
 
 /** Remove every image, box, collection and ContentMigration row with an e2e- key, and their files. */
 export async function removeTestContent() {
-  const images = await sql<{ storageKey: string }>(`SELECT "storageKey" FROM "Image" WHERE "contentKey" LIKE 'e2e-%'`);
+  // Seed-style images a test made for the baseline to claim have no content key yet, but their
+  // storage key is images/seed/e2e-….
+  const ours = `"contentKey" LIKE 'e2e-%' OR "storageKey" LIKE 'images/seed/e2e-%'`;
+  const images = await sql<{ storageKey: string }>(`SELECT "storageKey" FROM "Image" WHERE ${ours}`);
   await sql(`DELETE FROM "Region" WHERE "contentKey" LIKE 'e2e-%'`);
-  await sql(`DELETE FROM "Image" WHERE "contentKey" LIKE 'e2e-%'`);
+  await sql(`DELETE FROM "Image" WHERE ${ours}`);
   await sql(`DELETE FROM "Collection" WHERE slug LIKE 'e2e-%'`);
   await sql(`DELETE FROM "ContentMigration" WHERE name ~ '^[0-9]{4}-e2e-'`);
   // Files a dry run or a failed run might have left, as well as the deleted images'.

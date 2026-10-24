@@ -59,7 +59,40 @@ describe("contentStatus", () => {
     const status = await contentStatus(dbWith([{ name: "0003-gone", checksum: "x", appliedAt: at }]), [
       file("0002-next", "a"),
     ]);
-    expect(status.problems).toEqual([expect.stringContaining("0003-gone")]);
+    expect(status.problems).toContainEqual(expect.stringContaining("0003-gone was applied"));
+  });
+
+  describe("files numbered before the last applied one", () => {
+    const applied = (...names: string[]) =>
+      dbWith(names.map((name) => ({ name, checksum: checksum(ops(name.slice(5))), appliedAt: at })));
+
+    it("refuses a pending file that comes before an applied one, naming both", async () => {
+      const files = [file("0001-a", "a"), file("0002-b", "b"), file("0003-c", "c")];
+      const status = await contentStatus(applied("0001-a", "0003-c"), files);
+      expect(status.problems).toEqual([expect.stringMatching(/^0002-b comes before 0003-c, which is already applied/)]);
+      expect(status.pending.map((f) => f.name)).toEqual(["0002-b"]);
+    });
+
+    it("accepts pending files numbered after the last applied one", async () => {
+      const files = [file("0001-a", "a"), file("0002-b", "b"), file("0003-c", "c")];
+      const status = await contentStatus(applied("0001-a"), files);
+      expect(status.problems).toEqual([]);
+      expect(status.pending.map((f) => f.name)).toEqual(["0002-b", "0003-c"]);
+    });
+
+    it("accepts any files on a database with nothing applied", async () => {
+      const status = await contentStatus(applied(), [file("0001-a", "a"), file("0002-b", "b")]);
+      expect(status.problems).toEqual([]);
+    });
+
+    it("reports each early file", async () => {
+      const files = [file("0001-a", "a"), file("0002-b", "b"), file("0005-e", "e")];
+      const status = await contentStatus(applied("0005-e"), files);
+      expect(status.problems).toEqual([
+        expect.stringContaining("0001-a comes before 0005-e"),
+        expect.stringContaining("0002-b comes before 0005-e"),
+      ]);
+    });
   });
 
   it("reports problems in the files themselves", async () => {

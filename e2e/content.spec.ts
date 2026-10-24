@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { checksum } from "@/lib/content/checksum";
 import { CONTENT_USER, type ContentFile, type Operation } from "@/lib/content/operations";
 import type { Region } from "@/lib/regions";
@@ -366,4 +367,124 @@ test("CON-07: An applied file can't be changed or removed", async () => {
     expect.stringContaining("has changed since it was applied"),
   ]);
   expect(mine((await testStatus([])).problems)).toEqual([expect.stringContaining("isn't in prisma/content")]);
+});
+
+test("CON-08: A file can change or remove what it added earlier in the same file", async () => {
+  const n = names();
+  const kept = n.painting(1);
+  const removed = n.painting(2);
+  const moved = { x: 0.5, y: 0.5, w: 0.25, h: 0.25 };
+  const file = n.file([
+    addPainting(kept),
+    annotate(kept, n.box(1), { x: 0.1, y: 0.1, w: 0.2, h: 0.2 }, "First draft"),
+    { op: "editAnnotation", key: n.box(1), body: "Second draft", region: moved, sources: SOURCES },
+    annotate(kept, n.box(2), { x: 0.1, y: 0.6, w: 0.2, h: 0.2 }),
+    { op: "removeAnnotation", key: n.box(2) },
+    addPainting(removed),
+    annotate(removed, n.box(1, 2), { x: 0.1, y: 0.1, w: 0.2, h: 0.2 }),
+    { op: "removePainting", key: removed },
+  ]);
+
+  const result = await applyTestFile(file);
+
+  expect(result.skipped).toEqual([]);
+  expect(result.changes).toHaveLength(8);
+  // The edit reached the box made a moment before: new text, new place.
+  const edited = await regionByKey(n.box(1));
+  expect(edited).toMatchObject({ authorId: CONTENT_USER.id, ...moved });
+  expect(await annotationsOn(edited.id)).toEqual([
+    expect.objectContaining({ authorId: CONTENT_USER.id, bodyMarkdown: "Second draft" }),
+  ]);
+  // The box added and removed is gone.
+  expect(await regionByKey(n.box(2))).toBeUndefined();
+  // The painting added and removed is gone, with its file.
+  expect(await imageByKey(kept)).toBeDefined();
+  expect(await imageByKey(removed)).toBeUndefined();
+  expect(await regionByKey(n.box(1, 2))).toBeUndefined();
+  expect(result.removes).toEqual([`images/seed/${removed}.jpg`]);
+  expect(await objectExists(`images/seed/${removed}.jpg`)).toBe(false);
+  expect(await migration(file.name)).toBeDefined();
+});
+
+test("CON-09: The baseline claims the old seed's rows, and only those", async ({ world }) => {
+  const n = names();
+  const key = n.painting();
+  const text = `The seed's text ${n.tag}`;
+  const rowId = () => `e2e${randomBytes(10).toString("hex")}`;
+
+  // As the old seed left a painting: the content account's, under images/seed/, with no key yet.
+  await sql(
+    `INSERT INTO "User" (id, name, "approvedAt", "updatedAt") VALUES ($1, $2, now(), now()) ON CONFLICT (id) DO NOTHING`,
+    [CONTENT_USER.id, CONTENT_USER.name],
+  );
+  const seedImage = {
+    id: rowId(),
+    title: `Seeded ${n.tag}`,
+    storageKey: `images/seed/${key}.jpg`,
+    width: 1200,
+    height: 800,
+  };
+  await sql(`INSERT INTO "Image" (id, "ownerId", title, "storageKey", width, height) VALUES ($1, $2, $3, $4, $5, $6)`, [
+    seedImage.id,
+    CONTENT_USER.id,
+    seedImage.title,
+    seedImage.storageKey,
+    seedImage.width,
+    seedImage.height,
+  ]);
+  const seedBox = { x: 0.1, y: 0.1, w: 0.2, h: 0.2 };
+  const seedRegion = rowId();
+  await sql(
+    `INSERT INTO "Region" (id, "imageId", "authorId", x, y, w, h, "updatedAt") VALUES ($1, $2, $3, $4, $5, $6, $7, now())`,
+    [seedRegion, seedImage.id, CONTENT_USER.id, seedBox.x, seedBox.y, seedBox.w, seedBox.h],
+  );
+  await sql(
+    `INSERT INTO "Annotation" (id, "regionId", "authorId", "bodyMarkdown", "updatedAt") VALUES ($1, $2, $3, $4, now())`,
+    [rowId(), seedRegion, CONTENT_USER.id, text],
+  );
+
+  // A user's boxes with the same text: one on the seeded painting, one on their own image.
+  const user = await world.user();
+  const theirsOnSeed = await world.region(seedImage, user, { x: 0.6, y: 0.6, w: 0.2, h: 0.2 }, text);
+  const theirImage = await world.image(user);
+  const theirsOnOwn = await world.region(theirImage, user, seedBox, text);
+  const annotationsBefore = async () =>
+    sql(
+      `SELECT id, "regionId", "authorId", "bodyMarkdown", "updatedAt" FROM "Annotation" WHERE "bodyMarkdown" = $1 ORDER BY id`,
+      [text],
+    );
+  const before = await annotationsBefore();
+
+  // The file places the box elsewhere: the claim is by painting and text, not by where the box is.
+  const result = await applyTestFile(
+    n.file([addPainting(key), annotate(key, n.box(1), { x: 0.4, y: 0.1, w: 0.1, h: 0.1 }, text)]),
+  );
+
+  expect(result.skipped).toEqual([]);
+  expect(result.changes).toEqual([
+    expect.stringContaining(`match painting ${key}`),
+    expect.stringContaining(`match annotation ${n.box(1)}`),
+  ]);
+  expect(result.downloads).toEqual([]);
+  expect(result.puts).toEqual([]);
+
+  // The seed's rows get their keys, and nothing else about them changes.
+  expect(await imageByKey(key)).toMatchObject({ ...seedImage, ownerId: CONTENT_USER.id });
+  const claimed = await regionByKey(n.box(1));
+  expect(claimed).toEqual({ id: seedRegion, authorId: CONTENT_USER.id, ...seedBox });
+  expect(await sql(`SELECT 1 FROM "Region" WHERE "imageId" = $1`, [seedImage.id])).toHaveLength(2);
+
+  // The user's rows are as they were.
+  const keys = await sql<{ id: string; contentKey: string | null }>(
+    `SELECT id, "contentKey" FROM "Region" WHERE id = ANY($1)`,
+    [[theirsOnSeed, theirsOnOwn]],
+  );
+  expect(keys).toHaveLength(2);
+  for (const k of keys) expect(k.contentKey).toBeNull();
+  const [own] = await sql<{ contentKey: string | null }>(`SELECT "contentKey" FROM "Image" WHERE id = $1`, [
+    theirImage.id,
+  ]);
+  expect(own.contentKey).toBeNull();
+  expect(await regionById(theirsOnOwn)).toEqual({ id: theirsOnOwn, authorId: user.id, ...seedBox });
+  expect(await annotationsBefore()).toEqual(before);
 });
