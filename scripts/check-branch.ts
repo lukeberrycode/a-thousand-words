@@ -10,11 +10,12 @@ const git = (...args: string[]) => execFileSync("git", args, { encoding: "utf8" 
 
 const branch = process.argv[2] || git("branch", "--show-current");
 const filesOnMain = git("ls-tree", "-r", "--name-only", "origin/main", "--", "docs/plans", "docs/adr").split("\n");
-// A content/ branch may only add content files (ADR 0026). In CI, HEAD is the pull request merged
-// into main, in a shallow clone with no merge base, so compare the two commits directly. Locally,
-// fetch and rebase first, or main's newer changes show up too.
+// A content/ branch may only add content files (ADR 0026). CI sets CONTENT_DIFF_BASE to HEAD^1:
+// HEAD is the pull request merged into main, so its first parent is the main it was merged into,
+// however far main has moved since. Locally it compares with origin/main: fetch and rebase first.
+const base = process.env.CONTENT_DIFF_BASE || "origin/main";
 const changes = branch.replace(/^worktree-/, "").startsWith("content/")
-  ? git("diff", "--name-status", "--no-renames", "origin/main", "HEAD").split("\n")
+  ? git("diff", "--name-status", "--no-renames", base, "HEAD").split("\n")
   : [];
 const problem = branchProblem(branch, filesOnMain) ?? contentBranchProblem(branch, changes);
 if (problem) {
