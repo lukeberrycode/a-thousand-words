@@ -1,6 +1,6 @@
 # Plan: content migrations
 
-Status: draft, 22 October 2026. Milestone 10 in the [one-pager](../one-pager.md). When the work starts, its decisions get an ADR.
+Status: being carried out, 24 October 2026, under [ADR 0026](../adr/0026-content-migrations.md). Milestone 10 in the [one-pager](../one-pager.md).
 
 ## Why
 

@@ -124,6 +124,7 @@ The site runs at https://a-thousand-words-pi.vercel.app/ on Vercel, with Neon Po
 The site's own paintings, annotations and collections are added by numbered content files in `prisma/content/`, as schema changes are added by migrations ([ADR 0026](docs/adr/0026-content-migrations.md)). Each file is applied once to each database, in order, and recorded in the `ContentMigration` table.
 
 - `0001-baseline.ts` is what the old seed loaded. Later files add paintings in batches of at most 25, and every annotation names its sources. The `add-paintings` skill writes them.
+- Files after the baseline are plain data, checked before they're imported, and come on `content/<slug>` branches that may only add new files in `prisma/content`.
 - An applied file is never edited: a correction is a new file, using `editAnnotation` or `removeAnnotation`. The runner refuses to run if an applied file's operations have changed.
 - A run never changes anyone else's images, boxes or annotations. A step that would is skipped, and the dry run lists it.
 - Each file applies in one transaction. Paintings are downloaded from Wikimedia Commons and uploaded to R2 before it starts, so a failed run can leave files in R2 with no row. In production the nightly orphan cleanup removes them; in the preview bucket, delete them by hand.

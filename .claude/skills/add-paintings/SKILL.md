@@ -35,7 +35,8 @@ Draw every box onto its image, with its key, and look at each one. Fix any that 
 
 ## 5. Write the file and apply it
 
-- Name it with the next number: `prisma/content/NNNN-<slug>.ts`, exporting `operations: Operation[]`.
+- Name it with the next number: `prisma/content/NNNN-<slug>.ts`. It must be **plain data**: only `import type { Operation } from "@/lib/content/operations";` and one `export const operations: Operation[] = [...]` of literal objects, strings and numbers. No helpers, loops, spreads, template strings with `${}` or other statements: the runner refuses to import anything else (`src/lib/content/source.ts`). Unlike the baseline, write each operation out in full.
+- The branch may only add this file. Any other change, to code, docs or an earlier content file, fails `check:branch` in CI, and goes on its own branch.
 - Never edit a file that's on `main`: it may have been applied. Corrections use `editAnnotation` or `removeAnnotation` in a new file.
 - `npm test` checks the file: keys, the 25-painting cap, sources, boxes and collections.
 - Run `npm run content:apply` (the dry run) and read it: every step should be a `+` change. Then `npm run content:apply -- --yes`, and look at a few of the paintings in `npm run dev`.
