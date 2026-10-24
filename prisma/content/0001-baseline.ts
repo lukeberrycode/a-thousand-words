@@ -1,11 +1,17 @@
-// Seed content: public-domain paintings from Wikimedia Commons, with annotations.
-// Regions are fractions (0–1) of each image (ADR 0005), placed against the exact file listed.
-// Used by prisma/seed.ts. Facts are kept to well-established art history.
+// The baseline content file (ADR 0026): the 37 paintings and 7 collections the old seed
+// (prisma/seed.ts) loaded, from public-domain files on Wikimedia Commons. Regions are fractions
+// (0–1) of each image (ADR 0005), placed against the exact file listed. Facts are kept to
+// well-established art history. It predates the cap of 25 paintings a file and the rule that every
+// annotation names its sources, so this file alone is exempt from both (src/lib/content/check.ts).
+//
+// Applied, this file is never edited: a correction is a new file. Each annotation's key is its
+// painting's key and its place in the list, such as arnolfini-1 for the convex mirror.
 
 import type { Region } from "@/lib/regions";
+import type { Operation } from "@/lib/content/operations";
 
-export type SeedArtwork = {
-  /** Stable key: the R2 object is images/seed/<slug>.jpg, so re-running the seed doesn't duplicate. */
+type Artwork = {
+  /** The painting's content key: its R2 object is images/seed/<slug>.jpg. */
   slug: string;
   title: string;
   description: string;
@@ -14,7 +20,7 @@ export type SeedArtwork = {
   annotations: { region: Region; body: string }[];
 };
 
-export const artworks: SeedArtwork[] = [
+const artworks: Artwork[] = [
   {
     slug: "great-wave",
     title: "The Great Wave off Kanagawa",
@@ -1012,8 +1018,7 @@ export const artworks: SeedArtwork[] = [
   },
 ];
 
-export type SeedCollection = {
-  /** Stable key, so re-running the seed updates the collection rather than duplicating it. */
+type Collection = {
   slug: string;
   name: string;
   blurb: string;
@@ -1022,7 +1027,7 @@ export type SeedCollection = {
 };
 
 /** Home page rows, top to bottom (ADR 0014). */
-export const collections: SeedCollection[] = [
+const collections: Collection[] = [
   {
     slug: "northern-renaissance",
     name: "Northern Renaissance",
@@ -1089,4 +1094,22 @@ export const collections: SeedCollection[] = [
     blurb: "Ukiyo-e, pictures of the floating world, from Edo-period Japan.",
     artworks: ["great-wave", "red-fuji", "takiyasha", "sudden-shower"],
   },
+];
+
+export const operations: Operation[] = [
+  ...artworks.flatMap(({ slug, title, description, source, annotations }): Operation[] => [
+    { op: "addPainting", key: slug, title, description, source },
+    ...annotations.map(({ region, body }, i): Operation => ({
+      op: "annotate",
+      painting: slug,
+      key: `${slug}-${i + 1}`,
+      region,
+      body,
+      sources: [],
+    })),
+  ]),
+  ...collections.flatMap(({ slug, name, blurb, artworks: paintings }): Operation[] => [
+    { op: "addCollection", slug, name, blurb },
+    { op: "addToCollection", collection: slug, paintings },
+  ]),
 ];

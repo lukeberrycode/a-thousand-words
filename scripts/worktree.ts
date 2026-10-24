@@ -4,13 +4,15 @@
 //
 //   npm run worktree:setup      in a worktree, after `npm install`: copies .env from the main
 //                               checkout if missing, starts the worktree's `prisma dev` server,
-//                               points .env.local at it, applies the migrations and seeds it.
-//                               Safe to re-run, for example after a restart.
+//                               points .env.local at it, and applies the migrations and the
+//                               content files (ADR 0026). Safe to re-run, for example after a
+//                               restart.
 //   npm run worktree:setup -- --mock
 //                               the same, but with no secrets: instead of copying .env, it points
-//                               .env.local at a local R2 mock and dummy auth values, and seeds the
-//                               mock (ADR 0024). `npm run dev` then starts the mock too. GitHub
-//                               sign-in doesn't work in such a worktree. agent:implement uses this.
+//                               .env.local at a local R2 mock and dummy auth values, and loads the
+//                               content's paintings into the mock (ADR 0024). `npm run dev` then
+//                               starts the mock too. GitHub sign-in doesn't work in such a
+//                               worktree. agent:implement uses this.
 //   npm run worktree:teardown   in a worktree, before removing it: deletes its database.
 
 import { execFileSync, spawn } from "node:child_process";
@@ -83,12 +85,12 @@ writeFileSync(".env.local", withEnvValues(kept, values));
 
 execFileSync("npx", ["--no-install", "prisma", "migrate", "deploy"], { stdio: "inherit" });
 // tsx runs this as CommonJS, which has no top-level await.
-void seedAndFinish();
+void loadContentAndFinish();
 
-async function seedAndFinish() {
+async function loadContentAndFinish() {
   const stopMock = mock ? await startMock() : () => {};
   try {
-    execFileSync("npx", ["--no-install", "tsx", "prisma/seed.ts", "--yes"], { stdio: "inherit" });
+    execFileSync("npx", ["--no-install", "tsx", "scripts/content.ts", "apply", "--yes"], { stdio: "inherit" });
   } finally {
     stopMock();
   }
@@ -98,7 +100,7 @@ async function seedAndFinish() {
   );
 }
 
-/** Starts the R2 mock for the seed, unless one is already running here. Returns how to stop it. */
+/** Starts the R2 mock for the content files, unless one is already running here. Returns how to stop it. */
 async function startMock() {
   const up = () =>
     fetch(`http://localhost:${r2Port}/`).then(

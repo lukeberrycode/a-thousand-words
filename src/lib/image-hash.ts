@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import sharp, { type Metadata } from "sharp";
 
-// Fingerprints for spotting duplicate uploads (ADR 0010). Used by createImage and the seed
-// script, so this module avoids "server-only".
+// Fingerprints for spotting duplicate uploads (ADR 0010). Used by createImage and the content
+// runner (ADR 0026), so this module avoids "server-only".
 
 /**
  * Two images whose perceptual hashes differ in at most this many of 64 bits count as the same.
