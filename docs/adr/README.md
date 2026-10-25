@@ -29,4 +29,4 @@ One short file per decision: the context, what was decided, and the consequences
 | [0023](0023-graphql-api.md) | A small, read-only GraphQL API with GraphQL Yoga | Accepted |
 | [0024](0024-r2-mock-for-system-tests.md) | System tests use a local R2 mock and their own servers, locally and in CI | Accepted |
 | [0025](0025-headless-agent-implements-plans.md) | A headless agent carries out a plan in a worktree, through to a pull request | Accepted |
-| [0026](0026-mcp-servers-for-the-agent.md) | The coding agent checks its own work in a browser, through MCP | Proposed |
+| [0026](0026-mcp-servers-for-the-agent.md) | The coding agent checks its own work in a browser, through MCP | Accepted |

@@ -31,7 +31,8 @@ Nobody is watching. Never wait for an answer, and never ask one. When something 
 
 After a change users can see, start `npm run dev` in the background and open each page it affects with the `playwright` MCP tools (ADR 0026). The browser is signed in as an approved local user, "Agent (local)". Check that the page shows what the plan asks for, and that the console has no new errors. Fix what's wrong before the tests are written.
 
-- It can open only this checkout's dev server and R2 mock. The `mcp-guard.mjs` hook refuses anything else, and the tools that run JavaScript are denied.
+- It can open only this checkout's dev server and R2 mock, and where images are served from (`R2_PUBLIC_URL`). The `mcp-guard.mjs` hook refuses anything else, and the tools that run JavaScript are denied.
+- It signs in when the server starts. If the header shows "Sign in", the database wasn't running then: say so under **Needs the owner** rather than changing sign-in code. It also signs out the browser of any other session in the same checkout.
 - Prefer `browser_snapshot` to screenshots: it costs fewer tokens. Screenshots and other files go in `.playwright-mcp/`.
 - A browser check doesn't replace a system test.
 
