@@ -27,6 +27,14 @@ Nobody is watching. Never wait for an answer, and never ask one. When something 
 - A schema change needs a migration from `npm run db:migrate -- --name <short_name>` (the name, because there's no terminal to ask for one), which uses this worktree's own database. Note `prod:migrate` for the pull request.
 - New decisions along the way get an ADR (`write-adr` skill).
 
+## 2a. Look at it in the browser
+
+After a change users can see, start `npm run dev` in the background and open each page it affects with the `playwright` MCP tools (ADR 0026). The browser is signed in as an approved local user, "Agent (local)". Check that the page shows what the plan asks for, and that the console has no new errors. Fix what's wrong before the tests are written.
+
+- It can open only this checkout's dev server and R2 mock. The `mcp-guard.mjs` hook refuses anything else, and the tools that run JavaScript are denied.
+- Prefer `browser_snapshot` to screenshots: it costs fewer tokens. Screenshots and other files go in `.playwright-mcp/`.
+- A browser check doesn't replace a system test.
+
 ## 3. Tests
 
 Ask the `test-writer` subagent for the tests. Give it the behaviour the plan asks for, in the plan's words, and the test IDs in `docs/system-tests.md` that it touches. Don't give it your code. It writes unit tests and system tests, and updates `docs/system-tests.md`.
