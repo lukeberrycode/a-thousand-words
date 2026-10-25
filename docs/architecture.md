@@ -57,7 +57,7 @@ src/lib/              Shared code: db client, storage, current user, validation,
 src/lib/graphql/      The GraphQL API's schema, resolvers, query limits and server (ADR 0023)
 src/generated/prisma  Generated Prisma Client (gitignored)
 scripts/              Dev server start, worktree setup (ADR 0020), env loading, account approval, branch check (ADR 0021),
-                      local R2 mock (ADR 0024), agent:implement (ADR 0025)
+                      local R2 mock (ADR 0024), agent:implement (ADR 0025), the agent's browser (ADR 0026)
 infra/                AWS CDK stack for the nightly orphan cleanup; its own package
 .github/workflows/    GitHub Actions, including the infra checks and deploy
 ```
