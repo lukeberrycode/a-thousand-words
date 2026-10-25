@@ -392,6 +392,15 @@ describe("browserCallProblem: files the browser writes, with links in a real che
   describe("in a real .playwright-mcp/", () => {
     beforeEach(() => mkdirSync(output()));
 
+    // A page's download is saved there under the page's own name, which no call gives.
+    it("refuses every call while it holds a link anywhere, even calls that name no file", () => {
+      mkdirSync(join(output(), "shots"));
+      symlinkSync(join(outside, "not-yet.txt"), join(output(), "shots", "report.txt"));
+      expect(call("browser_click", { element: "Download", ref: "e1" })).toMatch(/shots\/report\.txt/);
+      expect(call("browser_navigate", { url: "http://localhost:20765/" })).not.toBeNull();
+      expect(call("browser_snapshot")).not.toBeNull();
+    });
+
     it("allows a new file, in it or in a real subfolder", () => {
       mkdirSync(join(output(), "shots"));
       expect(write(".playwright-mcp/x.md")).toBeNull();

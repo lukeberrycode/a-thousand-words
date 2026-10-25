@@ -4,7 +4,7 @@
 // loads this file in the hook without a build step, so it uses only types that can be stripped, and
 // imports nothing but Node's own modules.
 
-import { existsSync, lstatSync, realpathSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 
 /** Host names that mean this machine. */
@@ -146,10 +146,20 @@ export function browserCallProblem(
   if (!BROWSER_TOOLS.includes(tool)) {
     return `${tool} isn't one of the browser tools the agent may use (src/lib/mcp.ts, ADR 0026).`;
   }
-  // The server also writes files there under names it picks, such as console logs, which no call names.
-  const output = lstatOrNull(resolve(root, BROWSER_OUTPUT_DIR));
+  // The server also writes files there under names no call gives: console logs, and downloads named
+  // by the page. So the folder, and everything in it, must be free of links whatever the call.
+  const outputDir = resolve(root, BROWSER_OUTPUT_DIR);
+  const output = lstatOrNull(outputDir);
   if (output !== null && !output.isDirectory()) {
     return `${BROWSER_OUTPUT_DIR} must be a real folder, not a link or a file. Remove it, and the browser makes it again.`;
+  }
+  if (output !== null) {
+    const link = readdirSync(outputDir, { recursive: true, withFileTypes: true }).find((entry) =>
+      entry.isSymbolicLink(),
+    );
+    if (link) {
+      return `${BROWSER_OUTPUT_DIR} mustn't hold links, but ${relative(root, join(link.parentPath, link.name))} is one. Remove it first.`;
+    }
   }
   if ("url" in input) {
     const url = String(input.url);

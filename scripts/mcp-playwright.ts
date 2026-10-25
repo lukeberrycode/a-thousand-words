@@ -11,7 +11,7 @@
 
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -36,7 +36,14 @@ async function main() {
     env.R2_PUBLIC_URL,
   );
   // The server writes there outside the sandbox, so it mustn't be a link to somewhere else.
-  if (existsSync(BROWSER_OUTPUT_DIR) && !lstatSync(BROWSER_OUTPUT_DIR).isDirectory()) {
+  const output = (() => {
+    try {
+      return lstatSync(BROWSER_OUTPUT_DIR);
+    } catch {
+      return null;
+    }
+  })();
+  if (output !== null && !output.isDirectory()) {
     console.error(`mcp-playwright: ${BROWSER_OUTPUT_DIR} must be a real folder, not a link or a file.`);
     process.exit(1);
   }
