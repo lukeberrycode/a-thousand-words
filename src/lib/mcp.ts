@@ -4,7 +4,8 @@
 // loads this file in the hook without a build step, so it uses only types that can be stripped, and
 // imports nothing but Node's own modules.
 
-import { isAbsolute, posix, relative, resolve } from "node:path";
+import { existsSync, realpathSync, statSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, posix, relative, resolve } from "node:path";
 
 /** Host names that mean this machine. */
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
@@ -70,10 +71,28 @@ export function isAllowedUrl(url: string, origins: readonly string[]) {
   return (parsed.protocol === "http:" || parsed.protocol === "https:") && origins.includes(parsed.origin);
 }
 
-/** Whether `path`, resolved against `root`, is inside `folder` (itself relative to `root`). */
+/**
+ * Where `path`, resolved against `root`, really is: symbolic links followed, so a link named
+ * `x.png` that points at `.env` counts as `.env`. For a file that doesn't exist yet, the nearest
+ * folder above it that does is followed instead.
+ */
+function realPath(root: string, path: string): string {
+  const full = resolve(root, path);
+  if (existsSync(full)) return realpathSync(full);
+  const parent = dirname(full);
+  return parent === full ? full : join(realPath(root, parent), basename(full));
+}
+
+/** Whether `path`, resolved against `root` and with links followed, is inside `folder` (relative to `root`). */
 function isInside(root: string, folder: string, path: string) {
-  const from = relative(resolve(root, folder), resolve(root, path));
+  const from = relative(realPath(root, folder), realPath(root, path));
   return from !== "" && !from.startsWith("..") && !isAbsolute(from);
+}
+
+/** Whether `path` is a file with other names: a hard link can't be followed to see what it is. */
+function hasOtherNames(root: string, path: string) {
+  const full = resolve(root, path);
+  return existsSync(full) && statSync(full).nlink > 1;
 }
 
 /**
@@ -84,6 +103,9 @@ function isInside(root: string, folder: string, path: string) {
  * - Every `filename` it writes must be inside .playwright-mcp/.
  * - Every file in `paths` it uploads must be an image inside the checkout, outside .claude/ and
  *   .playwright-mcp/, so it can't send a log or the signed-in session to the site.
+ * Paths are checked where they really lead, with symbolic links followed, and a file with hard links
+ * is refused: otherwise a link the agent made with `ln` could point the server, which runs outside
+ * the sandbox, at `.env`. A link made between this check and the call isn't caught.
  */
 export function browserCallProblem(
   tool: string,
@@ -101,7 +123,7 @@ export function browserCallProblem(
   }
   if ("filename" in input && input.filename !== undefined) {
     const filename = String(input.filename);
-    if (!isInside(root, BROWSER_OUTPUT_DIR, filename)) {
+    if (!isInside(root, BROWSER_OUTPUT_DIR, filename) || hasOtherNames(root, filename)) {
       return `Browser files go in ${BROWSER_OUTPUT_DIR}/, for example ${posix.join(BROWSER_OUTPUT_DIR, "page.png")}, not ${filename}.`;
     }
   }
@@ -109,9 +131,9 @@ export function browserCallProblem(
     if (!Array.isArray(input.paths)) return "paths must be a list of files.";
     for (const item of input.paths) {
       const path = String(item);
-      const image = UPLOAD_EXTENSIONS.some((ext) => path.toLowerCase().endsWith(ext));
       const hidden = [".claude", BROWSER_OUTPUT_DIR].some((folder) => isInside(root, folder, path));
-      if (!isAbsolute(path) || !isInside(root, ".", path) || hidden || !image) {
+      const image = UPLOAD_EXTENSIONS.some((ext) => realPath(root, path).toLowerCase().endsWith(ext));
+      if (!isAbsolute(path) || !isInside(root, ".", path) || hidden || !image || hasOtherNames(root, path)) {
         return `The browser may only upload JPEG, PNG or WebP images from this checkout, not ${path}.`;
       }
     }
