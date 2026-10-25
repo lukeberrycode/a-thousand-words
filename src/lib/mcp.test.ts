@@ -1,9 +1,9 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { linkSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { currentWorktree } from "../../scripts/checkout";
 import { browserCallProblem, browserOrigins, checkLocalDatabase, isAllowedUrl, signedInState } from "./mcp";
 import { checkoutPort } from "./worktree";
@@ -326,6 +326,146 @@ describe("browserCallProblem: files the browser uploads", () => {
 
     it("refuses an image name that links into .playwright-mcp/", () => {
       expect(upload(join(root, "state.png"))).not.toBeNull();
+    });
+  });
+});
+
+// Files the server writes, in a real checkout in a temporary folder. The agent can make links with
+// `ln`, and the server runs outside the sandbox, so a link is the way to make it write elsewhere.
+describe("browserCallProblem: files the browser writes, with links in a real checkout", () => {
+  let base: string;
+  let root: string;
+  let outside: string;
+  const output = () => join(root, ".playwright-mcp");
+  const call = (tool: string, input: Record<string, unknown> = {}) =>
+    browserCallProblem(tool, input, { origins: ORIGINS, root });
+  const write = (filename: string) => call("browser_snapshot", { filename });
+
+  beforeEach(() => {
+    base = realpathSync(mkdtempSync(join(tmpdir(), "mcp-write-test-")));
+    root = join(base, "checkout");
+    outside = join(base, "outside");
+    mkdirSync(root);
+    mkdirSync(outside);
+    writeFileSync(join(root, ".env"), "SECRET=1");
+    writeFileSync(join(outside, "target.md"), "not yours");
+  });
+  afterEach(() => rmSync(base, { recursive: true, force: true }));
+
+  describe("when .playwright-mcp isn't a real folder", () => {
+    const everyCall = () => {
+      expect(write(".playwright-mcp/x.md")).not.toBeNull();
+      expect(write(join(root, ".playwright-mcp", "x.md"))).not.toBeNull();
+      expect(call("browser_snapshot")).not.toBeNull();
+      expect(call("browser_take_screenshot")).not.toBeNull();
+      expect(call("browser_click", { element: "Upload", ref: "e1" })).not.toBeNull();
+      expect(call("browser_navigate", { url: "http://localhost:20765/" })).not.toBeNull();
+    };
+
+    it("refuses every call while it links to a folder outside the checkout", () => {
+      symlinkSync(outside, output());
+      everyCall();
+    });
+
+    it("refuses every call while it links to a folder inside the checkout", () => {
+      mkdirSync(join(root, "src"));
+      symlinkSync(join(root, "src"), output());
+      everyCall();
+    });
+
+    it("refuses every call while it's a broken link", () => {
+      symlinkSync(join(outside, "not-yet"), output());
+      everyCall();
+    });
+
+    it("refuses every call while it's a plain file", () => {
+      writeFileSync(output(), "");
+      everyCall();
+    });
+
+    it("allows calls when it doesn't exist yet, as the server makes it", () => {
+      expect(call("browser_snapshot")).toBeNull();
+      expect(write(".playwright-mcp/x.md")).toBeNull();
+    });
+  });
+
+  describe("in a real .playwright-mcp/", () => {
+    beforeEach(() => mkdirSync(output()));
+
+    it("allows a new file, in it or in a real subfolder", () => {
+      mkdirSync(join(output(), "shots"));
+      expect(write(".playwright-mcp/x.md")).toBeNull();
+      expect(write(join(output(), "x.md"))).toBeNull();
+      expect(write(".playwright-mcp/shots/page.png")).toBeNull();
+      expect(write(".playwright-mcp/new-folder/page.png")).toBeNull();
+      expect(call("browser_snapshot")).toBeNull();
+      expect(call("browser_navigate", { url: "http://localhost:20765/" })).toBeNull();
+    });
+
+    it("allows overwriting an existing plain file", () => {
+      writeFileSync(join(output(), "x.md"), "old");
+      mkdirSync(join(output(), "shots"));
+      writeFileSync(join(output(), "shots", "page.png"), "old");
+      expect(write(".playwright-mcp/x.md")).toBeNull();
+      expect(write(".playwright-mcp/shots/page.png")).toBeNull();
+    });
+
+    it("refuses a broken link to a file outside the checkout", () => {
+      symlinkSync(join(outside, "new.md"), join(output(), "x.md"));
+      expect(write(".playwright-mcp/x.md")).not.toBeNull();
+    });
+
+    it("refuses a broken link to a file inside the checkout", () => {
+      symlinkSync(join(root, "src", "new.ts"), join(output(), "x.md"));
+      expect(write(".playwright-mcp/x.md")).not.toBeNull();
+    });
+
+    it("refuses a link to an existing file elsewhere", () => {
+      symlinkSync(join(outside, "target.md"), join(output(), "x.md"));
+      symlinkSync(join(root, ".env"), join(output(), "env.md"));
+      expect(write(".playwright-mcp/x.md")).not.toBeNull();
+      expect(write(".playwright-mcp/env.md")).not.toBeNull();
+    });
+
+    it("refuses a link to an existing file inside .playwright-mcp/", () => {
+      writeFileSync(join(output(), "real.md"), "");
+      symlinkSync(join(output(), "real.md"), join(output(), "x.md"));
+      expect(write(".playwright-mcp/x.md")).not.toBeNull();
+    });
+
+    it("refuses a file under a subfolder that is a link", () => {
+      symlinkSync(outside, join(output(), "shots"));
+      mkdirSync(join(output(), "real"));
+      symlinkSync(join(output(), "real"), join(output(), "inner"));
+      expect(write(".playwright-mcp/shots/new.md")).not.toBeNull();
+      expect(write(".playwright-mcp/shots/target.md")).not.toBeNull();
+      expect(write(".playwright-mcp/inner/new.md")).not.toBeNull();
+    });
+
+    it("refuses a file with a hard link elsewhere", () => {
+      linkSync(join(root, ".env"), join(output(), "x.md"));
+      linkSync(join(outside, "target.md"), join(output(), "y.md"));
+      expect(write(".playwright-mcp/x.md")).not.toBeNull();
+      expect(write(".playwright-mcp/y.md")).not.toBeNull();
+    });
+
+    it("refuses a file with a second name, even inside .playwright-mcp/", () => {
+      writeFileSync(join(output(), "real.md"), "");
+      linkSync(join(output(), "real.md"), join(output(), "x.md"));
+      expect(write(".playwright-mcp/x.md")).not.toBeNull();
+      expect(write(".playwright-mcp/real.md")).not.toBeNull();
+    });
+
+    it("checks the filename of every tool that writes one", () => {
+      symlinkSync(join(root, ".env"), join(output(), "x.md"));
+      for (const tool of [
+        "browser_snapshot",
+        "browser_take_screenshot",
+        "browser_console_messages",
+        "browser_network_requests",
+      ]) {
+        expect(call(tool, { filename: ".playwright-mcp/x.md" }), tool).not.toBeNull();
+      }
     });
   });
 });

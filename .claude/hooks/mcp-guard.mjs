@@ -5,11 +5,12 @@
 // .playwright-mcp/, and only images uploaded (src/lib/mcp.ts). Exit 2 blocks the call and shows the
 // reason to Claude. Fails closed: if the hook itself fails, the call is blocked.
 //
-// The origins are worked out here as scripts/mcp-playwright.ts works them out, not read from a file
-// the agent could change.
+// The origins are worked out here as scripts/mcp-playwright.ts works them out, from git and the env
+// files. This guards against mistakes and against instructions planted in a page, not against an
+// agent set on getting out: the rules live in src/lib, which the agent can edit, and `npm run dev`
+// already runs its code outside the sandbox. Review and CI are the backstop (ADR 0015).
 import { execFileSync } from "node:child_process";
 import { basename } from "node:path";
-import { config } from "dotenv";
 
 function block(reason) {
   process.stderr.write(`${reason}\n`);
@@ -34,6 +35,8 @@ async function guard() {
   const prefix = "mcp__playwright__";
   if (!name.startsWith(prefix)) return;
 
+  // Loaded here, not imported above, so that if node_modules is broken the hook still blocks.
+  const { config } = await import("dotenv");
   const { browserCallProblem, browserOrigins } = await import(new URL("../../src/lib/mcp.ts", import.meta.url));
   const { checkoutPort, worktreeName } = await import(new URL("../../src/lib/worktree.ts", import.meta.url));
 

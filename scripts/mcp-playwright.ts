@@ -11,7 +11,7 @@
 
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -35,12 +35,19 @@ async function main() {
     { app: checkoutPort(worktree, "app"), r2: checkoutPort(worktree, "r2") },
     env.R2_PUBLIC_URL,
   );
+  // The server writes there outside the sandbox, so it mustn't be a link to somewhere else.
+  if (existsSync(BROWSER_OUTPUT_DIR) && !lstatSync(BROWSER_OUTPUT_DIR).isDirectory()) {
+    console.error(`mcp-playwright: ${BROWSER_OUTPUT_DIR} must be a real folder, not a link or a file.`);
+    process.exit(1);
+  }
   mkdirSync(BROWSER_OUTPUT_DIR, { recursive: true });
 
   const args = [
     "--headless",
     "--isolated",
     "--browser=chromium",
+    // A service worker's requests get past --allowed-origins.
+    "--block-service-workers",
     `--output-dir=${BROWSER_OUTPUT_DIR}`,
     `--allowed-origins=${origins.join(";")}`,
   ];
@@ -57,7 +64,6 @@ async function main() {
 
 /** Makes a new session for the agent's user, replacing its old ones. Returns the storage state file. */
 async function signIn(databaseUrl: string | undefined) {
-  if (!databaseUrl) throw new Error("DATABASE_URL isn't set");
   checkLocalDatabase(databaseUrl);
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
   try {

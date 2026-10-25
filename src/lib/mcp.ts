@@ -4,8 +4,8 @@
 // loads this file in the hook without a build step, so it uses only types that can be stripped, and
 // imports nothing but Node's own modules.
 
-import { existsSync, realpathSync, statSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, posix, relative, resolve } from "node:path";
+import { existsSync, lstatSync, realpathSync, statSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 
 /** Host names that mean this machine. */
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
@@ -95,6 +95,34 @@ function hasOtherNames(root: string, path: string) {
   return existsSync(full) && statSync(full).nlink > 1;
 }
 
+/** The file's details without following a link, or null if there's nothing there, not even a broken link. */
+function lstatOrNull(path: string) {
+  try {
+    return lstatSync(path);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether the server may write `filename`: inside .playwright-mcp/, with no symbolic link on the way
+ * down from .playwright-mcp itself, broken links included. Following links here would let a link
+ * such as `.playwright-mcp -> ~` pass, since both sides would then lead to the same place.
+ */
+function isOutputFile(root: string, filename: string) {
+  const base = resolve(root, BROWSER_OUTPUT_DIR);
+  const rest = relative(base, resolve(root, filename));
+  if (rest === "" || rest.startsWith("..") || isAbsolute(rest)) return false;
+  let current = base;
+  for (const part of ["", ...rest.split(sep)]) {
+    current = join(current, part);
+    const stats = lstatOrNull(current);
+    if (stats === null) return true; // Nothing below it exists either.
+    if (stats.isSymbolicLink()) return false;
+  }
+  return !hasOtherNames(root, filename);
+}
+
 /**
  * Why a Playwright MCP call must be refused, or null if it may go ahead. `tool` is the name without
  * the `mcp__playwright__` prefix, `root` the checkout's folder.
@@ -103,9 +131,12 @@ function hasOtherNames(root: string, path: string) {
  * - Every `filename` it writes must be inside .playwright-mcp/.
  * - Every file in `paths` it uploads must be an image inside the checkout, outside .claude/ and
  *   .playwright-mcp/, so it can't send a log or the signed-in session to the site.
- * Paths are checked where they really lead, with symbolic links followed, and a file with hard links
- * is refused: otherwise a link the agent made with `ln` could point the server, which runs outside
- * the sandbox, at `.env`. A link made between this check and the call isn't caught.
+ * Links are the way round these checks, since the agent can make one with `ln` and the server runs
+ * outside the sandbox. So uploads are checked where they really lead, with links followed; files
+ * written must have no link on the way, and .playwright-mcp itself must be a real folder; and a file
+ * with hard links is refused. A link made between this check and the call isn't caught.
+ * `browser_drop`'s `data` isn't checked: a dropped URL is only text, and opening it would still need
+ * a navigation, which is checked.
  */
 export function browserCallProblem(
   tool: string,
@@ -115,6 +146,11 @@ export function browserCallProblem(
   if (!BROWSER_TOOLS.includes(tool)) {
     return `${tool} isn't one of the browser tools the agent may use (src/lib/mcp.ts, ADR 0026).`;
   }
+  // The server also writes files there under names it picks, such as console logs, which no call names.
+  const output = lstatOrNull(resolve(root, BROWSER_OUTPUT_DIR));
+  if (output !== null && !output.isDirectory()) {
+    return `${BROWSER_OUTPUT_DIR} must be a real folder, not a link or a file. Remove it, and the browser makes it again.`;
+  }
   if ("url" in input) {
     const url = String(input.url);
     if (!isAllowedUrl(url, origins)) {
@@ -123,7 +159,7 @@ export function browserCallProblem(
   }
   if ("filename" in input && input.filename !== undefined) {
     const filename = String(input.filename);
-    if (!isInside(root, BROWSER_OUTPUT_DIR, filename) || hasOtherNames(root, filename)) {
+    if (!isOutputFile(root, filename)) {
       return `Browser files go in ${BROWSER_OUTPUT_DIR}/, for example ${posix.join(BROWSER_OUTPUT_DIR, "page.png")}, not ${filename}.`;
     }
   }
@@ -145,7 +181,7 @@ export function browserCallProblem(
  * Throws unless `databaseUrl` is a Postgres database on this machine, so the browser's sign-in can
  * never write to Neon or any other host.
  */
-export function checkLocalDatabase(databaseUrl: string | undefined) {
+export function checkLocalDatabase(databaseUrl: string | undefined): asserts databaseUrl is string {
   if (!databaseUrl) throw new Error("DATABASE_URL isn't set, in .env.local or .env.");
   let url: URL;
   try {
