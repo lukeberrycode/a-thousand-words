@@ -173,6 +173,7 @@ The project is set up for an AI coding agent to work on it safely ([ADR 0015](do
 - Branches: `plan/<slug>` carries out `docs/plans/<slug>.md`, and `adr/<number>-<slug>` carries out an ADR. Either must already be on `main`. `fix/`, `docs/` and `dependabot/` branches need neither. CI checks every pull request's branch.
 - `.claude/skills/`: `write-adr` records a decision in the house format; `/release <PR>` takes a pull request to production in the right order (migrate, merge, deploy, production checks), with the owner running the production steps ([ADR 0017](docs/adr/0017-skills-and-subagents.md)).
 - `.claude/agents/`: a `code-reviewer` that can only read, and a `test-writer` that can only edit test files. A hook enforces both.
+- `.mcp.json`: a headless browser, Playwright MCP, so the agent can look at the pages it changes. It's signed in as a local user, "Agent (local)", and can open only the checkout's own dev server and R2 mock, and where images are served from. Tools that run JavaScript are denied, and the `mcp-guard.mjs` hook checks every call, since MCP servers run outside the sandbox ([ADR 0026](docs/adr/0026-mcp-servers-for-the-agent.md)).
 - `.github/workflows/ci.yml`: branch name, format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
 
 ## Project docs

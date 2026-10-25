@@ -53,11 +53,12 @@ docs/                 One-pager, architecture, ADRs, wireframes
 prisma/               Schema and migrations
 src/app/              Routes (App Router); see "Routes and views" below
 src/auth.ts           Auth.js config (GitHub provider, Prisma adapter)
-src/lib/              Shared code: db client, storage, current user, validation, regions, duplicate check
+src/lib/              Shared code: db client, storage, current user, validation, regions, duplicate check, the agent
+                      browser's limits (mcp.ts, ADR 0026)
 src/lib/graphql/      The GraphQL API's schema, resolvers, query limits and server (ADR 0023)
 src/generated/prisma  Generated Prisma Client (gitignored)
 scripts/              Dev server start, worktree setup (ADR 0020), env loading, account approval, branch check (ADR 0021),
-                      local R2 mock (ADR 0024), agent:implement (ADR 0025)
+                      local R2 mock (ADR 0024), agent:implement (ADR 0025), the agent's browser (ADR 0026)
 infra/                AWS CDK stack for the nightly orphan cleanup; its own package
 .github/workflows/    GitHub Actions, including the infra checks and deploy
 ```

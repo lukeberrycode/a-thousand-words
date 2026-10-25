@@ -3,6 +3,7 @@
 
 import { execFileSync } from "node:child_process";
 import { basename } from "node:path";
+import { config } from "dotenv";
 import { worktreeName } from "../src/lib/worktree";
 
 function git(args: string[], cwd: string) {
@@ -28,4 +29,16 @@ export function checkoutFolders(cwd = process.cwd()) {
     .split("\n")
     .filter((line) => line.startsWith("worktree "))
     .map((line) => line.slice("worktree ".length));
+}
+
+/**
+ * The checkout's settings: the environment, then .env.local, then .env, in the order load-env.ts
+ * reads them. Unlike load-env.ts, they're returned instead of put in process.env, so a server the
+ * caller starts doesn't inherit the secrets in .env (ADR 0026).
+ */
+export function checkoutEnv(): Record<string, string | undefined> {
+  const env: Record<string, string> = {};
+  for (const [name, value] of Object.entries(process.env)) if (value !== undefined) env[name] = value;
+  config({ path: [".env.local", ".env"], processEnv: env, quiet: true });
+  return env;
 }

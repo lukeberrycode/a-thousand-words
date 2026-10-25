@@ -580,6 +580,29 @@ The read-only API at `/api/graphql` (ADR 0023). In development, opening http://l
 - **Automation:** Automated: [`e2e/api.spec.ts`](../e2e/api.spec.ts). It checks every user's email in the database against the response, not just the test users'.
 
 
+## Agent tooling
+
+The coding agent's own tools, not the app. The agent's browser is Playwright MCP, started by `scripts/mcp-playwright.ts` and checked call by call by the `.claude/hooks/mcp-guard.mjs` hook (ADR 0026).
+
+### AGT-01: The agent's browser is connected, signed in and limited to the checkout
+
+- **Needs:** Claude Code installed and signed in; a worktree set up with `npm run worktree:setup -- --mock`, its local database running and `npm run dev` running in it; the folder trusted in Claude Code
+- **Steps:**
+  1. In the worktree, start `claude`, and run `/mcp`.
+  2. Ask the agent to open the home page in its browser and read the header.
+  3. Ask it to open https://example.com.
+  4. Ask it to run some JavaScript in the page, such as `document.title`.
+  5. In a fresh worktree (set up as above, but never opened in Claude Code), run `claude -p "List the playwright tools you have."`.
+- **Expected:**
+  - Step 1 lists the `playwright` server as connected.
+  - In step 2, the agent opens the worktree's own dev server (its port, not 3000) and reports **Agent (local)** and **Sign out** in the header.
+  - In step 3, the call is refused by the hook, with "The browser may only open this checkout's own pages (…)", and the browser stays where it was.
+  - In step 4, `browser_evaluate` (or `browser_run_code_unsafe`) is denied, by the deny rules or the hook. No JavaScript runs.
+  - Step 5 lists the `mcp__playwright__browser_*` tools, without asking for approval.
+- **Proves:** `.mcp.json` and the launcher start the browser for this checkout's ports, signed in as the local agent user, in interactive and headless sessions; the hook keeps it on the checkout's own pages; and the tools that run JavaScript are off.
+- **Automation:** Manual. It needs Claude Code itself, signed in, to load the server and run the hook, which neither Vitest nor Playwright can do. The hook's rules are unit-tested in [`src/lib/mcp.test.ts`](../src/lib/mcp.test.ts), which also runs the hook script with sample inputs: an allowed and a refused navigation, a JavaScript tool, a non-browser tool and input that isn't JSON.
+
+
 ## Production
 
 Run these on the deployed site before sharing its URL. "Production" means the Vercel URL (https://a-thousand-words-pi.vercel.app/), signed in with the production GitHub OAuth app.
@@ -655,3 +678,4 @@ These tests were collected on 2026-10-02 from the setup guides kept outside this
 | Artwork-led image page, ADR 0012 (written with the code) | MAN-10; MAN-07, MAN-08 and MAN-09 rewritten |
 | On-screen keyboard (written with the code) | MAN-09 |
 | GraphQL API, ADR 0023 (written with the code) | API-01 to API-03 |
+| The agent's browser, ADR 0026 (written with the code) | AGT-01 |

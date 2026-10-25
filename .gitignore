@@ -59,3 +59,6 @@ next-env.d.ts
 
 # objects stored by the local R2 mock (ADR 0024)
 /.r2-mock/
+
+# the agent's browser: snapshots, screenshots and its signed-in session (ADR 0026)
+/.playwright-mcp/
