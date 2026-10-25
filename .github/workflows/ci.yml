@@ -1,6 +1,7 @@
 # Checks every pull request and every push to main (ADR 0015). The `main` ruleset requires the
-# "checks" job to pass before a pull request can merge. The system tests and Lighthouse need a
-# database and storage, so they don't run here yet (docs/discovery/risks.md, R12).
+# "checks" job to pass before a pull request can merge. The "system" job runs the Playwright system
+# tests against a Postgres service and the local R2 mock, so they need no secrets (ADR 0024).
+# Lighthouse still runs only locally.
 name: CI
 
 on:
@@ -29,6 +30,15 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # A pull request's branch carries out a plan or an ADR already on main (ADR 0021). The name
+      # goes through an env variable, never straight into the script.
+      - name: Branch
+        if: github.event_name == 'pull_request'
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          git fetch --quiet --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+          npm run -s check:branch -- "$BRANCH"
       - name: Format
         run: npm run format:check
       - name: Lint
@@ -45,3 +55,42 @@ jobs:
         run: |
           npm audit --omit=dev || true
           npm audit --omit=dev --audit-level=critical
+
+  system:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Migrate
+        run: npx --no-install prisma migrate deploy
+      - name: Install Chromium
+        run: npx --no-install playwright install --with-deps chromium
+      # Starts the R2 mock and its own `next dev` (playwright.config.ts). No seed: each test makes
+      # the users and images it needs (e2e/support/world.ts).
+      - name: System tests
+        run: npm run test:system
+      - name: Upload traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7

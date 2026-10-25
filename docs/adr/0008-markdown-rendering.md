@@ -1,6 +1,6 @@
 # 8. Render annotation Markdown with react-markdown, without HTML or images
 
-Date: 2026-10-02 · Status: Accepted
+Date: 2026-10-02 · Status: Amended by [ADR 0022](0022-no-links-in-annotations.md)
 
 ## Context
 

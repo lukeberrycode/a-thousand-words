@@ -41,11 +41,17 @@ test("ANN-01: Create an annotation", async ({ page, world }) => {
   const drawn = (await view.draft.locator(".a9s-shape-handle").boundingBox())!;
   expect(card.x >= drawn.x + drawn.width || card.x + card.width <= drawn.x).toBe(true);
 
-  await view.card.getByLabel("What's in this region?").fill("**Bold** and a [link](https://example.com)");
+  // The help text doesn't offer links, and says they show as plain text (ADR 0022).
+  await expect(
+    view.card.getByText("Markdown works: **bold**, _italic_, lists. Links show as plain text."),
+  ).toBeVisible();
+  await expect(view.card).not.toContainText("[links]");
+
+  await view.card.getByLabel("What's in this region?").fill("**Bold** and _italic_");
   await view.card.getByRole("button", { name: "Save" }).click();
 
   await expect(view.card.locator("strong", { hasText: "Bold" })).toBeVisible();
-  await expect(view.card.getByRole("link", { name: "link" })).toHaveAttribute("href", "https://example.com");
+  await expect(view.card.locator("em", { hasText: "italic" })).toBeVisible();
   await expect(view.card.getByText(`By ${user.name}`)).toBeVisible();
   await expect(view.card.getByRole("button", { name: "Edit" })).toBeVisible();
   await expect(view.card.getByRole("button", { name: "Delete" })).toBeVisible();
@@ -85,16 +91,19 @@ test("ANN-02: Annotations are visible to everyone and stay aligned", async ({ pa
   await expect(view.card.getByText(`By ${author.name}`)).toBeVisible();
   await view.closeCard();
 
-  // Step 3: the box stays over the same part of the image at every size.
-  expectRegion(await view.shapeRegion(regionId), box, 0.003);
+  // Step 3: the box stays over the same part of the image at every size. The image and box are
+  // measured one after the other, and the box layer can lag a frame behind a zoom or resize, so
+  // check again until they agree.
+  const aligned = () => expect(async () => expectRegion(await view.shapeRegion(regionId), box, 0.003)).toPass();
+  await aligned();
   await view.panel.getByRole("button", { name: "Zoom in" }).click();
   await view.panel.getByRole("button", { name: "Zoom in" }).click();
-  expectRegion(await view.shapeRegion(regionId), box, 0.003);
+  await aligned();
   await view.panel.getByRole("button", { name: "Zoom out" }).click();
-  expectRegion(await view.shapeRegion(regionId), box, 0.003);
+  await aligned();
   await page.setViewportSize({ width: 400, height: 820 });
   await expect(view.panel).toBeVisible();
-  expectRegion(await view.shapeRegion(regionId), box, 0.003);
+  await aligned();
 });
 
 test("ANN-03: Cancelling and leaving annotate mode discard the draft", async ({ page, world }) => {
@@ -140,26 +149,39 @@ test("ANN-04: Annotation text is rendered safely", async ({ page, world }) => {
   });
 
   const text =
-    '<b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) [good](https://example.com)';
+    '<b onclick="alert(1)">html</b> [bad](javascript:alert(1)) ![pic](https://example.com/x.png) ' +
+    "[good](https://example.com) <https://example.com/auto> https://example.com/bare";
   await view.panel.getByRole("button", { name: "Annotate", exact: true }).click();
   await view.drawBox({ x: 0.1, y: 0.1, w: 0.2, h: 0.2 });
   await view.card.getByLabel("What's in this region?").fill(text);
   await view.card.getByRole("button", { name: "Save" }).click();
 
-  const good = view.card.getByRole("link", { name: "good" });
-  await expect(good).toBeVisible();
-  // The HTML shows as text.
+  // Saving link syntax succeeds: the editor closes with no error (ADR 0022).
+  await expect(view.card.getByText(`By ${user.name}`)).toBeVisible();
+  await expect(view.card.getByRole("textbox")).toHaveCount(0);
+  await expect(view.card.getByRole("alert")).toHaveCount(0);
+  // The HTML shows as text (ADR 0008).
   await expect(view.card.getByText('<b onclick="alert(1)">html</b>', { exact: false })).toBeVisible();
   await expect(view.card.locator("b")).toHaveCount(0);
   await expect(view.card.locator("[onclick]")).toHaveCount(0);
-  // The unsafe link's URL is dropped, so it's plain text, and no image loads.
-  await expect(view.card.getByText("bad")).toBeVisible();
-  await expect(view.card.getByRole("link", { name: "bad" })).toHaveCount(0);
-  await expect(view.card.locator('[href^="javascript:"]')).toHaveCount(0);
+  // No image loads, and neither its alt text nor its URL shows (ADR 0008).
   await expect(view.card.locator("img")).toHaveCount(0);
-  await expect(good).toHaveAttribute("href", "https://example.com");
-  await expect(good).toHaveAttribute("target", "_blank");
-  await expect(good).toHaveAttribute("rel", "nofollow ugc noopener noreferrer");
+  await expect(view.card).not.toContainText(/\bpic\b/);
+  await expect(view.card).not.toContainText("x.png");
+  // No link of any kind (ADR 0022). Markdown links show only their text, without the URL.
+  await expect(view.card.locator("a")).toHaveCount(0);
+  await expect(view.card.locator("[href]")).toHaveCount(0);
+  await expect(view.card).toContainText("bad");
+  await expect(view.card).toContainText("good");
+  await expect(view.card).not.toContainText("javascript:");
+  // "https://example.com" not followed by "/": the good link's URL, as distinct from the two below.
+  await expect(view.card).not.toContainText(/https:\/\/example\.com(?!\/)/);
+  // The autolink and the bare URL show as plain text.
+  await expect(view.card).toContainText("https://example.com/auto");
+  await expect(view.card).not.toContainText("<https://example.com/auto>");
+  await expect(view.card).toContainText("https://example.com/bare");
+  // The stored text is unchanged.
+  expect((await annotationsOf(image)).map((a) => a.bodyMarkdown)).toEqual([text]);
 });
 
 test("ANN-05: The annotation action rejects requests that aren't signed in", async ({ page, world }) => {

@@ -1,6 +1,6 @@
 # 15. Guard the coding agent with permissions, hooks and a sandbox, and check every pull request in CI
 
-Date: 2026-10-12 · Status: Accepted
+Date: 2026-10-12 · Status: Accepted, amended by [ADR 0021](0021-agent-rules-by-checkout.md)
 
 ## Context
 

@@ -45,7 +45,7 @@ Then check its status (`gh api <statuses_url>`) every minute or so, until the la
 
 Read the **Production** section of `docs/system-tests.md`, and walk the owner through PROD-01 to PROD-05 at https://a-thousand-words-pi.vercel.app/.
 
-- **PROD-01:** check the home page yourself first with WebFetch: it should list the 12 seeded paintings. Then ask the owner to open three and click regions.
+- **PROD-01:** check the home page yourself first with WebFetch: it should show a Recently added row, then a row for each collection in prisma/seed-data.ts, each with its blurb and thumbnails. Then ask the owner to open three and click regions.
 - **PROD-02 to PROD-05** need the owner's browser, GitHub account and phones. Give them the steps and expected results for each, one test at a time, and ask for pass or fail.
 - If the release only changes docs or tests, say which checks can be skipped, and let the owner decide.
 
