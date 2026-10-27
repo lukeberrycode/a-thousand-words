@@ -142,7 +142,8 @@
       "gh pr *",
       "gh run *",
       "gh api *",
-      "gh repo view *"
+      "gh repo view *",
+      "git push *"
     ],
     "network": {
       "allowedDomains": ["registry.npmjs.org", "github.com", "api.github.com", "*.githubusercontent.com"]
