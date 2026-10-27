@@ -5,6 +5,7 @@ import {
   checkoutPort,
   databaseName,
   devPort,
+  tcpDatabaseUrl,
   withDatabaseUrl,
   withEnvValues,
   withoutEnvValues,
@@ -172,6 +173,31 @@ describe("withDatabaseUrl", () => {
   it("gives the same file when run twice", () => {
     const once = withDatabaseUrl("A=1\n# note\n\nB=2\n", url);
     expect(withDatabaseUrl(once, url)).toBe(once);
+  });
+});
+
+describe("tcpDatabaseUrl", () => {
+  const tcp = "postgres://postgres:postgres@localhost:51218/template1?sslmode=disable";
+
+  it("finds the URL that prisma dev prints for a running server", () => {
+    expect(tcpDatabaseUrl(`Loaded Prisma config from prisma.config.ts.\n\n${tcp}\n`)).toBe(tcp);
+  });
+
+  it("skips a prisma+postgres URL printed before it", () => {
+    const output = `DATABASE_URL="prisma+postgres://localhost:51213/?api_key=abc"\nTCP: ${tcp}\n`;
+    expect(tcpDatabaseUrl(output)).toBe(tcp);
+  });
+
+  it("finds nothing when there is only a prisma+postgres URL", () => {
+    expect(tcpDatabaseUrl("prisma+postgres://localhost:51213/?api_key=abc")).toBeUndefined();
+  });
+
+  it("accepts postgresql://", () => {
+    expect(tcpDatabaseUrl("postgresql://u:p@localhost:5432/db")).toBe("postgresql://u:p@localhost:5432/db");
+  });
+
+  it("stops at a closing quote", () => {
+    expect(tcpDatabaseUrl(`DATABASE_URL="${tcp}"`)).toBe(tcp);
   });
 });
 

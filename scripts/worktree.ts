@@ -21,6 +21,7 @@ import {
   checkoutPort,
   databaseName,
   devPort,
+  tcpDatabaseUrl,
   withEnvValues,
   withoutEnvValues,
   worktreeName,
@@ -72,7 +73,7 @@ if (!mock && !existsSync(".env")) {
 
 // Starts the server, or finds it already running, and prints its connection string.
 const output = run("npx", ["--no-install", "prisma", "dev", "--name", database, "--detach"]);
-const url = output.match(/postgres:\/\/\S+/)?.[0];
+const url = tcpDatabaseUrl(output);
 if (!url) fail(`prisma dev didn't print a connection string:\n${output}`);
 const values = mock ? { DATABASE_URL: url, ...mockR2Env(r2Port), ...MOCK_AUTH_ENV } : { DATABASE_URL: url };
 // Without --mock, drop any mock values an earlier `--mock` setup left, or they'd still win over .env.
@@ -96,6 +97,7 @@ async function seedAndFinish() {
   console.log(
     `\nWorktree ${worktree} is ready: database ${database}, ${storage}, dev server http://localhost:${port}.`,
   );
+  if (!mock) console.log(`For uploads, the R2 development bucket's CORS rule must allow http://localhost:${port}.`);
 }
 
 /** Starts the R2 mock for the seed, unless one is already running here. Returns how to stop it. */
