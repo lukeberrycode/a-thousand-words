@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["--no-install", "tsx", "${CLAUDE_PROJECT_DIR:-.}/scripts/mcp-playwright.ts"]
+    }
+  }
+}

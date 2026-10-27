@@ -1,7 +1,9 @@
 import { DeleteObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { defaults, Pool } from "pg";
+import { r2ClientConfig } from "../../src/lib/r2-config";
 
-// The database and R2 bucket the dev server uses, from .env. The app's own modules for these are
+// The database and R2 bucket the test app server uses: the R2 mock unless E2E_REAL_R2 is set
+// (playwright.config.ts, ADR 0024), and the database from .env.local or .env. The app's own modules for these are
 // "server-only", and the generated Prisma client is an ES module, which Playwright can't load from
 // this CommonJS project, so the tests use plain SQL.
 
@@ -23,11 +25,7 @@ export async function sql<T = Record<string, unknown>>(text: string, values: unk
   return (await pool.query(text, values)).rows as T[];
 }
 
-const r2 = new S3Client({
-  region: "auto",
-  endpoint: `https://${env("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com`,
-  credentials: { accessKeyId: env("R2_ACCESS_KEY_ID"), secretAccessKey: env("R2_SECRET_ACCESS_KEY") },
-});
+const r2 = new S3Client(r2ClientConfig());
 
 export function publicUrl(key: string) {
   return `${env("R2_PUBLIC_URL").replace(/\/$/, "")}/${key}`;

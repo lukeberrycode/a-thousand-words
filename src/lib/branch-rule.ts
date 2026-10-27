@@ -10,6 +10,30 @@ export const EXEMPT_PREFIXES = ["fix/", "docs/", "dependabot/"];
 const WORKTREE_PREFIX = "worktree-";
 
 /**
+ * What a branch carries out, from its name alone: a plan (`plan/<slug>` → `docs/plans/<slug>.md`),
+ * an ADR (`adr/<number>[-<slug>]` → files starting `docs/adr/<number>-`), or nothing it names
+ * (null). Exempt branches and badly formed names give null too.
+ */
+export function branchTarget(branch: string): { kind: "plan"; path: string } | { kind: "adr"; prefix: string } | null {
+  const name = branch.startsWith(WORKTREE_PREFIX) ? branch.slice(WORKTREE_PREFIX.length) : branch;
+  const plan = /^plan\/([a-z0-9][a-z0-9-]*)$/.exec(name);
+  if (plan) return { kind: "plan", path: `docs/plans/${plan[1]}.md` };
+  const adr = /^adr\/(\d{4})(-[a-z0-9-]+)?$/.exec(name);
+  if (adr) return { kind: "adr", prefix: `docs/adr/${adr[1]}-` };
+  return null;
+}
+
+/** The file on `main` that a branch carries out, or null if there isn't one. */
+export function targetFile(branch: string, filesOnMain: readonly string[]): string | null {
+  const target = branchTarget(branch);
+  if (target?.kind === "plan") return filesOnMain.includes(target.path) ? target.path : null;
+  if (target?.kind === "adr") {
+    return filesOnMain.find((file) => file.startsWith(target.prefix) && file.endsWith(".md")) ?? null;
+  }
+  return null;
+}
+
+/**
  * Why `branch` can't be created or pushed, or null if it can. `filesOnMain` lists the files under
  * docs/plans and docs/adr on `main`.
  */
@@ -17,18 +41,14 @@ export function branchProblem(branch: string, filesOnMain: readonly string[]): s
   const name = branch.startsWith(WORKTREE_PREFIX) ? branch.slice(WORKTREE_PREFIX.length) : branch;
   if (EXEMPT_PREFIXES.some((prefix) => name.startsWith(prefix) && name.length > prefix.length)) return null;
 
-  const plan = /^plan\/([a-z0-9][a-z0-9-]*)$/.exec(name);
-  if (plan) {
-    const path = `docs/plans/${plan[1]}.md`;
-    if (filesOnMain.includes(path)) return null;
-    return `Branch "${branch}" carries out ${path}, which isn't on main. Put the plan on main first (ADR 0021).`;
+  const target = branchTarget(branch);
+  if (target && targetFile(branch, filesOnMain)) return null;
+  if (target?.kind === "plan") {
+    return `Branch "${branch}" carries out ${target.path}, which isn't on main. Put the plan on main first (ADR 0021).`;
   }
-
-  const adr = /^adr\/(\d{4})(-[a-z0-9-]+)?$/.exec(name);
-  if (adr) {
-    const prefix = `docs/adr/${adr[1]}-`;
-    if (filesOnMain.some((file) => file.startsWith(prefix) && file.endsWith(".md"))) return null;
-    return `Branch "${branch}" carries out ADR ${adr[1]}, which isn't on main. Put the ADR on main first (ADR 0021).`;
+  if (target?.kind === "adr") {
+    const number = target.prefix.slice("docs/adr/".length, -1);
+    return `Branch "${branch}" carries out ADR ${number}, which isn't on main. Put the ADR on main first (ADR 0021).`;
   }
 
   return (

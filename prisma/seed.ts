@@ -4,7 +4,8 @@
 //
 //   npm run db:seed -- --yes
 //
-// Uses DATABASE_URL and the R2_* values from the environment (.env locally). Safe to re-run:
+// Uses DATABASE_URL and the R2_* values from the environment (.env locally; R2_ENDPOINT seeds the
+// local R2 mock instead, ADR 0024). Safe to re-run:
 // paintings already seeded (same R2 key) are skipped, except that one with no annotations yet gets
 // its seed annotations; a painting whose Commons file can't be found is skipped with a warning; and
 // each collection's membership is replaced with the one listed. Run it against production
@@ -15,6 +16,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { PrismaClient } from "@/generated/prisma/client";
 import { fingerprint } from "@/lib/image-hash";
+import { r2ClientConfig } from "@/lib/r2-config";
 import { MAX_UPLOAD_BYTES } from "@/lib/uploads";
 import { artworks, collections, type SeedArtwork } from "./seed-data";
 
@@ -34,7 +36,7 @@ async function main() {
   const databaseUrl = env("DATABASE_URL");
   const bucket = env("R2_BUCKET");
   console.log(`Database: ${new URL(databaseUrl).host}`);
-  console.log(`R2 bucket: ${bucket}`);
+  console.log(`R2 bucket: ${bucket}${process.env.R2_ENDPOINT ? ` at ${process.env.R2_ENDPOINT}` : ""}`);
   console.log(`Paintings: ${artworks.length}`);
   console.log(`Collections: ${collections.length}`);
   checkCollections();
@@ -44,11 +46,7 @@ async function main() {
   }
 
   const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
-  const r2 = new S3Client({
-    region: "auto",
-    endpoint: `https://${env("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId: env("R2_ACCESS_KEY_ID"), secretAccessKey: env("R2_SECRET_ACCESS_KEY") },
-  });
+  const r2 = new S3Client(r2ClientConfig());
 
   try {
     const owner = await db.user.upsert({ where: { id: SEED_USER.id }, update: {}, create: SEED_USER });

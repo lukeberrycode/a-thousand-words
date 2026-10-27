@@ -7,8 +7,10 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { r2ClientConfig } from "./r2-config";
 
-// Cloudflare R2 via its S3-compatible API. See docs/adr/0002.
+// Cloudflare R2 via its S3-compatible API. See docs/adr/0002. R2_ENDPOINT points it at the local
+// mock instead (ADR 0024).
 
 function env(name: string): string {
   const value = process.env[name];
@@ -19,14 +21,7 @@ function env(name: string): string {
 let client: S3Client | undefined;
 
 function r2() {
-  client ??= new S3Client({
-    region: "auto",
-    endpoint: `https://${env("R2_ACCOUNT_ID")}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: env("R2_ACCESS_KEY_ID"),
-      secretAccessKey: env("R2_SECRET_ACCESS_KEY"),
-    },
-  });
+  client ??= new S3Client(r2ClientConfig());
   return client;
 }
 

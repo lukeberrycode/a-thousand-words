@@ -35,8 +35,8 @@ Options for the port:
 - Two folder names can hash to the same port. Setup refuses to continue when that happens between worktrees, and the fix is renaming a folder. A program outside the repository holding the port still has to be noticed by hand.
 - Each worktree needs `npm install` and `npm run worktree:setup` before it runs, and `npm run worktree:teardown` before it's removed. A forgotten teardown leaves a stopped `prisma dev` server behind; `npx prisma dev ls` lists them.
 - Manual GitHub sign-in only works on port 3000, the callback URL registered with GitHub, so manual sign-in checks stay in the main checkout. The automated tests don't use GitHub.
-- The R2 development bucket is still shared. Every test and upload uses its own keys, so that's safe for now. The seed paintings share theirs across every checkout, so don't delete a seed painting in a worktree.
+- A worktree set up with a copy of `.env` shares the R2 development bucket. Every upload uses its own keys, so that's safe for now. The seed paintings share theirs across every such checkout, so don't delete a seed painting there. System tests and `--mock` worktrees use an R2 mock instead ([ADR 0024](0024-r2-mock-for-system-tests.md)).
 - Cookies aren't tied to a port, so one browser holds one session cookie for every checkout on `localhost`. Signing in on one checkout signs the browser out of another. The automated tests are unaffected: each test has a fresh browser context.
-- Browsers upload straight to R2, so the development bucket's CORS rule must allow each worktree's origin (`http://localhost:<port>`), or uploads fail there. Setup prints the origin to add.
+- Browsers upload straight to R2, so in a worktree set up with a copy of `.env`, the development bucket's CORS rule must allow its origin (`http://localhost:<port>`), or uploads fail there. Setup prints the origin to add.
 - Two checkouts running the system tests at once share the machine's CPU. Each run takes about three times as long, and a test near its 60-second limit can time out.
 - Lighthouse (`npm run test:perf`) still runs only in the main checkout, on port 3000.

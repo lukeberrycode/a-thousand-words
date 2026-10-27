@@ -11,5 +11,9 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
+    // `prisma dev` serves its shadow database on a separate port. Without this,
+    // `migrate dev` creates one by copying template1, which already has the tables.
+    // An empty value counts as unset.
+    shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"] || undefined,
   },
 });

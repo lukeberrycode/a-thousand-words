@@ -26,7 +26,7 @@ I'm a senior software engineer with seventeen years' experience, most of it ship
 
 ## Stack
 
-Next.js (App Router, TypeScript) · Tailwind CSS · Postgres + Prisma · Cloudflare R2 · Annotorious · Auth.js
+Next.js (App Router, TypeScript) · Tailwind CSS · Postgres + Prisma · Cloudflare R2 · Annotorious · Auth.js · GraphQL Yoga (a read-only API)
 
 Why each was chosen: [docs/adr](docs/adr/README.md). How it fits together: [docs/architecture.md](docs/architecture.md).
 
@@ -46,10 +46,23 @@ Requires Node 20+ and a Postgres database.
 npm install                # also generates the Prisma client
 cp .env.example .env       # then set DATABASE_URL, the R2_* values and the AUTH_* values
 npx prisma dev             # optional: starts a local Postgres and prints its URL
+                           # with it, also set SHADOW_DATABASE_URL (see .env.example)
 npm run db:migrate         # apply the schema
 npm run db:seed -- --yes   # optional: public-domain paintings and home page collections
 npm run dev                # http://localhost:3000
 ```
+
+## GraphQL API
+
+A small, read-only GraphQL API at `/api/graphql` returns images, their regions and annotations, and the home page collections ([ADR 0023](docs/adr/0023-graphql-api.md)). It needs no sign-in and returns only what the site shows anyone. With `npm run dev` running, open http://localhost:3000/api/graphql in a browser for GraphiQL (development only), or use curl:
+
+```bash
+curl -s http://localhost:3000/api/graphql \
+  -H 'content-type: application/json' \
+  -d '{"query":"{ images(first: 2) { nodes { id title url regions { x y w h annotations { bodyMarkdown author { name } } } } pageInfo { endCursor hasNextPage } } }"}'
+```
+
+Pass `endCursor` as `after` for the next page. `bodyMarkdown` is untrusted user text: render it as the site does ([ADR 0008](docs/adr/0008-markdown-rendering.md)).
 
 ## Scripts
 
@@ -61,7 +74,7 @@ npm run dev                # http://localhost:3000
 | `npm run typecheck` | TypeScript, without building (generates Next.js's route types first) |
 | `npm test` | The unit tests (Vitest, `src/**/*.test.ts`); `npm run test:watch` reruns them on change |
 | `npm run format` | Format the code with Prettier; `npm run format:check` only checks |
-| `npm run test:system` | The automated system tests ([docs/system-tests.md](docs/system-tests.md#running-the-automated-tests)): Playwright against the dev server, local database and R2 bucket from `.env`. Run `npx playwright install chromium` once first. |
+| `npm run test:system` | The automated system tests ([docs/system-tests.md](docs/system-tests.md#running-the-automated-tests)): Playwright against the local database, with its own dev server and R2 mock ([ADR 0024](docs/adr/0024-r2-mock-for-system-tests.md)). `E2E_REAL_R2=1` uses the R2 bucket from `.env` instead. Run `npx playwright install chromium` once first. |
 | `npm run test:perf` | Lighthouse CI against a production build of the home page (`npm run build` first, with the local database running). Warns below the performance budgets. Set `CHROME_PATH` to a Chrome or Chromium binary, e.g. Playwright's under `~/.cache/ms-playwright/`. |
 | `npm run db:migrate` | Create and apply migrations (`prisma migrate dev`). Restart `npm run dev` afterwards: it keeps one Prisma client across hot reloads, so it won't know about new columns until restarted. |
 | `npm run db:studio` | Browse the database in Prisma Studio |
@@ -69,6 +82,7 @@ npm run dev                # http://localhost:3000
 | `npm run db:users` | List accounts waiting for approval; `-- approve <github-login>` approves one |
 | `npm run worktree:setup` | In a git worktree: give it its own local database, migrated and seeded ([below](#working-in-git-worktrees)) |
 | `npm run worktree:teardown` | In a git worktree, before removing it: delete its local database |
+| `npm run agent:implement -- <branch>` | Have an agent carry out a plan or ADR from `main` in a new worktree, unattended, through to a pull request ([below](#unattended-agents)) |
 | `npm run prod:migrate` | Apply migrations to production, with settings from KeePassXC (see [Deploying](#deploying)) |
 | `npm run prod:seed` | Seed production, with settings from KeePassXC (dry run unless `-- --yes`) |
 | `npm run preview:migrate` | Apply migrations to the preview database, with settings from KeePassXC |
@@ -84,11 +98,22 @@ Parallel Claude Code sessions each work in a git worktree under `.claude/worktre
 ```bash
 npm install                  # in the worktree
 npm run worktree:setup       # copies .env if missing, starts its database, migrates and seeds it
+                             # (-- --mock: no .env; uses a local R2 mock instead, ADR 0024)
 npm run dev                  # prints the worktree's port, between 20000 and 20999
 npm run worktree:teardown    # before removing the worktree
 ```
 
-The setup writes the worktree's `DATABASE_URL` to `.env.local`, which wins over `.env`. The port comes from the folder name, so it's the same every time. GitHub sign-in only returns to port 3000, so check it by hand in the main checkout. Uploads go straight from the browser to R2, so add the worktree's origin (setup prints it) to the development bucket's CORS rule. One browser can only be signed in to one checkout at a time, because cookies on `localhost` ignore the port.
+The setup writes the worktree's `DATABASE_URL` to `.env.local`, which wins over `.env`. The port comes from the folder name, so it's the same every time. GitHub sign-in only returns to port 3000, so check it by hand in the main checkout. Uploads go straight from the browser to R2, so without `--mock`, add the worktree's origin (setup prints it) to the development bucket's CORS rule. One browser can only be signed in to one checkout at a time, because cookies on `localhost` ignore the port.
+
+## Unattended agents
+
+With a plan or ADR on `main`, one command has an agent carry it out ([ADR 0025](docs/adr/0025-headless-agent-implements-plans.md)):
+
+```bash
+npm run agent:implement -- adr/0022-no-links-in-annotations
+```
+
+It makes the worktree and sets it up with the R2 mock, so no secrets are copied. Then it runs Claude Code headless, in auto mode, on the `implement-plan` skill. The agent carries out the plan, has the tests written, runs every check including the system tests, gets a code review, and opens a pull request. The pull request is a draft, with a "Needs the owner" section, when something is left for you. A desktop notification says which. The log is in `.claude/agent-runs/`. `AGENT_BUDGET_USD` caps the spend (default 25).
 
 ## Deploying
 
@@ -148,6 +173,7 @@ The project is set up for an AI coding agent to work on it safely ([ADR 0015](do
 - Branches: `plan/<slug>` carries out `docs/plans/<slug>.md`, and `adr/<number>-<slug>` carries out an ADR. Either must already be on `main`. `fix/`, `docs/` and `dependabot/` branches need neither. CI checks every pull request's branch.
 - `.claude/skills/`: `write-adr` records a decision in the house format; `/release <PR>` takes a pull request to production in the right order (migrate, merge, deploy, production checks), with the owner running the production steps ([ADR 0017](docs/adr/0017-skills-and-subagents.md)).
 - `.claude/agents/`: a `code-reviewer` that can only read, and a `test-writer` that can only edit test files. A hook enforces both.
+- `.mcp.json`: a headless browser, Playwright MCP, so the agent can look at the pages it changes. It's signed in as a local user, "Agent (local)", and can open only the checkout's own dev server and R2 mock, and where images are served from. Tools that run JavaScript are denied, and the `mcp-guard.mjs` hook checks every call, since MCP servers run outside the sandbox ([ADR 0026](docs/adr/0026-mcp-servers-for-the-agent.md)).
 - `.github/workflows/ci.yml`: branch name, format check, lint, typecheck, unit tests, build and dependency audit on every pull request. The repository ruleset requires it to pass before a merge.
 
 ## Project docs

@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The system tests' own dev server build, and the R2 mock's stored objects (ADR 0024).
+    ".next-test/**",
+    ".r2-mock/**",
     // The AWS CDK stack has its own package, config and checks (infra/README.md).
     "infra/**",
     // Git worktrees made by Claude Code are separate checkouts with their own checks.

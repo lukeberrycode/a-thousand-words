@@ -15,9 +15,13 @@ Model in use: Claude Opus 5.5 (October 2026). When the model changes, ask what i
 ## Commands
 
 - `npm run lint`, `npm run typecheck`, `npm test` (Vitest unit tests, `src/**/*.test.ts`), `npm run format`.
-- `npm run test:system`: Playwright system tests in `e2e/`. They need the local database (`npx prisma dev start a-thousand-words`) and R2 values in `.env`.
+- `npm run test:system`: Playwright system tests in `e2e/`. They need only the local database (`npx prisma dev start a-thousand-words`, or the worktree's own): each run starts an R2 mock and its own dev server (ADR 0024).
+- `npm run agent:implement -- <branch>`: the owner's command for an unattended agent to carry out a plan or ADR on `main` in a new worktree, through to a pull request (ADR 0025, skill `implement-plan`). Agents don't run it.
 - `npm run test:perf`: Lighthouse CI against a production build (`npm run build` first).
 - `npm run db:migrate` after a schema change, then restart `npm run dev`.
+
+Run `npm run build` and `npm run test:system` on their own: no `| tail`, `2>&1`, `cd`, `timeout` or env-var prefix. Only the exact command runs outside the sandbox. Arguments after `--` are fine for test:system.
+
 
 ## Rules
 
