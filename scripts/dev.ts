@@ -41,8 +41,9 @@ async function main() {
   // If either one stops, stop the other: a dev server without its storage only half works.
   for (const child of children) {
     // A missing binary is an "error", not an "exit": say so, rather than crash with a stack trace.
-    child.on("error", (err) => {
-      console.error(`Couldn't start ${child.spawnfile} (${err.message}). Has \`npm install\` been run here?`);
+    child.on("error", (err: NodeJS.ErrnoException) => {
+      const hint = err.code === "ENOENT" ? " Has `npm install` been run here?" : "";
+      console.error(`${child.spawnfile} failed (${err.message}).${hint}`);
       for (const other of children) if (other !== child) stop(other, "SIGTERM");
       process.exit(1);
     });

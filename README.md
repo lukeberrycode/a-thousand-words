@@ -103,7 +103,7 @@ npm run dev                  # prints the worktree's port, between 20000 and 209
 npm run worktree:teardown    # before removing the worktree
 ```
 
-The setup writes the worktree's `DATABASE_URL` to `.env.local`, which wins over `.env`. The port comes from the folder name, so it's the same every time. GitHub sign-in only returns to port 3000, so check it by hand in the main checkout. Uploads go straight from the browser to R2, so without `--mock`, add the worktree's origin (setup prints it) to the development bucket's CORS rule. One browser can only be signed in to one checkout at a time, because cookies on `localhost` ignore the port.
+The setup writes the worktree's `DATABASE_URL` to `.env.local`, which wins over `.env`. The port comes from the folder name, so it's the same every time. GitHub sign-in only returns to port 3000, so check it by hand in the main checkout. Uploads go straight from the browser to R2, so set the worktree up with `--mock`, or add its origin (setup prints it) to the development bucket's CORS rule. Cookies on `localhost` ignore the port, so a worktree gets the main checkout's session cookie but has no matching session, and treats you as signed out.
 
 ## Unattended agents
 

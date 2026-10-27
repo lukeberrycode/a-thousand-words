@@ -21,6 +21,7 @@ import {
   checkoutPort,
   databaseName,
   devPort,
+  tcpDatabaseUrl,
   withEnvValues,
   withoutEnvValues,
   worktreeName,
@@ -72,8 +73,7 @@ if (!mock && !existsSync(".env")) {
 
 // Starts the server, or finds it already running, and prints its connection string.
 const output = run("npx", ["--no-install", "prisma", "dev", "--name", database, "--detach"]);
-// The TCP URL, not the `prisma+postgres://` one that `prisma dev start` prints before it.
-const url = output.match(/(?<![\w+])postgres(?:ql)?:\/\/[^\s"']+/)?.[0];
+const url = tcpDatabaseUrl(output);
 if (!url) fail(`prisma dev didn't print a connection string:\n${output}`);
 const values = mock ? { DATABASE_URL: url, ...mockR2Env(r2Port), ...MOCK_AUTH_ENV } : { DATABASE_URL: url };
 // Without --mock, drop any mock values an earlier `--mock` setup left, or they'd still win over .env.

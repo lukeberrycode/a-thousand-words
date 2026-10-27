@@ -60,6 +60,14 @@ export function withDatabaseUrl(envFile: string, url: string) {
 }
 
 /** Sets each of `values` in the text of an env file, at the end, keeping every other line. */
+/**
+ * The TCP connection string in `prisma dev` output. A `prisma+postgres://` URL there is skipped:
+ * plain `postgres://` matching would take its tail, which isn't a working DATABASE_URL.
+ */
+export function tcpDatabaseUrl(output: string): string | undefined {
+  return output.match(/(?<![\w+])postgres(?:ql)?:\/\/[^\s"']+/)?.[0];
+}
+
 export function withEnvValues(envFile: string, values: Readonly<Record<string, string>>) {
   const names = Object.keys(values);
   const added = names.map((name) => `${name}="${values[name]}"`).join("\n");
