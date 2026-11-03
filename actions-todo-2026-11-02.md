@@ -2,13 +2,15 @@
 
 Found while writing the what-is notes for Next.js, Node.js and Tailwind CSS in lukeberrycode-help, checked against `main` at `cb8a47f`. Most urgent first.
 
-## 1. Upgrade Next.js after the 2026-11-03 security release
+## 1. Upgrade Next.js after the 2026-11-03 security release (done)
 
 **Where:** `package.json` pins `next` and `eslint-config-next` at `16.4.2`.
 
 **Why:** Next.js announced a scheduled security release for 3 November 2026 (blog post of 27 October). Several recent Next.js security fixes were for critical issues in React Server Components, which this app uses.
 
 **Fix:** once the release is out, read its notes, upgrade `next` and `eslint-config-next` to the patched version, then run `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and `npm run test:system`.
+
+**Done:** 2026-11-03 in PR #37 (merged as `a6b6c57`). `next` and `eslint-config-next` are now 16.4.5, which fixes seven moderate advisories. None of them affected features this app uses. All the checks passed.
 
 Source: https://nextjs.org/blog/upcoming-nextjs-security-release-november-2026
 
