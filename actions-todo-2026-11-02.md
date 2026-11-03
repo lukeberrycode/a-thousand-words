@@ -41,3 +41,28 @@ Source: https://github.com/nodejs/Release (schedule.json)
 **Fix:** decide which font the site should use. For Geist, replace the `font-family` line with `font-family: var(--font-sans);` (or add `font-sans` to `<body>`'s classes in `layout.tsx`). For Arial, stop loading Geist in `layout.tsx` and remove the font mappings, so the page doesn't download fonts it doesn't use. Then check the pages visually and with `npm run test:perf`.
 
 Source: https://tailwindcss.com/docs/theme
+
+## 5. Clear the `npm audit` findings, and update the reason CI gives for allowing them
+
+Added on 2026-11-03, while upgrading Next.js (item 1, PR #37).
+
+**Where:** `npm audit --omit=dev` reports 6 high and 2 moderate advisories, all in dependencies of dependencies:
+
+- `graphql-yoga` 5.24.1 (pinned exactly in `package.json`) brings in `@graphql-tools/utils` 11.2.2, which has prototype pollution in `mergeDeep` (GHSA-7mx3-vvmw-hjmv, GHSA-c4qx-w738-7hr3). This is the public `/api/graphql` route.
+- `prisma` 7.10.0 brings in `mysql2` 3.15.3 (GHSA-3f6p-5ww8-9rcr, GHSA-rgwj-5xj2-c3m3) and, through `@prisma/config`, `deepmerge-ts` 7.1.5 (GHSA-ggr8-5vv4-36mx).
+- `fast-uri` 3.1.8, through `prisma` › `@prisma/dev` › `ajv` (moderate; four advisories, including GHSA-w74x-v6f9-j3xg).
+- `qs` 6.16.0, through `@annotorious/react` › … › `url` (moderate, GHSA-6pq8-jhm2-2vcw).
+
+The comment above the audit step in `.github/workflows/ci.yml` (lines 52–53) and ADR 0015 say the open high advisories are all inside Prisma with no fix available. That is no longer true on either count.
+
+**Why:** CI blocks only on critical advisories, so these pass unnoticed. The GraphQL one is on a route anyone can call. The others are lower risk (the app never loads `mysql2`, and the Prisma config loader never sees user input), but they all have fixes now.
+
+**Fix:** on a `fix/` branch:
+
+1. Set `graphql-yoga` to `5.24.6`, which no longer uses `@graphql-tools/utils` 11.
+2. Move `prisma`, `@prisma/client` and `@prisma/adapter-pg` together to `7.10.1`, which brings `mysql2` 3.24.4 and `deepmerge-ts` 8.0.2.
+3. Run `npm update fast-uri qs` to move them to 3.1.9 and 6.17.x, inside their existing ranges.
+4. Check that `npm audit --omit=dev` is clean, then run `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` and `npm run test:system` (the API tests cover GraphQL).
+5. If the audit is clean, consider making CI block on high advisories as well. That changes ADR 0015's decision, so it needs a new ADR that supersedes that part. Either way, fix the comment in `ci.yml`.
+
+Source: `npm audit --omit=dev --json`, run on 2026-11-03.
