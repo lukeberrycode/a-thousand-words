@@ -1,26 +1,43 @@
+/* Load Tailwind's base, component and utility styles. */
 @import "tailwindcss";
 
+/* Define the default (light) colours as CSS variables. */
 :root {
+  /* Page background: white. */
   --background: #ffffff;
+  /* Page text: near-black. */
   --foreground: #171717;
 }
 
+/* Expose the variables to Tailwind as theme values. */
 @theme inline {
+  /* Let Tailwind use the background variable as a colour. */
   --color-background: var(--background);
+  /* Let Tailwind use the foreground variable as a colour. */
   --color-foreground: var(--foreground);
+  /* Point the sans font at the Geist variable set in the layout. */
   --font-sans: var(--font-geist-sans);
+  /* Point the mono font at the Geist Mono variable set in the layout. */
   --font-mono: var(--font-geist-mono);
 }
 
+/* Switch colours when the visitor's system is in dark mode. */
 @media (prefers-color-scheme: dark) {
+  /* Override the variables on the root element. */
   :root {
+    /* Page background: near-black. */
     --background: #0a0a0a;
+    /* Page text: light grey. */
     --foreground: #ededed;
   }
 }
 
+/* Apply the colours to the whole page. */
 body {
+  /* Use the theme background. */
   background: var(--background);
+  /* Use the theme text colour. */
   color: var(--foreground);
+  /* Fall back to a plain system sans-serif font. */
   font-family: Arial, Helvetica, sans-serif;
 }
