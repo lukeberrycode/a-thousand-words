@@ -40,17 +40,68 @@ Why each was chosen: [docs/adr](docs/adr/README.md). How it fits together: [docs
 
 ## Getting started
 
-Requires Node 20+ and a Postgres database.
+This sets up the main checkout the way the docs and tests expect. It needs Node 20+. For a git worktree, see [Working in git worktrees](#working-in-git-worktrees) instead.
+
+### 1. Install the packages
 
 ```bash
-npm install                # also generates the Prisma client
-cp .env.example .env       # then set DATABASE_URL, the R2_* values and the AUTH_* values
-npx prisma dev             # optional: starts a local Postgres and prints its URL
-                           # with it, also set SHADOW_DATABASE_URL (see .env.example)
-npm run db:migrate         # apply the schema
-npm run db:seed -- --yes   # optional: public-domain paintings and home page collections
-npm run dev                # http://localhost:3000
+npm install                      # also generates the Prisma client
+npx playwright install chromium  # once, for the system tests
 ```
+
+### 2. Create the local database
+
+The main checkout uses a local Postgres from `prisma dev`, named `a-thousand-words`. The docs and system tests assume that name. Create it once:
+
+```bash
+npx prisma dev --name a-thousand-words --detach
+```
+
+It runs in the background and prints a `postgres://` connection string. Keep it for the next step. To see it again, run `npx prisma dev ls`.
+
+### 3. Fill in .env
+
+```bash
+cp .env.example .env
+```
+
+Then set:
+
+- `DATABASE_URL`: the `postgres://` string from step 2. 
+todo
+- `SHADOW_DATABASE_URL`: the same string with the next port up, and `template1` as the database. `npm run db:migrate` needs it. [.env.example](.env.example) shows the format, and how to find the exact URL.
+- The five `R2_*` values: a Cloudflare R2 bucket. Uploads and the seed script need them.
+- `AUTH_SECRET`, `AUTH_GITHUB_ID` and `AUTH_GITHUB_SECRET`: a GitHub OAuth app with the callback URL `http://localhost:3000/api/auth/callback/github`. Sign-in needs them.
+
+The system tests need only `DATABASE_URL`: they bring their own R2 mock and test sign-in ([ADR 0024](docs/adr/0024-r2-mock-for-system-tests.md)).
+
+### 4. Create the tables and add the seed images
+
+```bash
+npm run db:migrate         # applies every migration
+npm run db:seed -- --yes   # optional: the public-domain paintings and home page collections
+```
+
+### 5. Run it
+
+```bash
+npm run dev                # http://localhost:3000
+npm run test:system        # optional: checks the setup end to end
+```
+
+### After a restart
+
+The database doesn't start by itself. Start it before `npm run dev` or `npm run test:system`:
+
+```bash
+npx prisma dev start a-thousand-words
+```
+
+### If something goes wrong
+
+- **`ECONNREFUSED` from Prisma:** the database isn't running. Start it as above.
+- **`No prisma dev servers found to start`:** there's no server called `a-thousand-words` on this machine. `npx prisma dev ls` lists the ones that exist. Create it as in step 2, then update `DATABASE_URL` and `SHADOW_DATABASE_URL`: a new server can have different ports.
+- **`Cannot read properties of undefined` from a `db:*` script:** the Prisma client is out of date. Run `npx prisma generate` (see [below](#scripts)).
 
 ## GraphQL API
 
