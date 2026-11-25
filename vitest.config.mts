@@ -1,5 +1,13 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+import { driveLetterProblem } from "./src/lib/drive-letter.mjs";
+
+// Stop early, with a fix, rather than let every suite fail with a confusing error.
+const problem = driveLetterProblem(process.platform, process.cwd());
+if (problem) {
+  console.error(`\n${problem}\n`);
+  process.exit(1);
+}
 
 // Unit tests: pure functions, next to the code they test (`*.test.ts`), and the GraphQL API's,
 // which mock `@/lib/db` so they run without a database. The Playwright system tests in e2e/

@@ -745,8 +745,8 @@ describe("browserCallProblem: files the browser writes, with links in a real che
       // Put a broken link in it.
       symlink(join(outside, "not-yet.txt"), join(output(), "shots", "report.txt"));
 
-      // A click is refused, and the link is named in the message.
-      expect(call("browser_click", { element: "Download", ref: "e1" })).toMatch(/shots\/report\.txt/);
+      // A click is refused, and the link is named in the message, with either path separator.
+      expect(call("browser_click", { element: "Download", ref: "e1" })).toMatch(/shots[\\/]report\.txt/);
 
       // A navigation is refused.
       expect(call("browser_navigate", { url: "http://localhost:20765/" })).not.toBeNull();
