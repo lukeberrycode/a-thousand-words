@@ -53,9 +53,16 @@ if (seen(stateFile) || (!inWorktree && seen(warnedFile))) process.exit(0);
 
 const failures = [];
 for (const script of ["lint", "typecheck", "test"]) {
-  const run = spawnSync("npm", ["run", "-s", script], { cwd: root, encoding: "utf8", timeout: 240_000 });
+  // Through a shell, since on Windows npm is npm.cmd, which only a shell can find. The command is
+  // one fixed string: Node warns about passing separate arguments to a shell.
+  const run = spawnSync(`npm run -s ${script}`, { cwd: root, encoding: "utf8", timeout: 240_000, shell: true });
   if (run.status !== 0) {
-    const output = `${run.stdout ?? ""}${run.stderr ?? ""}`.trim().split("\n").slice(-40).join("\n");
+    // Include the error if the command didn't start, so the failure isn't blank.
+    const output = `${run.error ? `${run.error.message}\n` : ""}${run.stdout ?? ""}${run.stderr ?? ""}`
+      .trim()
+      .split(/\r?\n/)
+      .slice(-40)
+      .join("\n");
     failures.push(`npm run ${script} failed:\n${output}`);
   }
 }
