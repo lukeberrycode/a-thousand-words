@@ -38,6 +38,24 @@ const context = { origins: ORIGINS, root: ROOT };
 // Check a call and return the reason it's refused, or null.
 const problem = (tool: string, input: Record<string, unknown> = {}) => browserCallProblem(tool, input, context);
 
+// Make a symbolic link, with a hint when Windows refuses to.
+const symlink = (target: string, path: string) => {
+  // Try to make the link.
+  try {
+    symlinkSync(target, path);
+  } catch (error) {
+    // Windows makes symbolic links only in Developer Mode, so say how to turn it on.
+    if (process.platform === "win32" && (error as NodeJS.ErrnoException).code === "EPERM") {
+      throw new Error('Can\'t make a symbolic link. Turn on "Developer Mode": Settings → System → For developers.', {
+        cause: error,
+      });
+    }
+
+    // Pass any other error on.
+    throw error;
+  }
+};
+
 // Group the tests for the allowed origins.
 describe("browserOrigins", () => {
   // Check the default list.
@@ -555,13 +573,13 @@ describe("browserCallProblem: files the browser uploads", () => {
     writeFileSync(join(root, ".playwright-mcp", "storage-state.json"), "{}");
 
     // A ".png" link to the outside secret.
-    symlinkSync(join(base, "secret.txt"), join(root, "outside.png"));
+    symlink(join(base, "secret.txt"), join(root, "outside.png"));
 
     // A ".png" link to .env.
-    symlinkSync(join(root, ".env"), join(root, "env.png"));
+    symlink(join(root, ".env"), join(root, "env.png"));
 
     // A ".png" link to the saved session.
-    symlinkSync(join(root, ".playwright-mcp", "storage-state.json"), join(root, "state.png"));
+    symlink(join(root, ".playwright-mcp", "storage-state.json"), join(root, "state.png"));
 
     // Delete the temporary folder when the tests finish.
     afterAll(() => rmSync(base, { recursive: true, force: true }));
@@ -668,7 +686,7 @@ describe("browserCallProblem: files the browser writes, with links in a real che
     // A link to a folder outside the checkout.
     it("refuses every call while it links to a folder outside the checkout", () => {
       // Make the output folder a link to the outside folder.
-      symlinkSync(outside, output());
+      symlink(outside, output());
 
       // Every call is refused.
       everyCall();
@@ -680,7 +698,7 @@ describe("browserCallProblem: files the browser writes, with links in a real che
       mkdirSync(join(root, "src"));
 
       // Make the output folder a link to it.
-      symlinkSync(join(root, "src"), output());
+      symlink(join(root, "src"), output());
 
       // Every call is refused.
       everyCall();
@@ -689,7 +707,7 @@ describe("browserCallProblem: files the browser writes, with links in a real che
     // A link that goes nowhere.
     it("refuses every call while it's a broken link", () => {
       // Make the output folder a link to something that doesn't exist.
-      symlinkSync(join(outside, "not-yet"), output());
+      symlink(join(outside, "not-yet"), output());
 
       // Every call is refused.
       everyCall();
@@ -725,7 +743,7 @@ describe("browserCallProblem: files the browser writes, with links in a real che
       mkdirSync(join(output(), "shots"));
 
       // Put a broken link in it.
-      symlinkSync(join(outside, "not-yet.txt"), join(output(), "shots", "report.txt"));
+      symlink(join(outside, "not-yet.txt"), join(output(), "shots", "report.txt"));
 
       // A click is refused, and the link is named in the message.
       expect(call("browser_click", { element: "Download", ref: "e1" })).toMatch(/shots\/report\.txt/);
@@ -782,7 +800,7 @@ describe("browserCallProblem: files the browser writes, with links in a real che
     // A broken link to the outside.
     it("refuses a broken link to a file outside the checkout", () => {
       // A link to a file that doesn't exist yet, outside the checkout.
-      symlinkSync(join(outside, "new.md"), join(output(), "x.md"));
+      symlink(join(outside, "new.md"), join(output(), "x.md"));
 
       // Writing through it is refused.
       expect(write(".playwright-mcp/x.md")).not.toBeNull();
@@ -791,7 +809,7 @@ describe("browserCallProblem: files the browser writes, with links in a real che
     // A broken link to the inside.
     it("refuses a broken link to a file inside the checkout", () => {
       // A link to a file that doesn't exist yet, inside the checkout.
-      symlinkSync(join(root, "src", "new.ts"), join(output(), "x.md"));
+      symlink(join(root, "src", "new.ts"), join(output(), "x.md"));
 
       // Writing through it is refused.
       expect(write(".playwright-mcp/x.md")).not.toBeNull();
@@ -800,10 +818,10 @@ describe("browserCallProblem: files the browser writes, with links in a real che
     // Links to real files.
     it("refuses a link to an existing file elsewhere", () => {
       // A link to a file outside the checkout.
-      symlinkSync(join(outside, "target.md"), join(output(), "x.md"));
+      symlink(join(outside, "target.md"), join(output(), "x.md"));
 
       // A link to .env.
-      symlinkSync(join(root, ".env"), join(output(), "env.md"));
+      symlink(join(root, ".env"), join(output(), "env.md"));
 
       // Writing through the first is refused.
       expect(write(".playwright-mcp/x.md")).not.toBeNull();
@@ -818,7 +836,7 @@ describe("browserCallProblem: files the browser writes, with links in a real che
       writeFileSync(join(output(), "real.md"), "");
 
       // A link to it.
-      symlinkSync(join(output(), "real.md"), join(output(), "x.md"));
+      symlink(join(output(), "real.md"), join(output(), "x.md"));
 
       // Writing through the link is refused.
       expect(write(".playwright-mcp/x.md")).not.toBeNull();
@@ -827,13 +845,13 @@ describe("browserCallProblem: files the browser writes, with links in a real che
     // Links as subfolders.
     it("refuses a file under a subfolder that is a link", () => {
       // A link to the outside folder.
-      symlinkSync(outside, join(output(), "shots"));
+      symlink(outside, join(output(), "shots"));
 
       // A real subfolder.
       mkdirSync(join(output(), "real"));
 
       // A link to it.
-      symlinkSync(join(output(), "real"), join(output(), "inner"));
+      symlink(join(output(), "real"), join(output(), "inner"));
 
       // A new file under the first link is refused.
       expect(write(".playwright-mcp/shots/new.md")).not.toBeNull();
@@ -878,7 +896,7 @@ describe("browserCallProblem: files the browser writes, with links in a real che
     // Every writing tool.
     it("checks the filename of every tool that writes one", () => {
       // A link to .env.
-      symlinkSync(join(root, ".env"), join(output(), "x.md"));
+      symlink(join(root, ".env"), join(output(), "x.md"));
 
       // Try each tool that writes a file.
       for (const tool of [
